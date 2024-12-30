@@ -1,6 +1,6 @@
 import { EventBus } from './EventBus';
 import type { SimpElement } from './element';
-import type { DiffTask } from './diff';
+import type { DiffResult, DiffTask } from './diff';
 
 export class LifecycleManager {
   private _eventBus = new EventBus<LifecycleEvent>();
@@ -17,7 +17,7 @@ export class LifecycleManager {
     this._eventBus.publish({ type: 'afterRender', payload: { element } });
   }
 
-  afterMount(params: { renderedElements: SimpElement[]; deletedElements: SimpElement[] }): void {
+  afterMount(params: DiffResult): void {
     this._eventBus.publish({ type: 'afterMount', payload: params });
   }
 
@@ -34,7 +34,7 @@ interface BaseEvent<Type extends string, Payload = any> {
 export type LifecycleEvent =
   | BaseEvent<'beforeRender', { element: SimpElement }>
   | BaseEvent<'afterRender', { element: SimpElement }>
-  | BaseEvent<'afterMount', { renderedElements: SimpElement[]; deletedElements: SimpElement[] }>
+  | BaseEvent<'afterMount', DiffResult>
   | BaseEvent<'mountRequired', { tasks: DiffTask[] }>;
 
 export const lifecycleManager = new LifecycleManager();

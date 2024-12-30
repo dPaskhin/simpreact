@@ -7,7 +7,13 @@ describe('diff function', () => {
   it('does nothing when both prevElement and nextElement are null', () => {
     const result = diff(null, null, new LifecycleManager());
 
-    expect(result).toEqual({ tasks: [], renderedElements: [], deletedElements: [] });
+    expect(result).toEqual({
+      tasks: [],
+      renderedElements: [],
+      deletedElements: [],
+      renderedRefElements: [],
+      deletedRefElements: [],
+    });
   });
 
   it('creates an ADD task when prevElement is null and nextElement is defined', () => {

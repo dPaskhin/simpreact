@@ -1,4 +1,4 @@
-import type { Many } from '../types';
+import type { Many, Nullable } from '../types';
 import { createElement, SIMP_ELEMENT_TYPE } from './createElement';
 import { createFragmentElement } from './fragment';
 import type { SimpElement, SimpNode } from './types';
@@ -8,7 +8,7 @@ export function normalizeChildren(
   children: SimpNode,
   forcePrimitiveElement = false,
   depth = false
-): Many<SimpElement> | null {
+): Nullable<Many<SimpElement>> {
   if (children == null || typeof children === 'boolean') {
     return null;
   }

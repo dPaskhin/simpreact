@@ -9,7 +9,7 @@ describe('createRootElement function', () => {
     expect(rootElement).toStrictEqual(element);
     expect(rootElement._parent).toEqual({
       $$typeof: SIMP_ELEMENT_TYPE,
-      type: 'root',
+      type: 'ROOT',
       props: null,
       _children: element,
       _parent: null,
@@ -29,7 +29,7 @@ describe('createRootElement function', () => {
     expect(rootElement).toStrictEqual(element);
     expect(rootElement._parent).toEqual({
       $$typeof: SIMP_ELEMENT_TYPE,
-      type: 'root',
+      type: 'ROOT',
       props: null,
       _children: element,
       _parent: null,

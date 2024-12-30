@@ -16,13 +16,21 @@ export interface DiffResult {
   tasks: DiffTask[];
   renderedElements: SimpElement[];
   deletedElements: SimpElement[];
+  renderedRefElements: SimpElement[];
+  deletedRefElements: SimpElement[];
 }
 
 export function diff(
   prevElement: Maybe<SimpElement>,
   nextElement: Maybe<SimpElement>,
   lifecycleManager: LifecycleManager,
-  result: DiffResult = { tasks: [], renderedElements: [], deletedElements: [] }
+  result: DiffResult = {
+    tasks: [],
+    renderedElements: [],
+    deletedElements: [],
+    renderedRefElements: [],
+    deletedRefElements: [],
+  }
 ): DiffResult {
   // REMOVE PHASE
   if (prevElement && !nextElement) {
@@ -30,9 +38,9 @@ export function diff(
     return result;
   }
 
-  // APPEND PHASE
+  // INSERT PHASE
   else if (!prevElement && nextElement) {
-    appendPhase(nextElement, lifecycleManager, result);
+    insertPhase(nextElement, lifecycleManager, result);
     return result;
   }
 
@@ -44,7 +52,7 @@ export function diff(
   // REPLACE PHASE
   else if (prevElement.type !== nextElement.type) {
     removePhase(prevElement, lifecycleManager, result);
-    appendPhase(nextElement, lifecycleManager, result);
+    insertPhase(nextElement, lifecycleManager, result);
     return result;
   }
 
@@ -53,11 +61,15 @@ export function diff(
   return result;
 }
 
-export function appendPhase(element: SimpElement, lifecycleManager: LifecycleManager, result: DiffResult): DiffResult {
+export function insertPhase(element: SimpElement, lifecycleManager: LifecycleManager, result: DiffResult): DiffResult {
   obtainChildren(element, lifecycleManager);
 
   if (isHostTypeElement(element)) {
     result.tasks.push(createDiffTask(EFFECT_TAG.INSERT, null, element));
+
+    if (element?.props?.ref != null) {
+      result.renderedRefElements.unshift(element);
+    }
   } else if (!isFragmentElement(element)) {
     result.renderedElements.unshift(element);
   }
@@ -66,7 +78,7 @@ export function appendPhase(element: SimpElement, lifecycleManager: LifecycleMan
     child._parent = element;
     child._index = index;
 
-    appendPhase(child, lifecycleManager, result);
+    insertPhase(child, lifecycleManager, result);
   });
 
   return result;
@@ -85,10 +97,15 @@ export function removePhase(element: SimpElement, lifecycleManager: LifecycleMan
   } else {
     // If we find the nearest host element it means we don't need to go farther and can stop the diffing
     result.tasks.push(createDiffTask(EFFECT_TAG.REMOVE, element, null));
-    // We use traverseElement for collecting all possibly left FC elements in a subtree
+    // We use traverseElement for:
     traverseElement(element, element => {
+      // collecting all possibly left FC elements in a subtree
       if (isFunctionTypeElement(element) && !isFragmentElement(element)) {
         result.deletedElements.push(element);
+      }
+      // collecting all possibly left host elements with refs in a subtree
+      if (isHostTypeElement(element) && element?.props?.ref != null) {
+        result.deletedRefElements.push(element);
       }
     });
   }
@@ -102,13 +119,17 @@ export function updatePhase(
   lifecycleManager: LifecycleManager,
   result: DiffResult
 ): DiffResult {
-  nextElement._reference ??= prevElement._reference;
+  nextElement._reference ||= prevElement._reference;
   nextElement._store = prevElement._store ?? null;
 
   obtainChildren(nextElement, lifecycleManager);
 
   if (!isFunctionTypeElement(nextElement)) {
     result.tasks.push(createDiffTask(EFFECT_TAG.UPDATE, prevElement, nextElement));
+
+    if (nextElement?.props?.ref != null) {
+      result.renderedRefElements.unshift(nextElement);
+    }
   } else if (!isFragmentElement(nextElement)) {
     result.renderedElements.unshift(nextElement);
   }
@@ -129,7 +150,7 @@ export function obtainChildren(element: SimpElement, lifecycleManager: Lifecycle
   if (isFunctionTypeElement(element)) {
     lifecycleManager.beforeRender(element);
 
-    element._children = normalizeChildren(element.type(element.props ?? {}), true);
+    element._children = normalizeChildren(element.type(element.props || {}), true);
 
     lifecycleManager.afterRender(element);
   } else {

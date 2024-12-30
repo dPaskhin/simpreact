@@ -21,7 +21,11 @@ interface MemoHookState<T = unknown> {
   deps: DependencyList | undefined;
 }
 
-type HookState = StateHookState | EffectHookState | MemoHookState;
+interface RefHookState<T = unknown> {
+  value: { current: T };
+}
+
+type HookState = StateHookState | EffectHookState | MemoHookState | RefHookState;
 
 interface HooksSimpElement extends SimpElement {
   _store: {
@@ -38,7 +42,7 @@ lifecycleManager.subscribe(event => {
     currentIndex = 0;
     currentElement = event.payload.element as HooksSimpElement;
 
-    currentElement._store ??= {
+    currentElement._store ||= {
       _hooks: [],
       _mountEffects: [],
     };
@@ -50,21 +54,21 @@ lifecycleManager.subscribe(event => {
   }
 
   if (event.type === 'afterMount') {
-    (event.payload.deletedElements as HooksSimpElement[]).forEach(element => {
-      element._store._mountEffects.forEach(state => {
-        if (typeof state.cleanup === 'function') {
-          state.cleanup();
+    for (const element of event.payload.deletedElements as HooksSimpElement[]) {
+      for (const mountEffect of element._store._mountEffects) {
+        if (typeof mountEffect.cleanup === 'function') {
+          mountEffect.cleanup();
         }
-      });
-    });
-    (event.payload.renderedElements as HooksSimpElement[]).forEach(element => {
-      element._store._mountEffects.forEach(state => {
-        if (typeof state.cleanup === 'function') {
-          state.cleanup();
+      }
+    }
+    for (const element of event.payload.renderedElements as HooksSimpElement[]) {
+      for (const mountEffect of element._store._mountEffects) {
+        if (typeof mountEffect.cleanup === 'function') {
+          mountEffect.cleanup();
         }
-        state.cleanup = state.effect() || undefined;
-      });
-    });
+        mountEffect.cleanup = mountEffect.effect() || undefined;
+      }
+    }
   }
 });
 
@@ -74,7 +78,7 @@ type SetStateAction<S> = S | ((prevState: S) => S);
 export function useState<S>(initialState: S | (() => S)): [S, Dispatch<SetStateAction<S>>];
 export function useState<S = undefined>(): [S | undefined, Dispatch<SetStateAction<S | undefined>>];
 export function useState(initialState?: unknown) {
-  const hookState = (currentElement!._store._hooks[currentIndex++] ??= {
+  const hookState = (currentElement!._store._hooks[currentIndex++] ||= {
     value: [
       callOrGet(initialState),
       action => {
@@ -95,7 +99,7 @@ export function useState(initialState?: unknown) {
 }
 
 export function useMemo<S>(factory: () => S, deps?: DependencyList): S {
-  const hookState = (currentElement!._store._hooks[currentIndex++] ??= {
+  const hookState = (currentElement!._store._hooks[currentIndex++] ||= {
     value: factory(),
     deps,
   }) as MemoHookState<S>;
@@ -113,7 +117,7 @@ export function useCallback<Cb extends (...args: any[]) => any>(cb: Cb, deps?: D
 }
 
 export function useEffect(effect: Effect, deps?: DependencyList) {
-  const hookState = (currentElement!._store._hooks[currentIndex++] ??= {
+  const hookState = (currentElement!._store._hooks[currentIndex++] ||= {
     effect,
     deps: undefined,
     cleanup: undefined,
@@ -124,6 +128,14 @@ export function useEffect(effect: Effect, deps?: DependencyList) {
     hookState.deps = deps;
     currentElement!._store._mountEffects.push(hookState);
   }
+}
+
+export function useRef<T>(initialValue: T): { current: T } {
+  const hookState = (currentElement!._store._hooks[currentIndex++] ||= {
+    value: { current: initialValue },
+  }) as RefHookState<T>;
+
+  return hookState.value;
 }
 
 function areDepsEqual(nextDeps: DependencyList | undefined, prevDeps: DependencyList | undefined): boolean {

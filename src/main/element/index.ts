@@ -1,6 +1,6 @@
 export * from './constants';
 export * from './createElement';
-export * from './createElementFromNode';
+export * from './normalizeChildren';
 export * from './createRootElement';
 export * from './fragment';
 export * from './types';
