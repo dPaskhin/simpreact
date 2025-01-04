@@ -1,42 +1,67 @@
 // noinspection ES6UnusedImports
 import * as SimpReact from '../../../src/main';
 import * as SimpReactHooks from '../../../src/main/hooks';
+import { EventBus } from '../../../src/main/EventBus';
 
-export const Todo = () => {
-  const [state, setState] = SimpReactHooks.useState([
+const todosManager = {
+  eventBus: new EventBus(),
+
+  list: [
     { name: '1', done: true },
     { name: '2', done: false },
-  ]);
-  const [value, setValue] = SimpReactHooks.useState('123');
+  ],
 
-  const handleTodoToggle = SimpReactHooks.useCallback(index => {
-    setState(prevState => {
-      const copy = prevState.slice();
-      const todo = prevState.find((_, i) => index === i);
+  set(list) {
+    todosManager.list = list;
+    todosManager.eventBus.publish();
+  },
 
-      todo.done = !todo.done;
+  subscribe(listener) {
+    return todosManager.eventBus.subscribe(listener);
+  },
+};
 
-      return copy;
-    });
+export const Todo = () => {
+  const rerender = SimpReactHooks.useRerender();
+
+  const valueRef = SimpReactHooks.useRef('');
+
+  SimpReactHooks.useEffect(() => {
+    return todosManager.subscribe(rerender);
   }, []);
 
-  const handleTodoDelete = SimpReactHooks.useCallback(index => {
-    setState(prevState => prevState.filter((_, i) => i !== index));
-  }, []);
+  const handleTodoToggle = index => {
+    const todo = todosManager.list.find((_, i) => index === i);
+
+    todo.done = !todo.done;
+
+    todosManager.set(todosManager.list);
+  };
+
+  const handleTodoDelete = index => {
+    todosManager.list.splice(index, 1);
+    todosManager.set(todosManager.list);
+  };
 
   return (
     <div>
-      <input id={'123'} onInput={event => setValue(event.currentTarget.value)} ariaLabel={'123'} data={'11'} />
+      <input
+        id={'123'}
+        onInput={event => (valueRef.current = event.currentTarget.value)}
+        ariaLabel={'123'}
+        data={'11'}
+      />
 
       <button
         onClick={() => {
-          setState(prevState => [...prevState, { name: value, done: false }]);
+          todosManager.list.push({ name: valueRef.current, done: false });
+          todosManager.set(todosManager.list);
         }}
       >
         {'Submit'}
       </button>
 
-      {state.map((item, index) => {
+      {todosManager.list.map((item, index) => {
         return (
           <div>
             {item.name}
