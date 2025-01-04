@@ -1,6 +1,32 @@
 // noinspection ES6UnusedImports
 import * as SimpReact from '../../../src/main';
+import { EventBus } from '../../../src/main/EventBus';
 import * as SimpReactHooks from '../../../src/main/hooks';
+
+const gameManager = {
+  eventBus: new EventBus(),
+
+  currentMove: 0,
+  history: [Array(9).fill(null)],
+
+  get currentSquares() {
+    return gameManager.history[gameManager.currentMove];
+  },
+
+  setMove(value) {
+    gameManager.currentMove = value;
+    gameManager.eventBus.publish();
+  },
+
+  setHistory(history) {
+    gameManager.history = history;
+    gameManager.eventBus.publish();
+  },
+
+  subscribe(listener) {
+    return gameManager.eventBus.subscribe(listener);
+  },
+};
 
 function Square({ value, onSquareClick }) {
   return (
@@ -55,23 +81,27 @@ function Board({ xIsNext, squares, onPlay }) {
 }
 
 export function Game() {
-  const [history, setHistory] = SimpReactHooks.useState([Array(9).fill(null)]);
+  const rerender = SimpReactHooks.useRerender();
 
-  const [currentMove, setCurrentMove] = SimpReactHooks.useState(0);
-  const xIsNext = currentMove % 2 === 0;
-  const currentSquares = history[currentMove];
+  const xIsNext = gameManager.currentMove % 2 === 0;
+
+  SimpReactHooks.useEffect(() => {
+    return gameManager.subscribe(rerender);
+  }, []);
 
   function handlePlay(nextSquares) {
-    const nextHistory = [...history.slice(0, currentMove + 1), nextSquares];
-    setHistory(nextHistory);
-    setCurrentMove(nextHistory.length - 1);
+    gameManager.history.splice(gameManager.currentMove + 1);
+    gameManager.history.push(nextSquares);
+
+    gameManager.setHistory(gameManager.history);
+    gameManager.setMove(gameManager.history.length - 1);
   }
 
   function jumpTo(nextMove) {
-    setCurrentMove(nextMove);
+    gameManager.setMove(nextMove);
   }
 
-  const moves = history.map((squares, move) => {
+  const moves = gameManager.history.map((squares, move) => {
     let description;
     if (move > 0) {
       description = 'Go to move #' + move;
@@ -88,7 +118,7 @@ export function Game() {
   return (
     <div className="game">
       <div className="game-board">
-        <Board xIsNext={xIsNext} squares={currentSquares} onPlay={handlePlay} />
+        <Board xIsNext={xIsNext} squares={gameManager.currentSquares} onPlay={handlePlay} />
       </div>
       <div className="game-info">
         <ol>{moves}</ol>
@@ -98,21 +128,22 @@ export function Game() {
 }
 
 function calculateWinner(squares) {
-  const lines = [
-    [0, 1, 2],
-    [3, 4, 5],
-    [6, 7, 8],
-    [0, 3, 6],
-    [1, 4, 7],
-    [2, 5, 8],
-    [0, 4, 8],
-    [2, 4, 6],
-  ];
-  for (let i = 0; i < lines.length; i++) {
-    const [a, b, c] = lines[i];
+  for (let i = 0; i < winningLines.length; i++) {
+    const [a, b, c] = winningLines[i];
     if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
       return squares[a];
     }
   }
   return null;
 }
+
+const winningLines = [
+  [0, 1, 2],
+  [3, 4, 5],
+  [6, 7, 8],
+  [0, 3, 6],
+  [1, 4, 7],
+  [2, 5, 8],
+  [0, 4, 8],
+  [2, 4, 6],
+];

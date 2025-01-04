@@ -5,19 +5,9 @@ type Cleanup = () => void;
 type Effect = () => void | Cleanup;
 type DependencyList = readonly unknown[];
 
-interface StateHookState<S = unknown> {
-  value: [S, Dispatch<SetStateAction<S>>];
-  element: SimpElement;
-}
-
 interface EffectHookState {
   effect: Effect;
   cleanup: Cleanup | undefined;
-  deps: DependencyList | undefined;
-}
-
-interface MemoHookState<T = unknown> {
-  value: T;
   deps: DependencyList | undefined;
 }
 
@@ -25,7 +15,7 @@ interface RefHookState<T = unknown> {
   value: { current: T };
 }
 
-type HookState = StateHookState | EffectHookState | MemoHookState | RefHookState;
+type HookState = EffectHookState | RefHookState;
 
 interface HooksSimpElement extends SimpElement {
   _store: {
@@ -72,48 +62,17 @@ lifecycleManager.subscribe(event => {
   }
 });
 
-type Dispatch<A> = (value: A) => void;
-type SetStateAction<S> = S | ((prevState: S) => S);
+export function useRerender(): () => void {
+  const ref = useRef<{ element: Nullable<HooksSimpElement>; fn: () => void }>({
+    element: null,
+    fn() {
+      enqueueRender(ref.current.element, Object.assign({}, ref.current.element));
+    },
+  });
 
-export function useState<S>(initialState: S | (() => S)): [S, Dispatch<SetStateAction<S>>];
-export function useState<S = undefined>(): [S | undefined, Dispatch<SetStateAction<S | undefined>>];
-export function useState(initialState?: unknown) {
-  const hookState = (currentElement!._store._hooks[currentIndex++] ||= {
-    value: [
-      callOrGet(initialState),
-      action => {
-        const nextValue = callOrGet(action, hookState.value[0]);
+  ref.current.element = currentElement;
 
-        if (nextValue !== hookState.value[0]) {
-          hookState.value[0] = nextValue;
-          enqueueRender(hookState.element, Object.assign({}, hookState.element));
-        }
-      },
-    ],
-    element: currentElement!,
-  }) as StateHookState;
-
-  hookState.element = currentElement!;
-
-  return hookState.value;
-}
-
-export function useMemo<S>(factory: () => S, deps?: DependencyList): S {
-  const hookState = (currentElement!._store._hooks[currentIndex++] ||= {
-    value: factory(),
-    deps,
-  }) as MemoHookState<S>;
-
-  if (!areDepsEqual(deps, hookState.deps)) {
-    hookState.deps = deps;
-    return (hookState.value = factory());
-  }
-
-  return hookState.value;
-}
-
-export function useCallback<Cb extends (...args: any[]) => any>(cb: Cb, deps?: DependencyList): Cb {
-  return useMemo(() => cb, deps);
+  return ref.current.fn;
 }
 
 export function useEffect(effect: Effect, deps?: DependencyList) {
@@ -148,11 +107,4 @@ function areDepsEqual(nextDeps: DependencyList | undefined, prevDeps: Dependency
     }
   }
   return true;
-}
-
-function callOrGet<Value, Args extends Array<any>>(value: ((...args: Args) => Value) | Value, ...args: Args): Value {
-  if (typeof value === 'function') {
-    return (value as Function)(...args);
-  }
-  return value;
 }
