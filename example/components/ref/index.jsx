@@ -1,12 +1,11 @@
 // noinspection ES6UnusedImports
 import * as SimpReact from '../../../src/main';
 import * as SimpReactHooks from '../../../src/main/hooks';
-import { useRerender } from '../useRerender';
 
 export const RefExample = () => {
   const inputRef = SimpReactHooks.useRef(null);
   const customInputRef = SimpReactHooks.useRef(null);
-  const rerender = useRerender();
+  const rerender = SimpReactHooks.useRerender();
 
   return (
     <div>

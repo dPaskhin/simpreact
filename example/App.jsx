@@ -12,19 +12,25 @@ const Page = {
 };
 
 export const App = () => {
-  const [page, setPage] = SimpReactHooks.useState(Page.REF);
+  const pageRef = SimpReactHooks.useRef(Page.TIC_TAC_TOE);
+  const rerender = SimpReactHooks.useRerender();
+
+  const handleGoToStep = page => {
+    pageRef.current = page;
+    rerender();
+  };
 
   return (
     <>
-      <button onClick={() => setPage(Page.TIC_TAC_TOE)}>{'Tic Tac Toe'}</button>
-      <button onClick={() => setPage(Page.TODO)}>{'TODO'}</button>
-      <button onClick={() => setPage(Page.REF)}>{'REF'}</button>
+      <button onClick={() => handleGoToStep(Page.TIC_TAC_TOE)}>{'Tic Tac Toe'}</button>
+      <button onClick={() => handleGoToStep(Page.TODO)}>{'TODO'}</button>
+      <button onClick={() => handleGoToStep(Page.REF)}>{'REF'}</button>
 
       <hr />
 
-      {page === Page.TIC_TAC_TOE && <Game />}
-      {page === Page.TODO && <Todo />}
-      {page === Page.REF && <RefExample />}
+      {pageRef.current === Page.TIC_TAC_TOE && <Game />}
+      {pageRef.current === Page.TODO && <Todo />}
+      {pageRef.current === Page.REF && <RefExample />}
 
       <div>{'Footer'}</div>
     </>
