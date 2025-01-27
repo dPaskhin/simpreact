@@ -16,6 +16,7 @@ describe('createElement function', () => {
       _index: -1,
       _reference: null,
       _store: null,
+      _globalContext: null,
     });
   });
 
@@ -30,6 +31,7 @@ describe('createElement function', () => {
       _index: -1,
       _reference: null,
       _store: null,
+      _globalContext: null,
     });
   });
 
@@ -44,6 +46,7 @@ describe('createElement function', () => {
       _index: -1,
       _reference: null,
       _store: null,
+      _globalContext: null,
     });
   });
 
@@ -59,6 +62,7 @@ describe('createElement function', () => {
       _index: -1,
       _reference: null,
       _store: null,
+      _globalContext: null,
     });
   });
 
@@ -74,6 +78,7 @@ describe('createElement function', () => {
       _index: -1,
       _reference: null,
       _store: null,
+      _globalContext: null,
     });
   });
 
@@ -90,6 +95,7 @@ describe('createElement function', () => {
       _index: -1,
       _reference: null,
       _store: null,
+      _globalContext: null,
     });
   });
 
@@ -106,6 +112,7 @@ describe('createElement function', () => {
       _index: -1,
       _reference: null,
       _store: null,
+      _globalContext: null,
     });
   });
 });

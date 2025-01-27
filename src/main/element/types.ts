@@ -1,8 +1,9 @@
 import type { Many, Maybe } from '../types';
+import type { GlobalContext } from '../context';
 import { SIMP_ELEMENT_TYPE } from './createElement';
 
 export interface FunctionComponent<P = {}> {
-  (props: P): SimpNode;
+  (props: P, context: GlobalContext): SimpNode;
 }
 
 export interface FC<P = {}> extends FunctionComponent<P> {}
@@ -23,6 +24,8 @@ export interface SimpElement<P = any> {
   _reference: unknown;
 
   _store: unknown;
+
+  _globalContext: Maybe<GlobalContext>;
 }
 
 export type SimpNode = SimpElement | string | number | Array<SimpNode> | boolean | null | undefined;

@@ -29,5 +29,6 @@ export function createElement(type: string | FunctionComponent, props: unknown, 
     _index: -1,
     _reference: null,
     _store: null,
+    _globalContext: null,
   } as const;
 }

@@ -1,5 +1,6 @@
 import { enqueueRender, lifecycleManager, type SimpElement } from '../index';
 import type { Nullable } from '../types';
+import { type Context, getContextValue } from '../context';
 
 type Cleanup = () => void;
 type Effect = () => void | Cleanup;
@@ -95,6 +96,10 @@ export function useRef<T>(initialValue: T): { current: T } {
   }) as RefHookState<T>;
 
   return hookState.value;
+}
+
+export function useContext<T>(context: Context<T>): T {
+  return getContextValue(currentElement?._globalContext, context);
 }
 
 function areDepsEqual(nextDeps: DependencyList | undefined, prevDeps: DependencyList | undefined): boolean {

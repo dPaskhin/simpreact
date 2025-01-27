@@ -1,8 +1,8 @@
 import { LifecycleManager } from '../../main/lifecycleManager';
-import { createElement, normalizeChildren } from '../../main/element';
+import { createElement, normalizeChildren, SimpElement } from '../../main/element';
 import { obtainChildren } from '../../main/diff/diff';
 
-describe('obtainChildren with LifecycleManager', () => {
+describe('obtainChildren', () => {
   let lifecycleManager: LifecycleManager;
 
   beforeEach(() => {
@@ -23,9 +23,12 @@ describe('obtainChildren with LifecycleManager', () => {
   });
 
   it('should trigger lifecycle events and normalize children for a function component', () => {
-    const element = createElement(props => createElement('span', null, props.text), {
-      text: 'Hello',
-    });
+    const Component = jest
+      .fn<SimpElement, [{ text: string }]>()
+      .mockImplementation(props => createElement('span', null, props.text));
+
+    const element = createElement(Component, { text: 'Hello' });
+    element._globalContext = new Map();
 
     const eventListener = jest.fn();
     lifecycleManager.subscribe(eventListener);
@@ -41,6 +44,7 @@ describe('obtainChildren with LifecycleManager', () => {
       payload: { element },
     });
 
+    expect(Component).toHaveBeenCalledWith(element.props, element._globalContext);
     expect(element._children).toEqual(expect.objectContaining({ type: 'span', props: { children: 'Hello' } }));
   });
 

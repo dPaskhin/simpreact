@@ -3,3 +3,4 @@ export { createElement, Fragment } from './element';
 
 export { lifecycleManager, type LifecycleEvent } from './lifecycleManager';
 export { enqueueRender } from './enqueueRender';
+export { createContext } from './context';

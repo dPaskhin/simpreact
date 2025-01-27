@@ -3,7 +3,6 @@ import { actualizeElementTree } from './diff.test';
 import { diff, EFFECT_TAG } from '../../main/diff';
 
 // It should be fixed when keys are introduced
-// I'm freaking tired rn
 describe('custom Cases diffing', () => {
   it('handles the children ', () => {
     const prev = actualizeElementTree(
@@ -28,7 +27,7 @@ describe('custom Cases diffing', () => {
       ]),
     );
 
-    const res = diff(prev, next, lifecycleManager);
+    const res = diff(prev, next, lifecycleManager, null);
 
     expect(res.tasks[0]).toEqual(
       expect.objectContaining({

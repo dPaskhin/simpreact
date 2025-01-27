@@ -16,6 +16,7 @@ describe('createRootElement function', () => {
       _reference: container,
       _index: -1,
       _store: null,
+      _globalContext: null,
     });
   });
 
@@ -36,6 +37,7 @@ describe('createRootElement function', () => {
       _reference: container,
       _index: -1,
       _store: null,
+      _globalContext: null,
     });
   });
 });
