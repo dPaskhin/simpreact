@@ -5,7 +5,7 @@ import { Maybe } from '../../main/types';
 
 describe('diff function', () => {
   it('does nothing when both prevElement and nextElement are null', () => {
-    const result = diff(null, null, new LifecycleManager());
+    const result = diff(null, null, new LifecycleManager(), null);
 
     expect(result).toEqual({
       tasks: [],
@@ -18,7 +18,7 @@ describe('diff function', () => {
 
   it('creates an ADD task when prevElement is null and nextElement is defined', () => {
     const nextElement = SimpReact.createElement('div');
-    const result = diff(null, nextElement, new LifecycleManager());
+    const result = diff(null, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(1);
     expect(result.tasks[0]).toEqual({ effectTag: EFFECT_TAG.INSERT, prevElement: null, nextElement });
@@ -26,7 +26,7 @@ describe('diff function', () => {
 
   it('creates a DELETE task when prevElement is defined and nextElement is null', () => {
     const prevElement = SimpReact.createElement('div');
-    const result = diff(prevElement, null, new LifecycleManager());
+    const result = diff(prevElement, null, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(1);
     expect(result.tasks[0]).toEqual({ effectTag: EFFECT_TAG.REMOVE, prevElement, nextElement: null });
@@ -35,7 +35,7 @@ describe('diff function', () => {
   it('creates an UPDATE task when prevElement and nextElement have the same type', () => {
     const prevElement = SimpReact.createElement('div');
     const nextElement = SimpReact.createElement('div');
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(1);
     expect(result.tasks[0]).toEqual({ effectTag: EFFECT_TAG.UPDATE, prevElement, nextElement });
@@ -44,7 +44,7 @@ describe('diff function', () => {
   it('creates DELETE and ADD tasks when the element type changes between prevElement and nextElement', () => {
     const prevElement = SimpReact.createElement('div');
     const nextElement = SimpReact.createElement('span');
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(2);
     expect(result.tasks[0]).toEqual({ effectTag: EFFECT_TAG.REMOVE, prevElement, nextElement: null });
@@ -62,7 +62,7 @@ describe('diff function', () => {
     };
     const nextElement = SimpReact.createElement(FunctionalComponent, { id: 'func' });
 
-    const result = diff(null, nextElement, lifecycleManager);
+    const result = diff(null, nextElement, lifecycleManager, null);
 
     expect(lifecycleManager.beforeRender).toHaveBeenCalledWith(nextElement);
     expect(lifecycleManager.afterRender).toHaveBeenCalledWith(nextElement);
@@ -92,7 +92,7 @@ describe('diff function', () => {
       SimpReact.createElement('a', { id: 'child3' })
     );
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(4);
     expect(result.tasks).toContainEqual({
@@ -135,7 +135,7 @@ describe('diff function', () => {
       SimpReact.createElement('li', { id: 'item4' })
     );
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(5);
     expect(result.tasks[0]).toEqual({
@@ -169,7 +169,7 @@ describe('diff function', () => {
     const prevElement = actualizeElementTree(SimpReact.createElement('div', null, 'Old Text'));
     const nextElement = SimpReact.createElement('div', null, 'New Text');
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(1);
     expect(result.tasks[0]).toEqual({
@@ -192,7 +192,7 @@ describe('diff function', () => {
       SimpReact.createElement('span', { id: 'child2' })
     );
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(3);
     expect(result.tasks[0]).toEqual({
@@ -219,7 +219,7 @@ describe('diff function', () => {
     const nextElement = SimpReact.createElement('div', { id: 'next' });
     nextElement._store = null;
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(1);
     expect(result.tasks[0]).toEqual({
@@ -253,7 +253,7 @@ describe('diff function', () => {
       )
     );
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(4);
     expect(result.tasks[0]).toEqual({
@@ -287,7 +287,7 @@ describe('diff function', () => {
         SimpReact.createElement('span', { id: 'child2' })
       )
     );
-    const result = diff(prevElement, null, new LifecycleManager());
+    const result = diff(prevElement, null, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(1);
     expect(result.tasks[0]).toEqual({
@@ -307,7 +307,7 @@ describe('diff function', () => {
       SimpReact.createElement('p', { id: 'child2' })
     );
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(3);
     expect(result.tasks[0]).toEqual({
@@ -333,7 +333,7 @@ describe('diff function', () => {
 
     const nextElement = SimpReact.createElement('span', { id: 'new' });
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(2);
     expect(result.tasks).toContainEqual({
@@ -359,7 +359,7 @@ describe('diff function', () => {
     const prevElement = actualizeElementTree(SimpReact.createElement(ConditionalComponent, { show: true }));
     const nextElement = SimpReact.createElement(ConditionalComponent, { show: false });
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(2);
     expect(result.tasks[0]).toEqual({
@@ -378,7 +378,7 @@ describe('diff function', () => {
     const prevElement = SimpReact.createElement('div', { data: { key1: 'value1', key2: 'value2' } });
     const nextElement = SimpReact.createElement('div', { data: { key1: 'value1', key2: 'newValue2' } });
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(1);
     expect(result.tasks[0]).toEqual({
@@ -406,7 +406,7 @@ describe('diff function', () => {
     const prevElement = actualizeElementTree(SimpReact.createElement('div', null, prevChildren));
     const nextElement = SimpReact.createElement('div', null, nextChildren);
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(1001);
     expect(result.tasks[0]).toEqual({
@@ -434,7 +434,7 @@ describe('diff function', () => {
       style: { color: 'blue' },
     });
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(1);
     expect(result.tasks[0]).toEqual({
@@ -452,7 +452,7 @@ describe('diff function', () => {
 
     const nextElement = SimpReact.createElement('div', { id: 'new' });
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(1);
     expect(result.tasks[0]).toEqual({
@@ -476,7 +476,7 @@ describe('diff function', () => {
 
     const nextElement = SimpReact.createElement('div', null, SimpReact.createElement('span', { id: 'updated-child' }));
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(2);
     expect(nextElement._reference).toBe(parentReference);
@@ -489,7 +489,7 @@ describe('diff function', () => {
     const nextElement = SimpReact.createElement('div', { id: 'new' });
     nextElement._reference = reference;
 
-    const result = diff(null, nextElement, new LifecycleManager());
+    const result = diff(null, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(1);
     expect(result.tasks[0]).toEqual({
@@ -521,7 +521,7 @@ describe('diff function', () => {
       SimpReact.createElement('span', { id: 'child2-updated' })
     );
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(3);
     expect((nextElement._children as SimpReact.SimpElement[])[0]._reference).toBe(ref1);
@@ -536,7 +536,7 @@ describe('diff function', () => {
 
     const nextElement = SimpReact.createElement('span', { id: 'new' });
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(2);
     expect(result.tasks[0]).toEqual({
@@ -577,7 +577,7 @@ describe('diff function', () => {
       SimpReact.createElement('p', { id: 'child2-updated' })
     );
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(3);
     expect(nextElement._reference).toBe(parentRef);
@@ -590,7 +590,7 @@ describe('diff function', () => {
 
     const nextElement = SimpReact.createElement(FunctionalComponent, { id: 'new-component' });
 
-    const result = diff(null, nextElement, new LifecycleManager());
+    const result = diff(null, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(1);
     expect(result.tasks[0]).toEqual({
@@ -606,7 +606,7 @@ describe('diff function', () => {
     const prevElement = actualizeElementTree(SimpReact.createElement(FunctionalComponent, { id: 'old-component' }));
     const nextElement = SimpReact.createElement(FunctionalComponent, { id: 'new-component' });
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(1);
     expect(result.tasks[0]).toEqual({
@@ -624,7 +624,7 @@ describe('diff function', () => {
     const prevElement = actualizeElementTree(SimpReact.createElement(FunctionalComponentOld, { id: 'old-component' }));
     const nextElement = SimpReact.createElement(FunctionalComponentNew, { id: 'new-component' });
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(2);
     expect(result.tasks[0]).toEqual({
@@ -651,7 +651,7 @@ describe('diff function', () => {
     const prevElement = actualizeElementTree(SimpReact.createElement(ParentComponent, null));
     const nextElement = SimpReact.createElement(ParentComponent, null);
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(2);
     expect(result.tasks[0]).toEqual({
@@ -677,7 +677,7 @@ describe('diff function', () => {
     const prevElement = actualizeElementTree(SimpReact.createElement(ConditionalComponent, { show: true }));
     const nextElement = SimpReact.createElement(ConditionalComponent, { show: false });
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(2);
     expect(result.tasks[0]).toEqual({
@@ -704,7 +704,7 @@ describe('diff function', () => {
 
     const nextElement = SimpReact.createElement(FunctionalComponent, { id: 'id' });
 
-    const result = diff(null, nextElement, lifecycleManager);
+    const result = diff(null, nextElement, lifecycleManager, null);
 
     expect(result.tasks.length).toBe(1);
     expect(lifecycleManager.beforeRender).toHaveBeenCalledWith(nextElement);
@@ -724,7 +724,7 @@ describe('diff function', () => {
     const prevElement = SimpReact.createElement(FunctionalComponent, { id: 'old-component' });
     const nextElement = SimpReact.createElement(FunctionalComponent, { id: 'new-component' });
 
-    const result = diff(prevElement, nextElement, lifecycleManager);
+    const result = diff(prevElement, nextElement, lifecycleManager, null);
 
     expect(result.tasks.length).toBe(1);
     expect(lifecycleManager.beforeRender).toHaveBeenCalledWith(nextElement);
@@ -747,7 +747,7 @@ describe('diff function', () => {
 
     const nextElement = SimpReact.createElement(ParentComponent, null);
 
-    diff(null, nextElement, lifecycleManager);
+    diff(null, nextElement, lifecycleManager, null);
 
     expect(lifecycleManager.beforeRender).toHaveBeenNthCalledWith(1, nextElement);
     expect(lifecycleManager.beforeRender).toHaveBeenNthCalledWith(2, expect.objectContaining({ type: ChildComponent }));
@@ -768,7 +768,7 @@ describe('diff function', () => {
       SimpReact.createElement('span', { id: 'child-updated' })
     );
 
-    const result = diff(prevElement, nextElement, lifecycleManager);
+    const result = diff(prevElement, nextElement, lifecycleManager, null);
 
     expect(result.tasks.length).toBe(2);
     expect(lifecycleManager.beforeRender).not.toHaveBeenCalled();
@@ -790,7 +790,7 @@ describe('diff function', () => {
     const prevElement = actualizeElementTree(SimpReact.createElement(FunctionalComponent, { change: false }));
     const nextElement = SimpReact.createElement(FunctionalComponent, { change: true });
 
-    const result = diff(prevElement, nextElement, lifecycleManager);
+    const result = diff(prevElement, nextElement, lifecycleManager, null);
 
     expect(result.tasks.length).toBe(2);
     expect(lifecycleManager.beforeRender).toHaveBeenCalledWith(nextElement);
@@ -814,7 +814,7 @@ describe('diff function', () => {
 
     const nextElement = SimpReact.createElement(FunctionalComponent);
 
-    diff(null, nextElement, lifecycleManager);
+    diff(null, nextElement, lifecycleManager, null);
 
     expect(lifecycleManager.beforeRender).toHaveBeenCalledTimes(1);
     expect(lifecycleManager.afterRender).toHaveBeenCalledTimes(1);
@@ -837,7 +837,7 @@ describe('diff function', () => {
     const prevElement = actualizeElementTree(SimpReact.createElement(FunctionalComponent, { show: true }));
     const nextElement = SimpReact.createElement(FunctionalComponent, { show: false });
 
-    const result = diff(prevElement, nextElement, lifecycleManager);
+    const result = diff(prevElement, nextElement, lifecycleManager, null);
 
     expect(result.tasks.length).toBe(2);
     expect(lifecycleManager.beforeRender).toHaveBeenCalledWith(nextElement);
@@ -851,7 +851,7 @@ describe('diff function', () => {
 
     const nextElement = SimpReact.createElement(FunctionalComponent, { id: 'new-component' });
 
-    const result = diff(null, nextElement, new LifecycleManager());
+    const result = diff(null, nextElement, new LifecycleManager(), null);
 
     expect(result.renderedElements.length).toBe(1);
     expect(result.renderedElements[0]).toEqual(nextElement);
@@ -868,7 +868,7 @@ describe('diff function', () => {
 
     const nextElement = SimpReact.createElement(ParentComponent);
 
-    const result = diff(null, nextElement, new LifecycleManager());
+    const result = diff(null, nextElement, new LifecycleManager(), null);
 
     expect(result.renderedElements.length).toBe(2);
     expect(result.renderedElements).toEqual([
@@ -885,7 +885,7 @@ describe('diff function', () => {
     const prevElement = SimpReact.createElement(FunctionalComponent, { id: 'old-component' });
     const nextElement = SimpReact.createElement(FunctionalComponent, { id: 'new-component' });
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.renderedElements.length).toBe(1);
     expect(result.renderedElements[0]).toEqual(nextElement);
@@ -903,7 +903,7 @@ describe('diff function', () => {
     const prevElement = SimpReact.createElement(OldComponent, { id: 'component' });
     const nextElement = SimpReact.createElement(NewComponent);
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.renderedElements.length).toBe(1);
     expect(result.renderedElements[0]).toEqual(nextElement);
@@ -917,7 +917,7 @@ describe('diff function', () => {
     const prevElement = SimpReact.createElement(FunctionalComponent, { show: true });
     const nextElement = SimpReact.createElement(FunctionalComponent, { show: false });
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.renderedElements.length).toBe(1);
     expect(result.renderedElements[0]).toEqual(nextElement);
@@ -931,7 +931,7 @@ describe('diff function', () => {
       SimpReact.createElement('span', { id: 'child-updated' })
     );
 
-    const result = diff(prevElement, nextElement, new LifecycleManager());
+    const result = diff(prevElement, nextElement, new LifecycleManager(), null);
 
     expect(result.renderedElements.length).toBe(0);
   });
@@ -955,7 +955,7 @@ describe('diff function', () => {
 
     const prevElement = actualizeElementTree(SimpReact.createElement(FunctionalComponent));
 
-    const result = diff(prevElement, null, new LifecycleManager());
+    const result = diff(prevElement, null, new LifecycleManager(), null);
 
     expect(result.tasks.length).toBe(4);
     result.tasks.forEach(task => {
@@ -967,6 +967,6 @@ describe('diff function', () => {
 
 export function actualizeElementTree(element: Maybe<SimpReact.SimpElement>): Maybe<SimpReact.SimpElement> {
   // Create a tree (_children, _parent connections) for the element for normal diffing.
-  diff(null, element, new LifecycleManager());
+  diff(null, element, new LifecycleManager(), null);
   return element;
 }

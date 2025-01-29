@@ -2,7 +2,7 @@ import type { Maybe } from '../types';
 import type { SimpElement, SimpNode } from './types';
 import { createElement } from './createElement';
 
-export function Fragment(props: { children?: Maybe<SimpNode> }) {
+export function Fragment(props: { children?: SimpNode }) {
   return props.children;
 }
 

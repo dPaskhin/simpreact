@@ -40,6 +40,7 @@ describe('normalizeChildren', () => {
         _index: -1,
         _reference: null,
         _store: null,
+        _globalContext: null,
       },
       {
         $$typeof: SIMP_ELEMENT_TYPE,
@@ -50,6 +51,7 @@ describe('normalizeChildren', () => {
         _index: -1,
         _reference: null,
         _store: null,
+        _globalContext: null,
       },
     ]);
   });
@@ -68,6 +70,7 @@ describe('normalizeChildren', () => {
         _index: -1,
         _reference: null,
         _store: null,
+        _globalContext: null,
       },
       {
         $$typeof: SIMP_ELEMENT_TYPE,
@@ -78,6 +81,7 @@ describe('normalizeChildren', () => {
         _index: -1,
         _reference: null,
         _store: null,
+        _globalContext: null,
       },
       {
         $$typeof: SIMP_ELEMENT_TYPE,
@@ -88,6 +92,7 @@ describe('normalizeChildren', () => {
         _index: -1,
         _reference: null,
         _store: null,
+        _globalContext: null,
       },
     ]);
   });
@@ -106,6 +111,7 @@ describe('normalizeChildren', () => {
         _index: -1,
         _reference: null,
         _store: null,
+        _globalContext: null,
       },
       {
         $$typeof: SIMP_ELEMENT_TYPE,
@@ -116,6 +122,7 @@ describe('normalizeChildren', () => {
         _index: -1,
         _reference: null,
         _store: null,
+        _globalContext: null,
       },
       {
         $$typeof: SIMP_ELEMENT_TYPE,
@@ -126,6 +133,7 @@ describe('normalizeChildren', () => {
         _index: -1,
         _reference: null,
         _store: null,
+        _globalContext: null,
       },
     ]);
   });

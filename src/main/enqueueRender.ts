@@ -16,7 +16,7 @@ lifecycleManager.subscribe(event => {
 });
 
 export function enqueueRender(prevElement: Maybe<SimpElement>, nextElement: Maybe<SimpElement>): void {
-  const result = diff(prevElement, nextElement, lifecycleManager);
+  const result = diff(prevElement, nextElement, lifecycleManager, prevElement?._globalContext);
 
   replaceByIndex(prevElement?._parent, nextElement);
 

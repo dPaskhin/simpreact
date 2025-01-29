@@ -11,6 +11,8 @@ import {
 } from '../element';
 import type { LifecycleManager } from '../lifecycleManager';
 import { createDiffTask, type DiffTask, EFFECT_TAG } from './diffTask';
+import { GlobalContext, isConsumerElement, isProviderElement } from '../context';
+import { EMPTY_MAP, FROZEN_EMPTY_OBJECT } from '../lang';
 
 export interface DiffResult {
   tasks: DiffTask[];
@@ -24,6 +26,7 @@ export function diff(
   prevElement: Maybe<SimpElement>,
   nextElement: Maybe<SimpElement>,
   lifecycleManager: LifecycleManager,
+  globalContext: Maybe<GlobalContext>,
   result: DiffResult = {
     tasks: [],
     renderedElements: [],
@@ -40,7 +43,7 @@ export function diff(
 
   // INSERT PHASE
   else if (!prevElement && nextElement) {
-    insertPhase(nextElement, lifecycleManager, result);
+    insertPhase(nextElement, lifecycleManager, globalContext, result);
     return result;
   }
 
@@ -52,16 +55,22 @@ export function diff(
   // REPLACE PHASE
   else if (prevElement.type !== nextElement.type) {
     removePhase(prevElement, lifecycleManager, result);
-    insertPhase(nextElement, lifecycleManager, result);
+    insertPhase(nextElement, lifecycleManager, globalContext, result);
     return result;
   }
 
   // UPDATE PHASE
-  updatePhase(prevElement, nextElement, lifecycleManager, result);
+  updatePhase(prevElement, nextElement, lifecycleManager, globalContext, result);
   return result;
 }
 
-export function insertPhase(element: SimpElement, lifecycleManager: LifecycleManager, result: DiffResult): DiffResult {
+export function insertPhase(
+  element: SimpElement,
+  lifecycleManager: LifecycleManager,
+  globalContext: Maybe<GlobalContext>,
+  result: DiffResult
+): DiffResult {
+  element._globalContext = globalContext;
   obtainChildren(element, lifecycleManager);
 
   if (isHostTypeElement(element)) {
@@ -70,15 +79,21 @@ export function insertPhase(element: SimpElement, lifecycleManager: LifecycleMan
     if (element?.props?.ref != null) {
       result.renderedRefElements.unshift(element);
     }
+  } else if (isProviderElement(element)) {
+    (element._globalContext ||= new Map()).set(element.type, element);
   } else if (!isFragmentElement(element)) {
     result.renderedElements.unshift(element);
+  }
+
+  if (isFunctionTypeElement(element) && !isFragmentElement(element) && !isProviderElement(element)) {
+    globalContext = new Map(globalContext);
   }
 
   forEachElement(element._children, (child, index) => {
     child._parent = element;
     child._index = index;
 
-    insertPhase(child, lifecycleManager, result);
+    insertPhase(child, lifecycleManager, globalContext, result);
   });
 
   return result;
@@ -86,7 +101,7 @@ export function insertPhase(element: SimpElement, lifecycleManager: LifecycleMan
 
 export function removePhase(element: SimpElement, lifecycleManager: LifecycleManager, result: DiffResult): DiffResult {
   if (isFunctionTypeElement(element)) {
-    if (!isFragmentElement(element)) {
+    if (!isFragmentElement(element) && !isConsumerElement(element) && !isProviderElement(element)) {
       // Place the FC element in the deleted elements list
       result.deletedElements.push(element);
     }
@@ -100,7 +115,12 @@ export function removePhase(element: SimpElement, lifecycleManager: LifecycleMan
     // We use traverseElement for:
     traverseElement(element, element => {
       // collecting all possibly left FC elements in a subtree
-      if (isFunctionTypeElement(element) && !isFragmentElement(element)) {
+      if (
+        isFunctionTypeElement(element) &&
+        !isFragmentElement(element) &&
+        !isConsumerElement(element) &&
+        !isProviderElement(element)
+      ) {
         result.deletedElements.push(element);
       }
       // collecting all possibly left host elements with refs in a subtree
@@ -117,10 +137,12 @@ export function updatePhase(
   prevElement: SimpElement,
   nextElement: SimpElement,
   lifecycleManager: LifecycleManager,
+  globalContext: Maybe<GlobalContext>,
   result: DiffResult
 ): DiffResult {
   nextElement._reference ||= prevElement._reference;
   nextElement._store = prevElement._store ?? null;
+  nextElement._globalContext = globalContext || prevElement._globalContext;
 
   obtainChildren(nextElement, lifecycleManager);
 
@@ -130,8 +152,14 @@ export function updatePhase(
     if (nextElement?.props?.ref != null) {
       result.renderedRefElements.unshift(nextElement);
     }
-  } else if (!isFragmentElement(nextElement)) {
+  } else if (isProviderElement(nextElement)) {
+    nextElement._globalContext?.set(nextElement.type, nextElement);
+  } else if (!isFragmentElement(nextElement) && !isConsumerElement(nextElement)) {
     result.renderedElements.unshift(nextElement);
+  }
+
+  if (isFunctionTypeElement(nextElement) && !isFragmentElement(nextElement) && !isProviderElement(nextElement)) {
+    globalContext = new Map(globalContext);
   }
 
   forEachElementPair(prevElement._children, nextElement._children, (prevChild, nextChild, index) => {
@@ -140,7 +168,7 @@ export function updatePhase(
       nextChild._index = index;
     }
 
-    diff(prevChild, nextChild, lifecycleManager, result);
+    diff(prevChild, nextChild, lifecycleManager, globalContext, result);
   });
 
   return result;
@@ -150,7 +178,10 @@ export function obtainChildren(element: SimpElement, lifecycleManager: Lifecycle
   if (isFunctionTypeElement(element)) {
     lifecycleManager.beforeRender(element);
 
-    element._children = normalizeChildren(element.type(element.props || {}), true);
+    element._children = normalizeChildren(
+      element.type(element.props || FROZEN_EMPTY_OBJECT, element._globalContext || EMPTY_MAP),
+      true
+    );
 
     lifecycleManager.afterRender(element);
   } else {
