@@ -1,8 +1,37 @@
 {
-  "name": "simpreact",
+  "name": "@simpreact/simpreact",
   "version": "0.0.0",
   "description": "",
   "homepage": "https://github.com/dPaskhin/simpreact#readme",
+  "main": "./core/index.js",
+  "module": "./core/index.js",
+  "types": "./core/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./core/index.d.ts",
+      "import": "./core/index.js"
+    },
+    "./jsx-runtime": {
+      "types": "./jsx-runtime/index.d.ts",
+      "import": "./jsx-runtime/index.js"
+    },
+    "./jsx-dev-runtime": {
+      "types": "./jsx-runtime/index.d.ts",
+      "import": "./jsx-runtime/index.js"
+    },
+    "./hooks": {
+      "types": "./hooks/index.d.ts",
+      "import": "./hooks/index.js"
+    },
+    "./dom": {
+      "types": "./dom/index.d.ts",
+      "import": "./dom/index.js"
+    },
+    "./shared": {
+      "types": "./shared/index.d.ts",
+      "import": "./shared/index.js"
+    }
+  },
   "bugs": {
     "url": "https://github.com/dPaskhin/simpreact/issues"
   },

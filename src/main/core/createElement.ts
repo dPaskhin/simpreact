@@ -5,7 +5,7 @@ import type { HostReference } from './hostAdapter';
 
 export type SimpNode = SimpElement | string | number | bigint | Array<SimpNode> | boolean | null | undefined;
 
-type Props = any;
+export type Props = any;
 
 export type Key = string | number | bigint;
 
@@ -36,7 +36,7 @@ export interface SimpElement<T = Props> {
 }
 
 export function createElement<P = Props>(
-  type: Maybe<string | FunctionComponent<Readonly<P>>>,
+  type: string | FunctionComponent<Readonly<P>>,
   props?: Maybe<P>,
   ...children: SimpNode[]
 ): SimpElement<P> {

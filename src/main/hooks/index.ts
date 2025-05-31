@@ -77,7 +77,7 @@ export function useRerender(): VoidFunction {
   return state.fn;
 }
 
-export function useEffect(effect: Effect, deps?: DependencyList) {
+export function useEffect(effect: Effect, deps?: DependencyList): void {
   const state = (currentElement!.store.hookStates[currentIndex++] ||= {
     effect,
     deps: undefined,

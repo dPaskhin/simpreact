@@ -1,1 +1,1 @@
-export * from './render';
+export { createRoot, render } from './render';
