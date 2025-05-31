@@ -1,0 +1,13 @@
+import type { Primitive } from './types';
+
+export const IS_DEVELOPMENT = process.env.NODE_ENV !== 'production';
+
+export function isPrimitive(value: unknown): value is Primitive {
+  return (
+    value == null ||
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'bigint' ||
+    typeof value === 'boolean'
+  );
+}

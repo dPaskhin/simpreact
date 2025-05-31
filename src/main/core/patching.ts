@@ -1,0 +1,344 @@
+import type { FC, Key, SimpElement, SimpElementFlag, SimpNode } from './createElement';
+import { normalizeRoot } from './createElement';
+import type { Nullable } from '../shared';
+import { EMPTY_OBJECT, isArray, isPrimitive } from '../shared';
+import type { HostReference } from './hostAdapter';
+import { clearElementHostReference, remove, removeAllChildren, unmount, unmountAllChildren } from './unmounting';
+import { mount, mountArrayChildren } from './mounting';
+import { GLOBAL } from './global';
+
+export function patch<HostRef = HostReference>(
+  prevElement: SimpElement,
+  nextElement: SimpElement,
+  parentReference: HostRef,
+  nextReference: Nullable<HostRef>
+): void {
+  if (prevElement.type !== nextElement.type || prevElement.key !== nextElement.key) {
+    replaceWithNewElement(prevElement, nextElement, parentReference);
+  } else if (nextElement.flag === 'HOST') {
+    patchElement(prevElement, nextElement);
+  } else if (nextElement.flag === 'FC') {
+    if (prevElement.store != null) {
+      nextElement.store = prevElement.store;
+    }
+
+    patchFunctionalComponent(prevElement, nextElement, parentReference, nextReference);
+  } else if (nextElement.flag === 'TEXT') {
+    patchText(prevElement, nextElement);
+  } else {
+    patchFragment(prevElement, nextElement, parentReference);
+  }
+}
+
+function replaceWithNewElement<HostRef = HostReference>(
+  prevElement: SimpElement,
+  nextElement: SimpElement,
+  parentReference: HostRef
+): void {
+  unmount(prevElement);
+
+  if (nextElement.flag === 'HOST' && prevElement.flag === 'HOST') {
+    mount(nextElement, null, null);
+    GLOBAL.hostAdapter.replaceChild(parentReference as HostReference, nextElement.reference!, prevElement.reference!);
+  } else {
+    mount(nextElement, parentReference, findHostReferenceFromElement(prevElement, true));
+    clearElementHostReference(prevElement, parentReference);
+  }
+}
+
+export function findHostReferenceFromElement(element: SimpElement, startEdge: boolean): Nullable<HostReference> {
+  let flag: SimpElementFlag;
+  let temp: Nullable<SimpElement> = element;
+
+  while (temp != null) {
+    flag = temp.flag;
+
+    if (flag === 'HOST' || flag === 'TEXT') {
+      return temp.reference as HostReference;
+    }
+
+    temp = findChildElement(temp, startEdge) as Nullable<SimpElement>;
+  }
+
+  return null;
+}
+
+function findChildElement(element: SimpElement, startEdge: boolean): SimpNode {
+  const children = element.children;
+
+  if (isArray(children)) {
+    return (children as SimpElement[])[startEdge ? 0 : (children as SimpElement[]).length - 1];
+  }
+
+  return children;
+}
+
+function patchElement(prevElement: SimpElement, nextElement: SimpElement) {
+  const hostReference = (nextElement.reference = prevElement.reference) as HostReference;
+  const prevProps = prevElement.props;
+  const nextProps = nextElement.props;
+
+  for (const propName in nextProps) {
+    const prevValue = prevProps[propName];
+    const nextValue = nextProps[propName];
+
+    if (prevValue !== nextValue) {
+      GLOBAL.hostAdapter.patchProp(hostReference, propName, prevValue, nextValue);
+    }
+  }
+
+  for (const propName in prevProps) {
+    if (nextProps[propName] == null && prevProps[propName] != null) {
+      GLOBAL.hostAdapter.patchProp(hostReference, propName, prevProps[propName], null);
+    }
+  }
+
+  const prevChildren = prevElement.children;
+  const nextChildren = nextElement.children;
+  const nextClassName = nextElement.className;
+
+  if (prevElement.className !== nextClassName) {
+    GLOBAL.hostAdapter.setClassname(hostReference, nextClassName);
+  }
+
+  patchChildren(prevChildren, nextChildren, hostReference, null, prevElement);
+}
+
+function patchChildren<HostRef = HostReference>(
+  prevChildren: SimpNode,
+  nextChildren: SimpNode,
+  parentReference: HostRef,
+  nextReference: Nullable<HostRef>,
+  parentElement: SimpElement
+) {
+  if (isArray(prevChildren)) {
+    if (isArray(nextChildren)) {
+      const prevChildrenLength = (prevChildren as SimpElement[]).length;
+      const nextChildrenLength = (nextChildren as SimpElement[]).length;
+
+      if (prevChildrenLength === 0) {
+        if (nextChildrenLength > 0) {
+          mountArrayChildren(nextChildren as SimpElement[], parentReference, nextReference);
+        }
+      } else if (nextChildrenLength === 0) {
+        removeAllChildren(parentReference, parentElement, prevChildren as SimpElement[]);
+      } else {
+        patchKeyedChildren(
+          prevChildren as SimpElement[],
+          nextChildren as SimpElement[],
+          parentReference,
+          nextReference
+        );
+      }
+    } else if (isPrimitive(nextChildren)) {
+      unmountAllChildren(prevChildren as SimpElement[]);
+      GLOBAL.hostAdapter.setTextContent(parentReference as HostReference, (nextChildren || '') as string);
+    } else {
+      removeAllChildren(parentReference, parentElement, prevChildren as SimpElement[]);
+      mount(nextChildren as SimpElement, parentReference, nextReference);
+    }
+  } else if (isPrimitive(prevChildren)) {
+    if (isArray(nextChildren)) {
+      GLOBAL.hostAdapter.setTextContent(parentReference as HostReference, '');
+      mountArrayChildren(nextChildren as SimpElement[], parentReference, nextReference);
+    } else if (isPrimitive(nextChildren)) {
+      patchSingleTextChild(prevChildren as string, nextChildren as string, parentReference);
+    } else {
+      GLOBAL.hostAdapter.setTextContent(parentReference as HostReference, '');
+      mount(nextChildren, parentReference, nextReference);
+    }
+  } else {
+    if (isArray(nextChildren)) {
+      replaceOneElementWithMultipleElements(prevChildren, nextChildren as SimpElement[], parentReference);
+    } else if (isPrimitive(nextChildren)) {
+      unmount(prevChildren);
+      GLOBAL.hostAdapter.setTextContent(parentReference as HostReference, nextChildren as string);
+    } else {
+      patch(prevChildren, nextChildren, parentReference, nextReference);
+    }
+  }
+}
+
+function replaceOneElementWithMultipleElements<HostRef = HostReference>(
+  prevChildren: SimpElement,
+  nextChildren: SimpElement[],
+  parentReference: HostRef
+): void {
+  unmount(prevChildren);
+  mountArrayChildren(nextChildren, parentReference, findHostReferenceFromElement(prevChildren, true));
+  clearElementHostReference(prevChildren, parentReference);
+}
+
+function patchSingleTextChild<HostRef = HostReference>(
+  prevChildren: string,
+  nextChildren: string,
+  parentReference: HostRef
+): void {
+  if (prevChildren !== nextChildren) {
+    GLOBAL.hostAdapter.setTextContent(parentReference as HostReference, nextChildren);
+  }
+}
+
+// export function patchNonKeyedChildren(
+//   prevChildren: SimpElement[],
+//   nextChildren: SimpElement[],
+//   parentReference: HostReference,
+//   prevChildrenLength: number,
+//   nextChildrenLength: number,
+//   nextReference: Nullable<HostReference>
+// ): void {
+//   const commonLength = prevChildrenLength > nextChildrenLength ? nextChildrenLength : prevChildrenLength;
+//   let i = 0;
+//   let prevChild;
+//   let nextChild;
+//
+//   for (; i < commonLength; ++i) {
+//     nextChild = nextChildren[i];
+//     prevChild = prevChildren[i];
+//
+//     patch(prevChild as SimpElement, nextChild as SimpElement, parentReference, nextReference);
+//     prevChildren[i] = nextChild!;
+//   }
+//   if (prevChildrenLength < nextChildrenLength) {
+//     for (i = commonLength; i < nextChildrenLength; ++i) {
+//       nextChild = nextChildren[i];
+//       mount(nextChild as SimpElement, parentReference, nextReference);
+//     }
+//   } else if (prevChildrenLength > nextChildrenLength) {
+//     for (i = commonLength; i < prevChildrenLength; ++i) {
+//       remove(prevChildren[i] as SimpElement, parentReference);
+//     }
+//   }
+// }
+
+function patchFunctionalComponent<HostRef = HostReference>(
+  prevElement: SimpElement,
+  nextElement: SimpElement,
+  parentReference: HostRef,
+  nextReference: Nullable<HostRef>
+): void {
+  const prevChildren = prevElement.children;
+  const type = nextElement.type as FC;
+
+  GLOBAL.eventBus.publish({ type: 'beforeRender', element: nextElement });
+  const nextChildren = normalizeRoot(type(nextElement.props || EMPTY_OBJECT));
+  GLOBAL.eventBus.publish({ type: 'afterRender' });
+
+  patch(prevChildren as SimpElement, nextChildren, parentReference, nextReference);
+  GLOBAL.eventBus.publish({ type: 'mounted', element: nextElement });
+
+  nextElement.children = nextChildren;
+}
+
+function patchText(prevElement: SimpElement, nextElement: SimpElement): void {
+  const nextText = nextElement.children as string;
+  const reference = (nextElement.reference = prevElement.reference);
+
+  if (nextText !== prevElement.children) {
+    GLOBAL.hostAdapter.setTextContent(reference!, nextText);
+  }
+}
+
+function patchFragment<HostRef = HostReference>(
+  prevElement: SimpElement,
+  nextElement: SimpElement,
+  parentReference: HostRef
+): void {
+  patchChildren(prevElement.children, nextElement.children, parentReference, null, prevElement);
+}
+
+export function updateFunctionalComponent(
+  element: SimpElement,
+  parentReference: HostReference,
+  nextReference: Nullable<HostReference>
+): void {
+  patch(element, element, parentReference, nextReference);
+}
+
+export function patchKeyedChildren<HostRef = HostReference>(
+  prevChildren: SimpElement[],
+  nextChildren: SimpElement[],
+  parentReference: HostRef,
+  nextReference: Nullable<HostRef>
+): void {
+  let prevStart = 0;
+  let nextStart = 0;
+  let prevEnd = prevChildren.length - 1;
+  let nextEnd = nextChildren.length - 1;
+
+  // Step 1: Sync from start
+  while (
+    prevStart <= prevEnd &&
+    nextStart <= nextEnd &&
+    prevChildren[prevStart]!.key === nextChildren[nextStart]!.key
+  ) {
+    patch(prevChildren[prevStart]!, nextChildren[nextStart]!, parentReference, null);
+    prevStart++;
+    nextStart++;
+  }
+
+  // Step 2: Sync from end
+  while (prevStart <= prevEnd && nextStart <= nextEnd && prevChildren[prevEnd]!.key === nextChildren[nextEnd]!.key) {
+    patch(prevChildren[prevEnd]!, nextChildren[nextEnd]!, parentReference, null);
+    prevEnd--;
+    nextEnd--;
+  }
+
+  // Step 3: Mount new nodes if prev list is exhausted
+  if (prevStart > prevEnd) {
+    const before = nextChildren[nextEnd + 1]?.reference || nextReference;
+    for (let i = nextStart; i <= nextEnd; i++) {
+      mount(nextChildren[i]!, parentReference, before);
+    }
+    // Step 4: Remove prev nodes if next list is exhausted
+  } else if (nextStart > nextEnd) {
+    for (let i = prevStart; i <= prevEnd; i++) {
+      remove(prevChildren[i]!, parentReference);
+    }
+  }
+
+  // Step 5: Full diff with keyed lookup and movement
+  else {
+    // Create map of keys to indices for prev children
+    const keyToPrevIndexMap = new Map<Key, number>();
+    for (let i = prevStart; i <= prevEnd; i++) {
+      const key = prevChildren[i]!.key;
+      if (key != null) keyToPrevIndexMap.set(key, i);
+    }
+
+    // Track reused indices and move plan
+    const toMove = new Array(nextEnd - nextStart + 1);
+    const usedIndices = new Set<number>();
+
+    // Match and patch/mount
+    for (let i = nextStart; i <= nextEnd; i++) {
+      const nextChild = nextChildren[i];
+      const prevIndex = keyToPrevIndexMap.get(nextChild!.key!);
+      if (prevIndex != null) {
+        const prevElement = prevChildren[prevIndex];
+        patch(prevElement!, nextChild!, parentReference, null);
+        toMove[i - nextStart] = prevIndex;
+        usedIndices.add(prevIndex);
+      } else {
+        mount(nextChild!, parentReference, nextChildren[i + 1]?.reference || nextReference);
+        toMove[i - nextStart] = -1;
+      }
+    }
+
+    // Remove nodes not matched
+    for (let i = prevStart; i <= prevEnd; i++) {
+      if (!usedIndices.has(i)) {
+        remove(prevChildren[i]!, parentReference);
+      }
+    }
+
+    // Insert in correct order
+    for (let i = nextEnd; i >= nextStart; i--) {
+      const currentChild = nextChildren[i]!;
+      const reference = nextChildren[i + 1]?.reference || (nextReference as HostReference);
+      if (toMove[i - nextStart] !== -1) {
+        GLOBAL.hostAdapter.insertBefore(parentReference as HostReference, currentChild.reference!, reference!);
+      }
+    }
+  }
+}

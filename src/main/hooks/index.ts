@@ -1,105 +1,94 @@
-import { enqueueRender, lifecycleManager, type SimpElement } from '../index';
-import type { Nullable } from '../types';
-import { type Context, getContextValue } from '../context';
+import { GLOBAL, rerender, type SimpElement } from '../core/internal';
+import type { Nullable, VoidFunction } from '../shared';
 
-type Cleanup = () => void;
+type Cleanup = VoidFunction;
 type Effect = () => void | Cleanup;
 type DependencyList = readonly unknown[];
 
-interface EffectHookState {
+type EffectHookState = {
   effect: Effect;
   cleanup: Cleanup | undefined;
   deps: DependencyList | undefined;
-}
+};
 
-interface RefHookState<T = unknown> {
-  value: { current: T };
-}
+type RerenderHookState = {
+  element: HooksSimpElement;
+  fn: VoidFunction;
+};
 
-type HookState = EffectHookState | RefHookState;
+type RefHookState<T = unknown> = {
+  current: T;
+};
+
+type HookState = EffectHookState | RerenderHookState | RefHookState;
 
 interface HooksSimpElement extends SimpElement {
-  _store: {
-    _hooks: HookState[];
-    _mountEffects: EffectHookState[];
+  store: {
+    hookStates: HookState[];
+    mountEffects: EffectHookState[];
   };
 }
 
-let currentElement: Nullable<HooksSimpElement>;
-let currentIndex = 0;
+let currentIndex: number = 0;
+let currentElement: Nullable<HooksSimpElement> = null;
 
-lifecycleManager.subscribe(event => {
+GLOBAL.eventBus.subscribe(event => {
   if (event.type === 'beforeRender') {
-    currentIndex = 0;
-    currentElement = event.payload.element as HooksSimpElement;
+    currentElement = event.element as HooksSimpElement;
+    currentElement.store ||= { hookStates: [], mountEffects: [] };
 
-    currentElement._store ||= {
-      _hooks: [],
-      _mountEffects: [],
-    };
-    currentElement._store._mountEffects = [];
+    currentElement.store.mountEffects = [];
   }
-
   if (event.type === 'afterRender') {
     currentElement = null;
+    currentIndex = 0;
   }
-
-  if (event.type === 'afterMount') {
-    for (const element of event.payload.deletedElements as HooksSimpElement[]) {
-      for (const mountEffect of element._store._mountEffects) {
-        if (typeof mountEffect.cleanup === 'function') {
-          mountEffect.cleanup();
-        }
+  if (event.type === 'mounted') {
+    for (const state of (event.element as HooksSimpElement).store.mountEffects) {
+      if (typeof state.cleanup === 'function') {
+        state.cleanup();
       }
+      state.cleanup = state.effect() || undefined;
     }
-    for (const element of event.payload.renderedElements as HooksSimpElement[]) {
-      for (const mountEffect of element._store._mountEffects) {
-        if (typeof mountEffect.cleanup === 'function') {
-          mountEffect.cleanup();
-        }
-        mountEffect.cleanup = mountEffect.effect() || undefined;
+  }
+  if (event.type === 'unmounted') {
+    for (const state of (event.element as HooksSimpElement).store.hookStates) {
+      if (state && 'cleanup' in state && typeof state.cleanup === 'function') {
+        state.cleanup();
       }
     }
   }
 });
 
-export function useRerender(): () => void {
-  const ref = useRef<{ element: Nullable<HooksSimpElement>; fn: () => void }>({
-    element: null,
+export function useRef<T>(initialValue: T): { current: T } {
+  return (currentElement!.store.hookStates[currentIndex++] ||= { current: initialValue }) as RefHookState<T>;
+}
+
+export function useRerender(): VoidFunction {
+  const state = (currentElement!.store.hookStates[currentIndex++] ||= {
+    element: null!,
     fn() {
-      enqueueRender(ref.current.element, Object.assign({}, ref.current.element));
+      rerender(state.element);
     },
-  });
+  }) as RerenderHookState;
 
-  ref.current.element = currentElement;
+  state.element = currentElement!;
 
-  return ref.current.fn;
+  return state.fn;
 }
 
 export function useEffect(effect: Effect, deps?: DependencyList) {
-  const hookState = (currentElement!._store._hooks[currentIndex++] ||= {
+  const state = (currentElement!.store.hookStates[currentIndex++] ||= {
     effect,
     deps: undefined,
     cleanup: undefined,
   }) as EffectHookState;
 
-  if (!areDepsEqual(deps, hookState.deps)) {
-    hookState.effect = effect;
-    hookState.deps = deps;
-    currentElement!._store._mountEffects.push(hookState);
+  if (!areDepsEqual(deps, state.deps)) {
+    state.effect = effect;
+    state.deps = deps;
+    currentElement!.store.mountEffects.push(state);
   }
-}
-
-export function useRef<T>(initialValue: T): { current: T } {
-  const hookState = (currentElement!._store._hooks[currentIndex++] ||= {
-    value: { current: initialValue },
-  }) as RefHookState<T>;
-
-  return hookState.value;
-}
-
-export function useContext<T>(context: Context<T>): T {
-  return getContextValue(currentElement?._globalContext, context);
 }
 
 function areDepsEqual(nextDeps: DependencyList | undefined, prevDeps: DependencyList | undefined): boolean {

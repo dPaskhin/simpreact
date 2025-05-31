@@ -1,5 +1,5 @@
-node_modules/
-lib/
-simpreact.iml
-react-demo
-preact-demo
+/coverage
+/lib
+/.idea
+/node_modules
+/outdated

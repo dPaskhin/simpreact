@@ -1,0 +1,204 @@
+import type { Many, Maybe, Primitive } from '../shared';
+import { IS_DEVELOPMENT, isArray, isPrimitive } from '../shared';
+import { Fragment } from './fragment';
+import type { HostReference } from './hostAdapter';
+
+export type SimpNode = SimpElement | string | number | bigint | Array<SimpNode> | boolean | null | undefined;
+
+type Props = any;
+
+export type Key = string | number | bigint;
+
+export interface FunctionComponent<P = Props> {
+  (props: P): SimpNode;
+}
+
+export type FC<P = Props> = FunctionComponent<P>;
+
+export type SimpElementFlag = 'FC' | 'HOST' | 'TEXT' | 'FRAGMENT';
+
+export interface SimpElement<T = Props> {
+  flag: SimpElementFlag;
+
+  key?: Maybe<Key>;
+
+  type?: Maybe<string | FunctionComponent<T>>;
+
+  props?: Maybe<T>;
+
+  children?: Maybe<SimpNode>;
+
+  className?: Maybe<string>;
+
+  reference?: Maybe<HostReference>;
+
+  store?: unknown;
+}
+
+export function createElement<P = Props>(
+  type: Maybe<string | FunctionComponent<Readonly<P>>>,
+  props?: Maybe<P>,
+  ...children: SimpNode[]
+): SimpElement<P> {
+  let newProps: Props;
+  let className: Maybe<string>;
+  let key: Maybe<Key>;
+  let definedChildren: SimpNode;
+  const childLength = children.length;
+
+  if (childLength === 1) {
+    definedChildren = children[0];
+  } else if (childLength > 1) {
+    definedChildren = [];
+
+    for (let i = 0; i < childLength; i++) {
+      definedChildren.push(children[i]);
+    }
+  }
+
+  if (typeof type === 'string') {
+    if (props != null) {
+      for (const propName in props) {
+        if (propName === 'className') {
+          className = props[propName] as any;
+        } else if (propName === 'key') {
+          key = props[propName] as Key;
+        } else if (propName === 'children') {
+          if (definedChildren === undefined) {
+            definedChildren = props[propName] as any;
+          }
+        } else {
+          (newProps ||= {})[propName] = props[propName];
+        }
+      }
+    }
+
+    const element: SimpElement = {
+      flag: 'HOST',
+      type,
+    };
+
+    if (className) {
+      element.className = className;
+    }
+
+    if (key) {
+      element.key = key;
+    }
+
+    if ((definedChildren = normalizeChildren(definedChildren))) {
+      element.children = definedChildren;
+    }
+
+    if (newProps) {
+      element.props = newProps;
+    }
+
+    return element;
+  } else if (type === Fragment) {
+    const element: SimpElement = {
+      flag: 'FRAGMENT',
+    };
+
+    element.children = normalizeChildren(definedChildren || (props != null ? (props as any).children : null));
+
+    if (props != null && (props as any).key) {
+      element.key = (props as any)?.key;
+    }
+
+    return element;
+  } else {
+    if (props != null) {
+      for (const propName in props) {
+        if (propName === 'key') {
+          key = props[propName] as Key;
+        } else if (propName === 'children') {
+          if (definedChildren === undefined) {
+            definedChildren = props[propName] as any;
+          }
+        } else {
+          (newProps ||= {})[propName] = props[propName];
+        }
+      }
+    }
+
+    if (definedChildren !== undefined) {
+      (newProps ||= {})['children'] = definedChildren;
+    }
+
+    const element: SimpElement = {
+      flag: 'FC',
+      type,
+    };
+
+    if (key) {
+      element.key = key;
+    }
+
+    if (newProps != null) {
+      element.props = newProps;
+    }
+
+    return element;
+  }
+}
+
+export function createTextElement(text: Primitive): SimpElement {
+  return {
+    flag: 'TEXT',
+    children: text == null || text === true || text === false ? '' : text,
+  };
+}
+
+export function normalizeChildren(children: SimpNode): Maybe<Many<SimpElement>> {
+  if (children == null || typeof children === 'boolean') {
+    return;
+  }
+
+  const result: SimpElement[] = [];
+
+  normalizeNode(children, result);
+
+  if (result.length === 0) {
+    return;
+  }
+
+  return result.length === 1 ? result[0] : result;
+}
+
+function normalizeNode(child: SimpNode, result: SimpElement[]): void {
+  if (child == null || typeof child === 'boolean') {
+    return;
+  }
+
+  if (typeof child === 'string' || typeof child === 'number' || typeof child === 'bigint') {
+    result.push(createTextElement(child));
+    return;
+  }
+
+  if (isArray(child)) {
+    for (const nestedChild of child) {
+      normalizeNode(nestedChild, result);
+    }
+    return;
+  }
+
+  if (typeof child === 'object') {
+    // noinspection SuspiciousTypeOfGuard
+    if (IS_DEVELOPMENT && typeof child.flag !== 'string') {
+      throw new TypeError(`Objects are not valid as a child: ${JSON.stringify(child)}.`);
+    }
+    result.push(child);
+  }
+}
+
+export function normalizeRoot(node: SimpNode): SimpElement {
+  if (isPrimitive(node)) {
+    return createTextElement(node);
+  }
+  if (isArray(node)) {
+    return createElement(Fragment, { children: node });
+  }
+
+  return node;
+}
