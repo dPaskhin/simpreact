@@ -3,10 +3,10 @@ import { GLOBAL, mount, patch, type SimpElement } from '../core/internal';
 import type { Nullable } from '../shared';
 import { domAdapter } from './domAdapter';
 
-GLOBAL.hostAdapter = domAdapter as any;
+Object.defineProperty(GLOBAL, 'hostAdapter', { value: domAdapter });
 
 export function render(element: SimpElement, parentReference: Nullable<HTMLElement>) {
-  mount(element, parentReference as never, null);
+  mount(element, parentReference as never, null, null);
 }
 
 interface SimpRoot {
@@ -15,18 +15,20 @@ interface SimpRoot {
   unmount(): void;
 }
 
-export function createRoot(container: HTMLElement): SimpRoot {
-  let currentRoot: SimpElement | null = null;
+export function createRoot(container: Element | DocumentFragment): SimpRoot {
+  let currentRoot: SimpElement | null = (container as any).__SIMP_ROOT__;
 
   return {
     render(element: SimpElement) {
       if (currentRoot) {
-        patch(currentRoot, element, container as never, null);
+        patch(currentRoot, element, container as never, null, null);
       } else {
-        mount(element, container as never, null);
+        GLOBAL.hostAdapter.clearNode(container as never);
+        mount(element, container as never, null, null);
       }
 
       currentRoot = element;
+      (container as any).__SIMP_ROOT__ = currentRoot;
     },
     unmount() {
       // if (currentRoot != null) {

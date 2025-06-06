@@ -4,7 +4,7 @@ import parserTs from '@typescript-eslint/parser';
 /** @type {import('eslint').Linter.FlatConfig[]} */
 export default [
   {
-    ignores: ['**/node_modules/**', '**/lib/**', '**/outdated/**', '**/example/**'],
+    ignores: ['**/node_modules/**', '**/lib/**', '**/outdated/**', '**/example/**', '**/coverage/**'],
   },
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],

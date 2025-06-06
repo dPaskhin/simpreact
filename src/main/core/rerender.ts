@@ -6,6 +6,7 @@ export function rerender(element: SimpElement) {
   updateFunctionalComponent(
     element,
     GLOBAL.hostAdapter.findParentReference(findHostReferenceFromElement(element, true)!)!,
-    null
+    null,
+    element.contextMap || null
   );
 }

@@ -71,7 +71,7 @@ export function removeAllChildren<HostRef = HostReference>(
   if (element.flag === 'FRAGMENT') {
     clearElementHostReference(element, hostReference);
   } else {
-    GLOBAL.hostAdapter.setTextContent(hostReference as HostReference, '');
+    GLOBAL.hostAdapter.clearNode(hostReference as HostReference);
   }
 }
 

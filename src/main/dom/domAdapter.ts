@@ -49,12 +49,16 @@ export const domAdapter: HostAdapter<HTMLElement, Text> = {
     parent.removeChild(child);
   },
 
-  replaceChild(parent, replacer, child) {
-    parent.replaceChild(child, replacer);
+  replaceChild(parent, replacer, toBeReplaced) {
+    parent.replaceChild(replacer, toBeReplaced);
   },
 
   findParentReference(reference) {
     return reference.parentElement as HTMLElement;
+  },
+
+  clearNode(reference) {
+    reference.textContent = '';
   },
 };
 

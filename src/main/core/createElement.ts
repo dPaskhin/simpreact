@@ -1,7 +1,9 @@
 import type { Many, Maybe, Primitive } from '../shared';
-import { IS_DEVELOPMENT, isArray, isPrimitive } from '../shared';
+import { isArray, isPrimitive } from '../shared';
 import { Fragment } from './fragment';
 import type { HostReference } from './hostAdapter';
+import type { SimpContextMap } from './context';
+import { isConsumer, isProvider } from './context';
 
 export type SimpNode = SimpElement | string | number | bigint | Array<SimpNode> | boolean | null | undefined;
 
@@ -15,7 +17,7 @@ export interface FunctionComponent<P = Props> {
 
 export type FC<P = Props> = FunctionComponent<P>;
 
-export type SimpElementFlag = 'FC' | 'HOST' | 'TEXT' | 'FRAGMENT';
+export type SimpElementFlag = 'FC' | 'HOST' | 'TEXT' | 'FRAGMENT' | 'PROVIDER' | 'CONSUMER';
 
 export interface SimpElement<T = Props> {
   flag: SimpElementFlag;
@@ -33,6 +35,8 @@ export interface SimpElement<T = Props> {
   reference?: Maybe<HostReference>;
 
   store?: unknown;
+
+  contextMap?: Maybe<SimpContextMap>;
 }
 
 export function createElement<P = Props>(
@@ -101,6 +105,28 @@ export function createElement<P = Props>(
     };
 
     element.children = normalizeChildren(definedChildren || (props != null ? (props as any).children : null));
+
+    if (props != null && (props as any).key) {
+      element.key = (props as any)?.key;
+    }
+
+    return element;
+  } else if (isProvider(type)) {
+    const element: SimpElement = { flag: 'PROVIDER', type, props: { value: (props as any).value } };
+
+    element.children = normalizeChildren(definedChildren || (props != null ? (props as any).children : null));
+
+    if (props != null && (props as any).key) {
+      element.key = (props as any)?.key;
+    }
+
+    return element;
+  } else if (isConsumer(type)) {
+    const element: SimpElement = {
+      flag: 'CONSUMER',
+      type,
+      props: { children: definedChildren || (props != null ? (props as any).children : null) },
+    };
 
     if (props != null && (props as any).key) {
       element.key = (props as any)?.key;
@@ -184,8 +210,7 @@ function normalizeNode(child: SimpNode, result: SimpElement[]): void {
   }
 
   if (typeof child === 'object') {
-    // noinspection SuspiciousTypeOfGuard
-    if (IS_DEVELOPMENT && typeof child.flag !== 'string') {
+    if (typeof child.flag !== 'string') {
       throw new TypeError(`Objects are not valid as a child: ${JSON.stringify(child)}.`);
     }
     result.push(child);

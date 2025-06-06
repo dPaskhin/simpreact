@@ -2,7 +2,6 @@ import type { Dict, Maybe, Nullable } from '../shared';
 
 export type HostReference = never;
 
-// TODO: do any type as a default?
 export interface HostAdapter<HostRef = never, HostTextRef = never> {
   createReference(type: string): HostRef;
 
@@ -20,11 +19,13 @@ export interface HostAdapter<HostRef = never, HostTextRef = never> {
 
   removeChild(parent: HostRef, child: HostRef | HostTextRef): void;
 
-  replaceChild(parent: HostRef, replacer: HostRef | HostTextRef, child: HostRef | HostTextRef): void;
+  replaceChild(parent: HostRef, replacer: HostRef | HostTextRef, toBeReplaced: HostRef | HostTextRef): void;
 
   insertBefore(parent: HostRef, child: HostRef | HostTextRef, before: Nullable<HostRef | HostTextRef>): void;
 
   insertOrAppend(parent: HostRef, child: HostRef | HostTextRef, before: Nullable<HostRef | HostTextRef>): void;
 
   findParentReference(reference: HostRef | HostTextRef): Nullable<HostRef>;
+
+  clearNode(reference: HostRef | HostTextRef): void;
 }

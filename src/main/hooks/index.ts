@@ -1,3 +1,4 @@
+import type { SimpContext } from '../core';
 import { GLOBAL, rerender, type SimpElement } from '../core/internal';
 import type { Nullable, VoidFunction } from '../shared';
 
@@ -89,6 +90,10 @@ export function useEffect(effect: Effect, deps?: DependencyList): void {
     state.deps = deps;
     currentElement!.store.mountEffects.push(state);
   }
+}
+
+export function useContext<T>(context: SimpContext<T>): T {
+  return currentElement!.contextMap?.get(context) ?? context.defaultValue;
 }
 
 function areDepsEqual(nextDeps: DependencyList | undefined, prevDeps: DependencyList | undefined): boolean {
