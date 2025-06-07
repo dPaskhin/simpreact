@@ -8,11 +8,11 @@ import { mount, mountArrayChildren } from './mounting';
 import { GLOBAL } from './global';
 import type { SimpContext, SimpContextMap } from './context';
 
-export function patch<HostRef = HostReference>(
+export function patch(
   prevElement: SimpElement,
   nextElement: SimpElement,
-  parentReference: HostRef,
-  nextReference: Nullable<HostRef>,
+  parentReference: HostReference,
+  nextReference: Nullable<HostReference>,
   contextMap: Nullable<SimpContextMap>
 ): void {
   if (prevElement.type !== nextElement.type || prevElement.key !== nextElement.key) {
@@ -36,24 +36,24 @@ export function patch<HostRef = HostReference>(
   }
 }
 
-function replaceWithNewElement<HostRef = HostReference>(
+function replaceWithNewElement(
   prevElement: SimpElement,
   nextElement: SimpElement,
-  parentReference: HostRef,
+  parentReference: HostReference,
   contextMap: Nullable<SimpContextMap>
 ): void {
   unmount(prevElement);
 
   if (nextElement.flag === 'HOST' && prevElement.flag === 'HOST') {
     mount(nextElement, null, null, contextMap);
-    GLOBAL.hostAdapter.replaceChild(parentReference as HostReference, nextElement.reference!, prevElement.reference!);
+    GLOBAL.hostAdapter.replaceChild(parentReference, nextElement.reference, prevElement.reference);
   } else {
-    mount(nextElement, parentReference, findHostReferenceFromElement(prevElement, true), contextMap);
+    mount(nextElement, parentReference, findHostReferenceFromElement(prevElement), contextMap);
     clearElementHostReference(prevElement, parentReference);
   }
 }
 
-export function findHostReferenceFromElement(element: SimpElement, startEdge: boolean): Nullable<HostReference> {
+export function findHostReferenceFromElement(element: SimpElement): Nullable<HostReference> {
   let flag: SimpElementFlag;
   let temp: Nullable<SimpElement> = element;
 
@@ -64,24 +64,14 @@ export function findHostReferenceFromElement(element: SimpElement, startEdge: bo
       return temp.reference as HostReference;
     }
 
-    temp = findChildElement(temp, startEdge) as Nullable<SimpElement>;
+    temp = (isArray(temp.children) ? temp.children[0] : temp.children) as SimpElement;
   }
 
   return null;
 }
 
-function findChildElement(element: SimpElement, startEdge: boolean): SimpNode {
-  const children = element.children;
-
-  if (isArray(children)) {
-    return (children as SimpElement[])[startEdge ? 0 : (children as SimpElement[]).length - 1];
-  }
-
-  return children;
-}
-
 function patchElement(prevElement: SimpElement, nextElement: SimpElement, contextMap: Nullable<SimpContextMap>) {
-  const hostReference = (nextElement.reference = prevElement.reference) as HostReference;
+  const hostReference = (nextElement.reference = prevElement.reference)!;
   const prevProps = prevElement.props;
   const nextProps = nextElement.props;
 
@@ -111,11 +101,11 @@ function patchElement(prevElement: SimpElement, nextElement: SimpElement, contex
   patchChildren(prevChildren, nextChildren, hostReference, null, prevElement, contextMap);
 }
 
-function patchChildren<HostRef = HostReference>(
+function patchChildren(
   prevChildren: SimpNode,
   nextChildren: SimpNode,
-  parentReference: HostRef,
-  nextReference: Nullable<HostRef>,
+  parentReference: HostReference,
+  nextReference: Nullable<HostReference>,
   parentElement: SimpElement,
   contextMap: Nullable<SimpContextMap>
 ) {
@@ -141,19 +131,19 @@ function patchChildren<HostRef = HostReference>(
       }
     } else if (isPrimitive(nextChildren)) {
       unmountAllChildren(prevChildren as SimpElement[]);
-      GLOBAL.hostAdapter.setTextContent(parentReference as HostReference, (nextChildren || '') as string);
+      GLOBAL.hostAdapter.setTextContent(parentReference, (nextChildren || '') as string);
     } else {
       removeAllChildren(parentReference, parentElement, prevChildren as SimpElement[]);
       mount(nextChildren as SimpElement, parentReference, nextReference, contextMap);
     }
   } else if (isPrimitive(prevChildren)) {
     if (isArray(nextChildren)) {
-      GLOBAL.hostAdapter.clearNode(parentReference as HostReference);
+      GLOBAL.hostAdapter.clearNode(parentReference);
       mountArrayChildren(nextChildren as SimpElement[], parentReference, nextReference, contextMap);
     } else if (isPrimitive(nextChildren)) {
       patchSingleTextChild(prevChildren as string, nextChildren as string, parentReference);
     } else {
-      GLOBAL.hostAdapter.clearNode(parentReference as HostReference);
+      GLOBAL.hostAdapter.clearNode(parentReference);
       mount(nextChildren, parentReference, nextReference, contextMap);
     }
   } else {
@@ -161,31 +151,27 @@ function patchChildren<HostRef = HostReference>(
       replaceOneElementWithMultipleElements(prevChildren, nextChildren as SimpElement[], parentReference, contextMap);
     } else if (isPrimitive(nextChildren)) {
       unmount(prevChildren);
-      GLOBAL.hostAdapter.setTextContent(parentReference as HostReference, nextChildren as string);
+      GLOBAL.hostAdapter.setTextContent(parentReference, nextChildren as string);
     } else {
       patch(prevChildren, nextChildren, parentReference, nextReference, contextMap);
     }
   }
 }
 
-function replaceOneElementWithMultipleElements<HostRef = HostReference>(
+function replaceOneElementWithMultipleElements(
   prevChildren: SimpElement,
   nextChildren: SimpElement[],
-  parentReference: HostRef,
+  parentReference: HostReference,
   contextMap: Nullable<SimpContextMap>
 ): void {
   unmount(prevChildren);
-  mountArrayChildren(nextChildren, parentReference, findHostReferenceFromElement(prevChildren, true), contextMap);
+  mountArrayChildren(nextChildren, parentReference, findHostReferenceFromElement(prevChildren), contextMap);
   clearElementHostReference(prevChildren, parentReference);
 }
 
-function patchSingleTextChild<HostRef = HostReference>(
-  prevChildren: string,
-  nextChildren: string,
-  parentReference: HostRef
-): void {
+function patchSingleTextChild(prevChildren: string, nextChildren: string, parentReference: HostReference): void {
   if (prevChildren !== nextChildren) {
-    GLOBAL.hostAdapter.setTextContent(parentReference as HostReference, nextChildren);
+    GLOBAL.hostAdapter.setTextContent(parentReference, nextChildren);
   }
 }
 
@@ -221,14 +207,13 @@ function patchSingleTextChild<HostRef = HostReference>(
 //   }
 // }
 
-function patchFunctionalComponent<HostRef = HostReference>(
+function patchFunctionalComponent(
   prevElement: SimpElement,
   nextElement: SimpElement,
-  parentReference: HostRef,
-  nextReference: Nullable<HostRef>,
+  parentReference: HostReference,
+  nextReference: Nullable<HostReference>,
   contextMap: Nullable<SimpContextMap>
 ): void {
-  const prevChildren = prevElement.children;
   const type = nextElement.type as FC;
   nextElement.contextMap = contextMap;
 
@@ -236,7 +221,7 @@ function patchFunctionalComponent<HostRef = HostReference>(
   const nextChildren = normalizeRoot(type(nextElement.props || EMPTY_OBJECT));
   GLOBAL.eventBus.publish({ type: 'afterRender' });
 
-  patch(prevChildren as SimpElement, nextChildren, parentReference, nextReference, contextMap);
+  patch(prevElement.children as SimpElement, nextChildren, parentReference, nextReference, contextMap);
   GLOBAL.eventBus.publish({ type: 'mounted', element: nextElement });
 
   nextElement.children = nextChildren;
@@ -251,21 +236,21 @@ function patchText(prevElement: SimpElement, nextElement: SimpElement): void {
   }
 }
 
-function patchFragment<HostRef = HostReference>(
+function patchFragment(
   prevElement: SimpElement,
   nextElement: SimpElement,
-  parentReference: HostRef,
-  nextReference: Nullable<HostRef>,
+  parentReference: HostReference,
+  nextReference: Nullable<HostReference>,
   contextMap: Nullable<SimpContextMap>
 ): void {
   patchChildren(prevElement.children, nextElement.children, parentReference, nextReference, prevElement, contextMap);
 }
 
-function patchProvider<HostRef = HostReference>(
+function patchProvider(
   prevElement: SimpElement,
   nextElement: SimpElement,
-  parentReference: HostRef,
-  nextReference: Nullable<HostRef>,
+  parentReference: HostReference,
+  nextReference: Nullable<HostReference>,
   contextMap: Nullable<SimpContextMap>
 ): void {
   contextMap = new Map(contextMap);
@@ -275,24 +260,22 @@ function patchProvider<HostRef = HostReference>(
   patchChildren(prevElement.children, nextElement.children, parentReference, nextReference, prevElement, contextMap);
 }
 
-function patchConsumer<HostRef = HostReference>(
+function patchConsumer(
   prevElement: SimpElement,
   nextElement: SimpElement,
-  parentReference: HostRef,
-  nextReference: Nullable<HostRef>,
+  parentReference: HostReference,
+  nextReference: Nullable<HostReference>,
   contextMap: Nullable<SimpContextMap>
 ): void {
-  // The children are SimpElement because of normalizeRoot function normalization.
-  const prevChildren = prevElement.children as SimpElement;
-  const type = nextElement.type as any;
-
-  const nextChildren = normalizeRoot(
-    (type as SimpContext<any>['Consumer'])(nextElement.props || EMPTY_OBJECT, contextMap || EMPTY_MAP)
+  patch(
+    prevElement.children as SimpElement,
+    (nextElement.children = normalizeRoot(
+      (nextElement.type as SimpContext<any>['Consumer'])(nextElement.props || EMPTY_OBJECT, contextMap || EMPTY_MAP)
+    )),
+    parentReference,
+    nextReference,
+    contextMap
   );
-
-  patch(prevChildren, nextChildren, parentReference, nextReference, contextMap);
-
-  nextElement.children = nextChildren;
 }
 
 export function updateFunctionalComponent(
@@ -304,11 +287,11 @@ export function updateFunctionalComponent(
   patch(element, element, parentReference, nextReference, contextMap);
 }
 
-export function patchKeyedChildren<HostRef = HostReference>(
+export function patchKeyedChildren(
   prevChildren: SimpElement[],
   nextChildren: SimpElement[],
-  parentReference: HostRef,
-  nextReference: Nullable<HostRef>,
+  parentReference: HostReference,
+  nextReference: Nullable<HostReference>,
   contextMap: Nullable<SimpContextMap>
 ): void {
   let prevStart = 0;
@@ -385,9 +368,9 @@ export function patchKeyedChildren<HostRef = HostReference>(
     // Insert in correct order
     for (let i = nextEnd; i >= nextStart; i--) {
       const currentChild = nextChildren[i]!;
-      const reference = nextChildren[i + 1]?.reference || (nextReference as HostReference);
+      const reference = nextChildren[i + 1]?.reference || nextReference;
       if (toMove[i - nextStart] !== -1) {
-        GLOBAL.hostAdapter.insertBefore(parentReference as HostReference, currentChild.reference!, reference!);
+        GLOBAL.hostAdapter.insertBefore(parentReference, currentChild.reference!, reference!);
       }
     }
   }

@@ -2,7 +2,7 @@ import type { Dict, Maybe, Nullable } from '../shared';
 
 export type HostReference = never;
 
-export interface HostAdapter<HostRef = never, HostTextRef = never> {
+export interface HostAdapter<HostRef = any, HostTextRef = any> {
   createReference(type: string): HostRef;
 
   createTextReference(text: string): HostTextRef;

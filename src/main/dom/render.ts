@@ -1,12 +1,13 @@
+import type { HostReference } from '../core/internal';
 import { GLOBAL, mount, patch, type SimpElement } from '../core/internal';
 
 import type { Nullable } from '../shared';
 import { domAdapter } from './domAdapter';
 
-Object.defineProperty(GLOBAL, 'hostAdapter', { value: domAdapter });
+GLOBAL.hostAdapter = domAdapter;
 
 export function render(element: SimpElement, parentReference: Nullable<HTMLElement>) {
-  mount(element, parentReference as never, null, null);
+  mount(element, parentReference as HostReference, null, null);
 }
 
 interface SimpRoot {
@@ -21,10 +22,10 @@ export function createRoot(container: Element | DocumentFragment): SimpRoot {
   return {
     render(element: SimpElement) {
       if (currentRoot) {
-        patch(currentRoot, element, container as never, null, null);
+        patch(currentRoot, element, container as HostReference, null, null);
       } else {
-        GLOBAL.hostAdapter.clearNode(container as never);
-        mount(element, container as never, null, null);
+        GLOBAL.hostAdapter.clearNode(container);
+        mount(element, container as HostReference, null, null);
       }
 
       currentRoot = element;

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Dict } from '../shared';
 import type { HostAdapter } from '../core/internal';
 
