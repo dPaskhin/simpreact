@@ -17,6 +17,7 @@ export default defineConfig({
         'coverage/**',
         'outdated/**',
         'example/**',
+        'lib/**',
       ],
     },
   },

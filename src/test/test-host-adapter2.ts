@@ -1,87 +1,69 @@
 import type { HostAdapter } from '../main/core/hostAdapter';
 import { Element, Text } from 'flyweight-dom';
-import type { Dict } from '../main/shared';
 import { vi } from 'vitest';
+import type { Dict } from '../main/shared';
 
 export const testHostAdapter: HostAdapter<Element, Text> = {
-  createReference(type) {
+  createReference: vi.fn(type => {
     return new Element(type);
-  },
-  createTextReference(text) {
+  }),
+  createTextReference: vi.fn(text => {
     const node = new Text();
     node.textContent = text;
     return node;
-  },
-  mountProps(reference, props) {
+  }),
+  mountProps: vi.fn((reference, props) => {
     mountProps(props, reference);
-  },
+  }),
 
-  patchProp(reference, propName, prevValue, nextValue) {
+  patchProp: vi.fn((reference, propName, prevValue, nextValue) => {
     patchProp(propName, prevValue, nextValue, reference);
-  },
+  }),
 
-  setClassname(reference, className) {
+  setClassname: vi.fn((reference, className) => {
     if (!className) {
       reference.removeAttribute('class');
     } else {
       reference.className = className;
     }
-  },
+  }),
 
-  setTextContent(reference, text) {
+  setTextContent: vi.fn((reference, text) => {
     reference.textContent = text;
-  },
+  }),
 
-  appendChild(parent, child) {
+  appendChild: vi.fn((parent, child) => {
     parent.appendChild(child);
-  },
+  }),
 
-  insertBefore(parent, child, before) {
+  insertBefore: vi.fn((parent, child, before) => {
     parent.insertBefore(child, before);
-  },
+  }),
 
-  insertOrAppend(parent, child, before) {
+  insertOrAppend: vi.fn((parent, child, before) => {
     if (before) {
       testHostAdapter.insertBefore(parent, child, before);
     } else {
       testHostAdapter.appendChild(parent, child);
     }
-  },
+  }),
 
-  removeChild(parent, child) {
+  removeChild: vi.fn((parent, child) => {
     parent.removeChild(child);
-  },
+  }),
 
-  replaceChild(parent, replacer, child) {
-    parent.replaceChild(child, replacer);
-  },
+  replaceChild: vi.fn((parent, replacer, toBeReplaced) => {
+    parent.replaceChild(toBeReplaced, replacer);
+  }),
 
-  findParentReference(reference) {
+  findParentReference: vi.fn(reference => {
     return reference.parentElement as Element;
-  },
+  }),
 
-  clearNode(reference) {
+  clearNode: vi.fn(reference => {
     reference.textContent = '';
-  },
+  }),
 };
-
-export function spyOnHostAdapterMethods(): Record<keyof HostAdapter, ReturnType<typeof vi.spyOn>> {
-  return {
-    appendChild: vi.spyOn(testHostAdapter, 'appendChild'),
-    createReference: vi.spyOn(testHostAdapter, 'createReference') as any,
-    createTextReference: vi.spyOn(testHostAdapter, 'createTextReference') as any,
-    findParentReference: vi.spyOn(testHostAdapter, 'findParentReference') as any,
-    insertBefore: vi.spyOn(testHostAdapter, 'insertBefore'),
-    insertOrAppend: vi.spyOn(testHostAdapter, 'insertOrAppend'),
-    mountProps: vi.spyOn(testHostAdapter, 'mountProps'),
-    patchProp: vi.spyOn(testHostAdapter, 'patchProp'),
-    removeChild: vi.spyOn(testHostAdapter, 'removeChild'),
-    replaceChild: vi.spyOn(testHostAdapter, 'replaceChild'),
-    setClassname: vi.spyOn(testHostAdapter, 'setClassname'),
-    setTextContent: vi.spyOn(testHostAdapter, 'setTextContent'),
-    clearNode: vi.spyOn(testHostAdapter, 'clearNode'),
-  };
-}
 
 function mountProps(props: Dict, reference: Element): void {
   for (const propsKey in props) {

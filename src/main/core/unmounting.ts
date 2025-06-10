@@ -1,6 +1,5 @@
 import type { SimpElement } from './createElement';
 import type { Maybe } from '../shared';
-import { isArray } from '../shared';
 import type { HostReference } from './hostAdapter';
 import { GLOBAL } from './global';
 
@@ -18,7 +17,7 @@ export function unmount(element: SimpElement): void {
 
   // Only FRAGMENT, PROVIDER, CONSUMER, and HOST elements remain,
   // with Maybe<Many<SimpElement>> children due to normalization.
-  if (isArray(element.children)) {
+  if (Array.isArray(element.children)) {
     unmountAllChildren(element.children as SimpElement[]);
   } else if (element.children != null) {
     unmount(element.children as SimpElement);
@@ -44,7 +43,7 @@ export function clearElementHostReference(element: Maybe<SimpElement>, parentHos
       continue;
     }
     if (element.flag === 'FRAGMENT' || element.flag === 'PROVIDER') {
-      if (isArray(children)) {
+      if (Array.isArray(children)) {
         for (let i = 0, len = children.length; i < len; ++i) {
           clearElementHostReference(children[i] as SimpElement, parentHostReference);
         }
@@ -59,7 +58,12 @@ export function clearElementHostReference(element: Maybe<SimpElement>, parentHos
 export function removeAllChildren(hostReference: HostReference, element: SimpElement, children: SimpElement[]): void {
   unmountAllChildren(children);
 
-  if (element.flag === 'FRAGMENT' || element.flag === 'PROVIDER') {
+  if (
+    element.flag === 'FRAGMENT' ||
+    element.flag === 'FC' ||
+    element.flag === 'PROVIDER' ||
+    element.flag === 'CONSUMER'
+  ) {
     clearElementHostReference(element, hostReference);
   } else {
     GLOBAL.hostAdapter.clearNode(hostReference);

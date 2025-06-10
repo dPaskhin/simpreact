@@ -8,6 +8,7 @@ import { createElement, Fragment } from '../main/core';
 import { spyOnHostAdapterMethods, testHostAdapter } from './test-host-adapter';
 import { patch } from '../main/core/patching';
 import { EventBus } from '../main/shared';
+import type { HostReference } from '../main/core/hostAdapter';
 
 const globalEventBus = new EventBus<LifecycleEvent>();
 
@@ -33,7 +34,7 @@ describe('patching', () => {
     it('mounts new children if no previous', () => {
       const next = createFragmentWithChildren(createElement('a', { key: '1' }), createElement('b', { key: '2' }));
 
-      mount(next, parent, null);
+      mount(next, parent as HostReference, null, null);
 
       expect(parent.children.length).toBe(2);
       expect(parent.children[0]!.nodeName).toBe('a');
@@ -43,21 +44,21 @@ describe('patching', () => {
     it('removes all when new is empty', () => {
       const prev = createFragmentWithChildren(createElement('a', { key: '1' }), createElement('b', { key: '2' }));
 
-      mount(prev, parent, null);
+      mount(prev, parent as HostReference, null, null);
 
       const next = createFragmentWithChildren();
 
-      patch(prev, next, parent, null);
+      patch(prev, next, parent as HostReference, null, null);
 
       expect(parent.children.length).toBe(0);
     });
 
     it('patches nodes with same keys', () => {
       const prev = createElement(Fragment, { children: createElement('a', { id: 'prev', key: '1' }) });
-      mount(prev, parent, null);
+      mount(prev, parent as HostReference, null, null);
 
       const next = createElement(Fragment, { children: createElement('a', { id: 'next', key: '1' }) });
-      patch(prev, next, parent, null);
+      patch(prev, next, parent as HostReference, null, null);
 
       expect((prev.children as SimpElement).reference).toStrictEqual((next.children as SimpElement).reference);
       expect((parent.children[0] as Element)!.getAttribute('id')).toBe('next');
@@ -69,7 +70,7 @@ describe('patching', () => {
         createElement('b', { key: '2' }),
         createElement('c', { key: '3' })
       );
-      mount(prev, parent, null);
+      mount(prev, parent as HostReference, null, null);
 
       const next = createFragmentWithChildren(
         createElement('c', { key: '3' }),
@@ -77,7 +78,7 @@ describe('patching', () => {
         createElement('b', { key: '2' })
       );
       const spyOnHostAdapter = spyOnHostAdapterMethods();
-      patch(prev, next, parent, null);
+      patch(prev, next, parent as HostReference, null, null);
 
       expect(Array.from(parent.children).map(c => c.nodeName)).toEqual(['c', 'a', 'b']);
 
@@ -107,7 +108,7 @@ describe('patching', () => {
 
     it('adds new children in middle', () => {
       const prev = createFragmentWithChildren(createElement('a', { key: '1' }), createElement('c', { key: '3' }));
-      mount(prev, parent, null);
+      mount(prev, parent as HostReference, null, null);
 
       const next = createFragmentWithChildren(
         createElement('a', { key: '1' }),
@@ -115,7 +116,7 @@ describe('patching', () => {
         createElement('c', { key: '3' })
       );
       const spyOnHostAdapter = spyOnHostAdapterMethods();
-      patch(prev, next, parent, null);
+      patch(prev, next, parent as HostReference, null, null);
 
       expect(Array.from(parent.children).map(c => c.nodeName)).toEqual(['a', 'b', 'c']);
       expect(spyOnHostAdapter.appendChild).not.toHaveBeenCalled();
@@ -144,11 +145,11 @@ describe('patching', () => {
         createElement('b', { key: '2' }),
         createElement('c', { key: '3' })
       );
-      mount(prev, parent, null);
+      mount(prev, parent as HostReference, null, null);
 
       const next = createFragmentWithChildren(createElement('a', { key: '1' }), createElement('c', { key: '3' }));
       const spyOnHostAdapter = spyOnHostAdapterMethods();
-      patch(prev, next, parent, null);
+      patch(prev, next, parent as HostReference, null, null);
 
       expect(Array.from(parent.children).map(c => c.nodeName)).toEqual(['a', 'c']);
       // It should be only one inserting in the case.
@@ -170,7 +171,7 @@ describe('patching', () => {
 
     it('replaces component with different key', () => {
       const prev = createElement(Fn, { id: 'prev', key: '1' });
-      mount(prev, parent, null);
+      mount(prev, parent as HostReference, null, null);
 
       const prevRef = (prev.children as SimpElement).reference! as Element;
 
@@ -196,7 +197,7 @@ describe('patching', () => {
         }
       });
 
-      patch(prev, next, parent, null);
+      patch(prev, next, parent as HostReference, null, null);
 
       const nextRef = (next.children as SimpElement).reference! as Element;
 

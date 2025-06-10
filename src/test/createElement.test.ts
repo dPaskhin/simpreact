@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { FC, SimpElement } from '../main/core';
-import { createElement, Fragment } from '../main/core';
+import { createContext, createElement, Fragment } from '../main/core';
 import { createTextElement, normalizeChildren, normalizeRoot } from '../main/core/createElement';
 
 function createMockHostElement(): SimpElement {
@@ -26,6 +26,8 @@ describe('createElement and utils', () => {
         ])
       ).toBeUndefined();
       expect(normalizeChildren([undefined, null, false, true])).toBeUndefined();
+      // TODO: maybe it should be discarded as well?
+      expect(normalizeChildren('')).toEqual({ flag: 'TEXT', children: '' });
     });
 
     it('wraps string and number into text elements', () => {
@@ -246,15 +248,100 @@ describe('createElement and utils', () => {
         children: { flag: 'HOST', type: 'div', children: { flag: 'TEXT', children: '123' } },
       });
     });
+
+    it('creates a Provider element', () => {
+      const TestContext = createContext('DEFAULT_VALUE');
+
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
+      expect(createElement(TestContext.Provider, { value: 'PROVIDED_VALUE' }, 12)).toEqual({
+        flag: 'PROVIDER',
+        type: TestContext.Provider,
+        children: { flag: 'TEXT', children: 12 },
+        props: { value: 'PROVIDED_VALUE' },
+      });
+      expect(
+        createElement(TestContext.Provider, {
+          value: 'PROVIDED_VALUE',
+          children: createMockHostElement(),
+        })
+      ).toEqual({
+        flag: 'PROVIDER',
+        type: TestContext.Provider,
+        children: createMockHostElement(),
+        props: { value: 'PROVIDED_VALUE' },
+      });
+      expect(
+        createElement(TestContext.Provider, { value: 'PROVIDED_VALUE', children: 'ignored children' }, '123')
+      ).toEqual({
+        flag: 'PROVIDER',
+        type: TestContext.Provider,
+        children: { flag: 'TEXT', children: '123' },
+        props: { value: 'PROVIDED_VALUE' },
+      });
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
+      expect(createElement(TestContext.Provider, { key: '123', value: 'PROVIDED_VALUE' }, '123')).toEqual({
+        flag: 'PROVIDER',
+        type: TestContext.Provider,
+        children: { flag: 'TEXT', children: '123' },
+        props: { value: 'PROVIDED_VALUE' },
+        key: '123',
+      });
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
+      expect(createElement(TestContext.Provider, { value: 'PROVIDED_VALUE' })).toEqual({
+        flag: 'PROVIDER',
+        type: TestContext.Provider,
+        props: { value: 'PROVIDED_VALUE' },
+        children: undefined,
+      });
+    });
+
+    it('creates a Consumer element', () => {
+      const TestContext = createContext('DEFAULT_VALUE');
+
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
+      expect(createElement(TestContext.Consumer, null, MockComponent)).toEqual({
+        flag: 'CONSUMER',
+        type: TestContext.Consumer,
+        props: { children: MockComponent },
+      });
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
+      expect(createElement(TestContext.Consumer, { children: MockComponent })).toEqual({
+        flag: 'CONSUMER',
+        type: TestContext.Consumer,
+        props: { children: MockComponent },
+      });
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
+      expect(createElement(TestContext.Consumer, { key: '123', children: MockComponent })).toEqual({
+        flag: 'CONSUMER',
+        type: TestContext.Consumer,
+        props: { children: MockComponent },
+        key: '123',
+      });
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-expect-error
+      expect(createElement(TestContext.Consumer)).toEqual({
+        flag: 'CONSUMER',
+        type: TestContext.Consumer,
+        props: { children: null },
+      });
+    });
   });
 
   describe('normalizeRoot', () => {
     it('should wrap null in a text element', () => {
-      expect(normalizeRoot(null)).toEqual({ flag: 'TEXT', children: '' });
+      expect(normalizeRoot(null)).toEqual(undefined);
       expect(normalizeRoot('hello')).toEqual({ flag: 'TEXT', children: 'hello' });
       expect(normalizeRoot(42)).toEqual({ flag: 'TEXT', children: 42 });
       expect(normalizeRoot(123n)).toEqual({ flag: 'TEXT', children: 123n });
-      expect(normalizeRoot(true)).toEqual({ flag: 'TEXT', children: '' });
+      // TODO: maybe it should be discarded as well?
+      expect(normalizeRoot('')).toEqual({ flag: 'TEXT', children: '' });
+      expect(normalizeRoot(true)).toEqual(undefined);
     });
 
     it('should wrap an array in a fragment element', () => {

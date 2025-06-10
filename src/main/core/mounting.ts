@@ -65,7 +65,9 @@ export function mountHostElement(
     GLOBAL.hostAdapter.insertOrAppend(parentReference, hostReference, nextReference);
   }
 
-  GLOBAL.hostAdapter.mountProps(hostReference, props);
+  if (props != null) {
+    GLOBAL.hostAdapter.mountProps(hostReference, props);
+  }
 }
 
 export function mountFunctionalElement(
@@ -75,13 +77,16 @@ export function mountFunctionalElement(
   contextMap: Nullable<SimpContextMap>
 ): void {
   const type = element.type as FC;
+  let children;
   element.contextMap = contextMap;
 
   GLOBAL.eventBus.publish({ type: 'beforeRender', element });
-  element.children = normalizeRoot(type(element.props || EMPTY_OBJECT));
+  children = normalizeRoot(type(element.props || EMPTY_OBJECT));
   GLOBAL.eventBus.publish({ type: 'afterRender' });
 
-  mount(element.children, parentReference, nextReference, contextMap);
+  if (children != null) {
+    mount((element.children = children), parentReference, nextReference, contextMap);
+  }
 
   GLOBAL.eventBus.publish({ type: 'mounted', element });
 }
@@ -93,12 +98,10 @@ export function mountFragment(
   contextMap: Nullable<SimpContextMap>
 ): void {
   // FRAGMENT element always has Maybe<Many<SimpElement>> children due to normalization process.
-  const children = element.children as Maybe<Many<SimpElement>>;
-
-  if (Array.isArray(children)) {
-    mountArrayChildren(children, parentReference, nextReference, contextMap);
-  } else if (children != null) {
-    mount(children, parentReference, nextReference, contextMap);
+  if (Array.isArray(element.children)) {
+    mountArrayChildren(element.children as SimpElement[], parentReference, nextReference, contextMap);
+  } else if (element.children != null) {
+    mount(element.children as SimpElement, parentReference, nextReference, contextMap);
   }
 }
 
@@ -119,17 +122,14 @@ export function mountProvider(
   nextReference: Nullable<HostReference>,
   contextMap: Nullable<SimpContextMap>
 ): void {
-  // PROVIDER element always has Maybe<Many<SimpElement>> children due to normalization process.
-  const children = element.children as Maybe<Many<SimpElement>>;
-
   contextMap = new Map(contextMap);
-
   contextMap.set((element.type as any).context, element.props.value);
 
-  if (Array.isArray(children)) {
-    mountArrayChildren(children, parentReference, nextReference, contextMap);
-  } else if (children != null) {
-    mount(children, parentReference, nextReference, contextMap);
+  // PROVIDER element always has Maybe<Many<SimpElement>> children due to normalization process.
+  if (Array.isArray(element.children)) {
+    mountArrayChildren(element.children as SimpElement[], parentReference, nextReference, contextMap);
+  } else if (element.children != null) {
+    mount(element.children as SimpElement, parentReference, nextReference, contextMap);
   }
 }
 
@@ -139,9 +139,13 @@ export function mountConsumer(
   nextReference: Nullable<HostReference>,
   contextMap: Nullable<SimpContextMap>
 ): void {
-  element.children = normalizeRoot(
+  const children = normalizeRoot(
     (element.type as SimpContext<any>['Consumer'])(element.props || EMPTY_OBJECT, contextMap || EMPTY_MAP)
   );
 
-  mount(element.children, parentReference, nextReference, contextMap);
+  if (children == null) {
+    return;
+  }
+
+  mount((element.children = children), parentReference, nextReference, contextMap);
 }

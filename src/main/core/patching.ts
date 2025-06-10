@@ -1,7 +1,7 @@
 import type { FC, Key, SimpElement, SimpElementFlag, SimpNode } from './createElement';
 import { normalizeRoot } from './createElement';
 import type { Nullable } from '../shared';
-import { EMPTY_MAP, EMPTY_OBJECT, isArray, isPrimitive } from '../shared';
+import { EMPTY_MAP, EMPTY_OBJECT, isPrimitive } from '../shared';
 import type { HostReference } from './hostAdapter';
 import { clearElementHostReference, remove, removeAllChildren, unmount, unmountAllChildren } from './unmounting';
 import { mount, mountArrayChildren } from './mounting';
@@ -64,7 +64,7 @@ export function findHostReferenceFromElement(element: SimpElement): Nullable<Hos
       return temp.reference as HostReference;
     }
 
-    temp = (isArray(temp.children) ? temp.children[0] : temp.children) as SimpElement;
+    temp = (Array.isArray(temp.children) ? temp.children[0] : temp.children) as SimpElement;
   }
 
   return null;
@@ -90,15 +90,11 @@ function patchElement(prevElement: SimpElement, nextElement: SimpElement, contex
     }
   }
 
-  const prevChildren = prevElement.children;
-  const nextChildren = nextElement.children;
-  const nextClassName = nextElement.className;
-
-  if (prevElement.className !== nextClassName) {
-    GLOBAL.hostAdapter.setClassname(hostReference, nextClassName);
+  if (prevElement.className !== nextElement.className) {
+    GLOBAL.hostAdapter.setClassname(hostReference, nextElement.className);
   }
 
-  patchChildren(prevChildren, nextChildren, hostReference, null, prevElement, contextMap);
+  patchChildren(prevElement.children, nextElement.children, hostReference, null, prevElement, contextMap);
 }
 
 function patchChildren(
@@ -109,8 +105,8 @@ function patchChildren(
   parentElement: SimpElement,
   contextMap: Nullable<SimpContextMap>
 ) {
-  if (isArray(prevChildren)) {
-    if (isArray(nextChildren)) {
+  if (Array.isArray(prevChildren)) {
+    if (Array.isArray(nextChildren)) {
       const prevChildrenLength = (prevChildren as SimpElement[]).length;
       const nextChildrenLength = (nextChildren as SimpElement[]).length;
 
@@ -137,7 +133,7 @@ function patchChildren(
       mount(nextChildren as SimpElement, parentReference, nextReference, contextMap);
     }
   } else if (isPrimitive(prevChildren)) {
-    if (isArray(nextChildren)) {
+    if (Array.isArray(nextChildren)) {
       GLOBAL.hostAdapter.clearNode(parentReference);
       mountArrayChildren(nextChildren as SimpElement[], parentReference, nextReference, contextMap);
     } else if (isPrimitive(nextChildren)) {
@@ -147,7 +143,7 @@ function patchChildren(
       mount(nextChildren, parentReference, nextReference, contextMap);
     }
   } else {
-    if (isArray(nextChildren)) {
+    if (Array.isArray(nextChildren)) {
       replaceOneElementWithMultipleElements(prevChildren, nextChildren as SimpElement[], parentReference, contextMap);
     } else if (isPrimitive(nextChildren)) {
       unmount(prevChildren);
@@ -214,17 +210,19 @@ function patchFunctionalComponent(
   nextReference: Nullable<HostReference>,
   contextMap: Nullable<SimpContextMap>
 ): void {
-  const type = nextElement.type as FC;
   nextElement.contextMap = contextMap;
 
   GLOBAL.eventBus.publish({ type: 'beforeRender', element: nextElement });
-  const nextChildren = normalizeRoot(type(nextElement.props || EMPTY_OBJECT));
+  const nextChildren = normalizeRoot((nextElement.type as FC)(nextElement.props || EMPTY_OBJECT));
   GLOBAL.eventBus.publish({ type: 'afterRender' });
 
-  patch(prevElement.children as SimpElement, nextChildren, parentReference, nextReference, contextMap);
-  GLOBAL.eventBus.publish({ type: 'mounted', element: nextElement });
+  if (nextChildren != null) {
+    nextElement.children = nextChildren;
+  }
 
-  nextElement.children = nextChildren;
+  patchChildren(prevElement.children, nextElement.children, parentReference, nextReference, prevElement, contextMap);
+
+  GLOBAL.eventBus.publish({ type: 'mounted', element: nextElement });
 }
 
 function patchText(prevElement: SimpElement, nextElement: SimpElement): void {
@@ -267,15 +265,15 @@ function patchConsumer(
   nextReference: Nullable<HostReference>,
   contextMap: Nullable<SimpContextMap>
 ): void {
-  patch(
-    prevElement.children as SimpElement,
-    (nextElement.children = normalizeRoot(
-      (nextElement.type as SimpContext<any>['Consumer'])(nextElement.props || EMPTY_OBJECT, contextMap || EMPTY_MAP)
-    )),
-    parentReference,
-    nextReference,
-    contextMap
+  const children = normalizeRoot(
+    (nextElement.type as SimpContext<any>['Consumer'])(nextElement.props || EMPTY_OBJECT, contextMap || EMPTY_MAP)
   );
+
+  if (children != null) {
+    nextElement.children = children;
+  }
+
+  patchChildren(prevElement.children, nextElement.children, parentReference, nextReference, prevElement, contextMap);
 }
 
 export function updateFunctionalComponent(

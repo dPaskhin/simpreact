@@ -1,5 +1,5 @@
 import type { Many, Maybe, Primitive } from '../shared';
-import { isArray, isPrimitive } from '../shared';
+import { isPrimitive } from '../shared';
 import { Fragment } from './fragment';
 import type { HostReference } from './hostAdapter';
 import type { SimpContextMap } from './context';
@@ -114,7 +114,7 @@ export function createElement<P = Props>(
   } else if (isProvider(type)) {
     const element: SimpElement = { flag: 'PROVIDER', type, props: { value: (props as any).value } };
 
-    element.children = normalizeChildren(definedChildren || (props != null ? (props as any).children : null));
+    element.children = normalizeChildren(definedChildren || (props as any).children);
 
     if (props != null && (props as any).key) {
       element.key = (props as any)?.key;
@@ -197,12 +197,12 @@ function normalizeNode(child: SimpNode, result: SimpElement[]): void {
     return;
   }
 
-  if (typeof child === 'string' || typeof child === 'number' || typeof child === 'bigint') {
+  if (isPrimitive(child)) {
     result.push(createTextElement(child));
     return;
   }
 
-  if (isArray(child)) {
+  if (Array.isArray(child)) {
     for (const nestedChild of child) {
       normalizeNode(nestedChild, result);
     }
@@ -217,11 +217,14 @@ function normalizeNode(child: SimpNode, result: SimpElement[]): void {
   }
 }
 
-export function normalizeRoot(node: SimpNode): SimpElement {
+export function normalizeRoot(node: SimpNode): SimpElement | undefined {
+  if (node == null || typeof node === 'boolean') {
+    return;
+  }
   if (isPrimitive(node)) {
     return createTextElement(node);
   }
-  if (isArray(node)) {
+  if (Array.isArray(node)) {
     return createElement(Fragment, { children: node });
   }
 

@@ -3,5 +3,3 @@ export const EMPTY_OBJECT = Object.freeze({});
 export const EMPTY_ARRAY = Object.freeze([]);
 
 export const EMPTY_MAP = new Map();
-
-export const isArray = Array.isArray;
