@@ -17,7 +17,7 @@ export interface FunctionComponent<P = Props> {
 
 export type FC<P = Props> = FunctionComponent<P>;
 
-export type SimpElementFlag = 'FC' | 'HOST' | 'TEXT' | 'FRAGMENT' | 'PROVIDER' | 'CONSUMER';
+export type SimpElementFlag = 'FC' | 'HOST' | 'TEXT' | 'FRAGMENT' | 'PROVIDER' | 'CONSUMER' | 'PORTAL';
 
 export interface SimpElement<T = Props> {
   flag: SimpElementFlag;
@@ -37,6 +37,8 @@ export interface SimpElement<T = Props> {
   store?: unknown;
 
   contextMap?: Maybe<SimpContextMap>;
+
+  ref?: any;
 }
 
 export function createElement<P = Props>(
@@ -61,6 +63,8 @@ export function createElement<P = Props>(
   }
 
   if (typeof type === 'string') {
+    let ref;
+
     if (props != null) {
       for (const propName in props) {
         if (propName === 'className') {
@@ -71,6 +75,10 @@ export function createElement<P = Props>(
           if (definedChildren === undefined) {
             definedChildren = props[propName] as any;
           }
+        } else if (propName === 'ref') {
+          ref = {
+            provided: props[propName],
+          };
         } else {
           (newProps ||= {})[propName] = props[propName];
         }
@@ -96,6 +104,10 @@ export function createElement<P = Props>(
 
     if (newProps) {
       element.props = newProps;
+    }
+
+    if (ref) {
+      element.ref = ref;
     }
 
     return element;

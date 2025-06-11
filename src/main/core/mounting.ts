@@ -5,6 +5,7 @@ import type { HostReference } from './hostAdapter';
 import type { FC, SimpElement } from './createElement';
 import { normalizeRoot } from './createElement';
 import type { SimpContext, SimpContextMap } from './context';
+import { applyRef } from './ref';
 
 export function mount(
   element: SimpElement,
@@ -68,6 +69,8 @@ export function mountHostElement(
   if (props != null) {
     GLOBAL.hostAdapter.mountProps(hostReference, props);
   }
+
+  applyRef(element as any);
 }
 
 export function mountFunctionalElement(

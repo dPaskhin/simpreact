@@ -7,6 +7,7 @@ import { clearElementHostReference, remove, removeAllChildren, unmount, unmountA
 import { mount, mountArrayChildren } from './mounting';
 import { GLOBAL } from './global';
 import type { SimpContext, SimpContextMap } from './context';
+import { applyRef } from './ref';
 
 export function patch(
   prevElement: SimpElement,
@@ -18,12 +19,8 @@ export function patch(
   if (prevElement.type !== nextElement.type || prevElement.key !== nextElement.key) {
     replaceWithNewElement(prevElement, nextElement, parentReference, contextMap);
   } else if (nextElement.flag === 'HOST') {
-    patchElement(prevElement, nextElement, contextMap);
+    patchHostElement(prevElement, nextElement, contextMap);
   } else if (nextElement.flag === 'FC') {
-    if (prevElement.store != null) {
-      nextElement.store = prevElement.store;
-    }
-
     patchFunctionalComponent(prevElement, nextElement, parentReference, nextReference, contextMap);
   } else if (nextElement.flag === 'TEXT') {
     patchText(prevElement, nextElement);
@@ -70,7 +67,11 @@ export function findHostReferenceFromElement(element: SimpElement): Nullable<Hos
   return null;
 }
 
-function patchElement(prevElement: SimpElement, nextElement: SimpElement, contextMap: Nullable<SimpContextMap>) {
+function patchHostElement(prevElement: SimpElement, nextElement: SimpElement, contextMap: Nullable<SimpContextMap>) {
+  if (prevElement.ref != null) {
+    nextElement.ref = prevElement.ref;
+  }
+
   const hostReference = (nextElement.reference = prevElement.reference)!;
   const prevProps = prevElement.props;
   const nextProps = nextElement.props;
@@ -95,6 +96,8 @@ function patchElement(prevElement: SimpElement, nextElement: SimpElement, contex
   }
 
   patchChildren(prevElement.children, nextElement.children, hostReference, null, prevElement, contextMap);
+
+  applyRef(nextElement);
 }
 
 function patchChildren(
@@ -210,17 +213,21 @@ function patchFunctionalComponent(
   nextReference: Nullable<HostReference>,
   contextMap: Nullable<SimpContextMap>
 ): void {
+  if (prevElement.store != null) {
+    nextElement.store = prevElement.store;
+  }
+
   nextElement.contextMap = contextMap;
 
   GLOBAL.eventBus.publish({ type: 'beforeRender', element: nextElement });
   const nextChildren = normalizeRoot((nextElement.type as FC)(nextElement.props || EMPTY_OBJECT));
   GLOBAL.eventBus.publish({ type: 'afterRender' });
 
+  patchChildren(prevElement.children, nextChildren, parentReference, nextReference, prevElement, contextMap);
+
   if (nextChildren != null) {
     nextElement.children = nextChildren;
   }
-
-  patchChildren(prevElement.children, nextElement.children, parentReference, nextReference, prevElement, contextMap);
 
   GLOBAL.eventBus.publish({ type: 'mounted', element: nextElement });
 }

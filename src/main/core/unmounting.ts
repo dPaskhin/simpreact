@@ -2,6 +2,7 @@ import type { SimpElement } from './createElement';
 import type { Maybe } from '../shared';
 import type { HostReference } from './hostAdapter';
 import { GLOBAL } from './global';
+import { unmountRef } from './ref';
 
 export function unmount(element: SimpElement): void {
   if (element.flag === 'FC') {
@@ -22,6 +23,8 @@ export function unmount(element: SimpElement): void {
   } else if (element.children != null) {
     unmount(element.children as SimpElement);
   }
+
+  unmountRef(element);
 }
 
 export function unmountAllChildren(children: SimpElement[]) {

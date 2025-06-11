@@ -1,6 +1,6 @@
-import type { SimpContext } from '../core';
+import type { RefObject, SimpContext } from '../core';
 import { GLOBAL, rerender, type SimpElement } from '../core/internal';
-import type { Nullable, VoidFunction } from '../shared';
+import type { Maybe, Nullable, VoidFunction } from '../shared';
 
 type Cleanup = VoidFunction;
 type Effect = () => void | Cleanup;
@@ -61,7 +61,11 @@ GLOBAL.eventBus.subscribe(event => {
   }
 });
 
-export function useRef<T>(initialValue: T): { current: T } {
+export function useRef<T>(initialValue: T): RefObject<T>;
+export function useRef<T>(initialValue: T | null): RefObject<T | null>;
+export function useRef<T>(initialValue: T | undefined): RefObject<T | undefined>;
+
+export function useRef<T>(initialValue: Maybe<T>): RefObject<T> {
   return (currentElement!.store.hookStates[currentIndex++] ||= { current: initialValue }) as RefHookState<T>;
 }
 
