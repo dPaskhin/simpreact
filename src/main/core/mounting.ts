@@ -23,6 +23,8 @@ export function mount(
     mountFragment(element, parentReference, nextReference, contextMap);
   } else if (element.flag === 'PROVIDER') {
     mountProvider(element, parentReference, nextReference, contextMap);
+  } else if (element.flag === 'PORTAL') {
+    mountPortal(element, parentReference, nextReference, contextMap);
   } else {
     mountConsumer(element, parentReference, nextReference, contextMap);
   }
@@ -151,4 +153,17 @@ export function mountConsumer(
   }
 
   mount((element.children = children), parentReference, nextReference, contextMap);
+}
+
+export function mountPortal(
+  element: SimpElement,
+  parentReference: Nullable<HostReference>,
+  nextReference: Nullable<HostReference>,
+  contextMap: Nullable<SimpContextMap>
+): void {
+  if (element.children == null) {
+    return;
+  }
+
+  mount(element.children as SimpElement, element.ref, null, contextMap);
 }

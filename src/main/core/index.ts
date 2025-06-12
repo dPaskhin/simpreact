@@ -2,3 +2,4 @@ export { type FC, type SimpElement, createElement, type SimpNode, type FunctionC
 export { Fragment } from './fragment';
 export { type SimpContext, createContext } from './context';
 export type { Ref, RefCallback, RefObject } from './ref';
+export { createPortal } from './portal';

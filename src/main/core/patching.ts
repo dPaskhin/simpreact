@@ -28,6 +28,8 @@ export function patch(
     patchFragment(prevElement, nextElement, parentReference, nextReference, contextMap);
   } else if (nextElement.flag === 'PROVIDER') {
     patchProvider(prevElement, nextElement, parentReference, nextReference, contextMap);
+  } else if (nextElement.flag === 'PORTAL') {
+    patchPortal(prevElement, nextElement, contextMap);
   } else {
     patchConsumer(prevElement, nextElement, parentReference, nextReference, contextMap);
   }
@@ -281,6 +283,19 @@ function patchConsumer(
   }
 
   patchChildren(prevElement.children, nextElement.children, parentReference, nextReference, prevElement, contextMap);
+}
+
+function patchPortal(prevElement: SimpElement, nextElement: SimpElement, contextMap: Nullable<SimpContextMap>): void {
+  const prevContainer = prevElement.ref;
+  const nextContainer = nextElement.ref;
+  const nextChildren = nextElement.children as SimpElement;
+
+  patchChildren(prevElement.children, nextChildren, prevContainer as HostReference, null, prevElement, contextMap);
+
+  if (prevContainer !== nextContainer && nextChildren != null) {
+    GLOBAL.hostAdapter.removeChild(prevContainer, nextChildren.reference);
+    GLOBAL.hostAdapter.appendChild(nextContainer, nextChildren.reference);
+  }
 }
 
 export function updateFunctionalComponent(

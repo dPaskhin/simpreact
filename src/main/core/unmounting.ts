@@ -16,6 +16,11 @@ export function unmount(element: SimpElement): void {
     return;
   }
 
+  if (element.flag === 'PORTAL') {
+    remove(element.children as SimpElement, element.ref as HostReference);
+    return;
+  }
+
   // Only FRAGMENT, PROVIDER, CONSUMER, and HOST elements remain,
   // with Maybe<Many<SimpElement>> children due to normalization.
   if (Array.isArray(element.children)) {
@@ -24,7 +29,9 @@ export function unmount(element: SimpElement): void {
     unmount(element.children as SimpElement);
   }
 
-  unmountRef(element);
+  if (element.flag === 'HOST') {
+    unmountRef(element);
+  }
 }
 
 export function unmountAllChildren(children: SimpElement[]) {

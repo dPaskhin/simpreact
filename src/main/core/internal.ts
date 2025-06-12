@@ -7,4 +7,5 @@ export * from './global';
 export * from './hostAdapter';
 export * from './mounting';
 export * from './patching';
+export * from './portal';
 export * from './ref';
