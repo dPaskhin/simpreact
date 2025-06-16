@@ -2,6 +2,7 @@ import type { HostAdapter } from '../main/core/hostAdapter';
 import { Element, Text } from 'flyweight-dom';
 import type { Dict } from '../main/shared';
 import { vi } from 'vitest';
+import { attachElementToDom } from '../main/dom/attach-element-to-dom';
 
 export const testHostAdapter: HostAdapter<Element, Text> = {
   createReference(type) {
@@ -63,6 +64,10 @@ export const testHostAdapter: HostAdapter<Element, Text> = {
   clearNode(reference) {
     reference.textContent = '';
   },
+
+  attachElementToReference(element, reference) {
+    attachElementToDom(element, reference as any);
+  },
 };
 
 export function spyOnHostAdapterMethods(): Record<keyof HostAdapter, ReturnType<typeof vi.spyOn>> {
@@ -80,6 +85,7 @@ export function spyOnHostAdapterMethods(): Record<keyof HostAdapter, ReturnType<
     setClassname: vi.spyOn(testHostAdapter, 'setClassname'),
     setTextContent: vi.spyOn(testHostAdapter, 'setTextContent'),
     clearNode: vi.spyOn(testHostAdapter, 'clearNode'),
+    attachElementToReference: vi.spyOn(testHostAdapter, 'attachElementToReference'),
   };
 }
 

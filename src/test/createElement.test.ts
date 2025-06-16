@@ -27,21 +27,24 @@ describe('createElement and utils', () => {
       ).toBeUndefined();
       expect(normalizeChildren([undefined, null, false, true])).toBeUndefined();
       // TODO: maybe it should be discarded as well?
-      expect(normalizeChildren('')).toEqual({ flag: 'TEXT', children: '' });
+      expect(normalizeChildren('')).toEqual({ flag: 'TEXT', children: '', parent: null });
     });
 
     it('wraps string and number into text elements', () => {
       expect(normalizeChildren('hello')).toEqual({
         flag: 'TEXT',
         children: 'hello',
+        parent: null,
       });
       expect(normalizeChildren(42)).toEqual({
         flag: 'TEXT',
         children: 42,
+        parent: null,
       });
       expect(normalizeChildren(42n)).toEqual({
         flag: 'TEXT',
         children: 42n,
+        parent: null,
       });
     });
 
@@ -56,14 +59,17 @@ describe('createElement and utils', () => {
         {
           flag: 'TEXT',
           children: 'a',
+          parent: null,
         },
         {
           flag: 'TEXT',
           children: 1,
+          parent: null,
         },
         {
           flag: 'TEXT',
           children: 'b',
+          parent: null,
         },
       ]);
     });
@@ -75,11 +81,13 @@ describe('createElement and utils', () => {
         {
           flag: 'TEXT',
           children: 'a',
+          parent: null,
         },
         el,
         {
           flag: 'TEXT',
           children: 2,
+          parent: null,
         },
       ]);
     });
@@ -103,17 +111,17 @@ describe('createElement and utils', () => {
 
   describe('createTextElement', () => {
     it('makes text element from different children types', () => {
-      expect(createTextElement(1)).toEqual({ flag: 'TEXT', children: 1 });
-      expect(createTextElement(0)).toEqual({ flag: 'TEXT', children: 0 });
-      expect(createTextElement(-1)).toEqual({ flag: 'TEXT', children: -1 });
-      expect(createTextElement(42n)).toEqual({ flag: 'TEXT', children: 42n });
-      expect(createTextElement('')).toEqual({ flag: 'TEXT', children: '' });
-      expect(createTextElement(true)).toEqual({ flag: 'TEXT', children: '' });
-      expect(createTextElement(false)).toEqual({ flag: 'TEXT', children: '' });
-      expect(createTextElement(undefined)).toEqual({ flag: 'TEXT', children: '' });
+      expect(createTextElement(1)).toEqual({ flag: 'TEXT', children: 1, parent: null });
+      expect(createTextElement(0)).toEqual({ flag: 'TEXT', children: 0, parent: null });
+      expect(createTextElement(-1)).toEqual({ flag: 'TEXT', children: -1, parent: null });
+      expect(createTextElement(42n)).toEqual({ flag: 'TEXT', children: 42n, parent: null });
+      expect(createTextElement('')).toEqual({ flag: 'TEXT', children: '', parent: null });
+      expect(createTextElement(true)).toEqual({ flag: 'TEXT', children: '', parent: null });
+      expect(createTextElement(false)).toEqual({ flag: 'TEXT', children: '', parent: null });
+      expect(createTextElement(undefined)).toEqual({ flag: 'TEXT', children: '', parent: null });
       // @ts-expect-error Just another undefined.
-      expect(createTextElement()).toEqual({ flag: 'TEXT', children: '' });
-      expect(createTextElement(null)).toEqual({ flag: 'TEXT', children: '' });
+      expect(createTextElement()).toEqual({ flag: 'TEXT', children: '', parent: null });
+      expect(createTextElement(null)).toEqual({ flag: 'TEXT', children: '', parent: null });
     });
   });
 
@@ -123,6 +131,7 @@ describe('createElement and utils', () => {
       expect(element).toEqual({
         flag: 'HOST',
         type: 'div',
+        parent: null,
       });
     });
 
@@ -131,7 +140,8 @@ describe('createElement and utils', () => {
       expect(element).toEqual({
         flag: 'HOST',
         type: 'div',
-        children: { flag: 'TEXT', children: 'child' },
+        children: { flag: 'TEXT', children: 'child', parent: null },
+        parent: null,
       });
     });
 
@@ -141,6 +151,7 @@ describe('createElement and utils', () => {
         flag: 'HOST',
         type: 'div',
         props: { id: 'it' },
+        parent: null,
       });
     });
 
@@ -151,6 +162,7 @@ describe('createElement and utils', () => {
         type: 'div',
         className: 'red-colored',
         key: 'id',
+        parent: null,
       });
     });
 
@@ -159,13 +171,23 @@ describe('createElement and utils', () => {
         flag: 'HOST',
         type: 'div',
         props: { id: 'it' },
-        children: [{ flag: 'TEXT', children: 'child1' }, { flag: 'TEXT', children: 'child2' }, createMockHostElement()],
+        children: [
+          { flag: 'TEXT', children: 'child1', parent: null },
+          { flag: 'TEXT', children: 'child2', parent: null },
+          createMockHostElement(),
+        ],
+        parent: null,
       });
       expect(createElement('div', { id: 'it', children: ['child1', 'child2', createMockHostElement()] })).toEqual({
         flag: 'HOST',
         type: 'div',
         props: { id: 'it' },
-        children: [{ flag: 'TEXT', children: 'child1' }, { flag: 'TEXT', children: 'child2' }, createMockHostElement()],
+        children: [
+          { flag: 'TEXT', children: 'child1', parent: null },
+          { flag: 'TEXT', children: 'child2', parent: null },
+          createMockHostElement(),
+        ],
+        parent: null,
       });
     });
 
@@ -176,6 +198,7 @@ describe('createElement and utils', () => {
         flag: 'FC',
         type: MockComponent,
         props,
+        parent: null,
       });
     });
 
@@ -191,6 +214,7 @@ describe('createElement and utils', () => {
         type: MockComponent,
         props: { foo: 'bar', children: ['child1', 'child2'], className: 'red-colored' },
         key: 'KEY',
+        parent: null,
       });
     });
 
@@ -202,15 +226,17 @@ describe('createElement and utils', () => {
         flag: 'FC',
         type: MockComponent,
         props: { foo: 'bar', children: ['child1', 'child2'] },
+        parent: null,
       });
       expect(hostElement).toEqual({
         flag: 'HOST',
         type: 'div',
         props: { foo: 'bar' },
         children: [
-          { flag: 'TEXT', children: 'child1' },
-          { flag: 'TEXT', children: 'child2' },
+          { flag: 'TEXT', children: 'child1', parent: null },
+          { flag: 'TEXT', children: 'child2', parent: null },
         ],
+        parent: null,
       });
     });
 
@@ -221,31 +247,41 @@ describe('createElement and utils', () => {
         flag: 'FC',
         type: MockComponent,
         props: { foo: 'bar', children: ['child1', 'child2'] },
+        parent: null,
       });
     });
 
     it('creates a Fragment element', () => {
-      expect(createElement(Fragment)).toEqual({ flag: 'FRAGMENT' });
+      expect(createElement(Fragment)).toEqual({ flag: 'FRAGMENT', parent: null });
       expect(createElement(Fragment, { children: '12' })).toEqual({
         flag: 'FRAGMENT',
-        children: { flag: 'TEXT', children: '12' },
+        children: { flag: 'TEXT', children: '12', parent: null },
+        parent: null,
       });
       expect(createElement(Fragment, { children: 'ignored children' }, '123')).toEqual({
         flag: 'FRAGMENT',
-        children: { flag: 'TEXT', children: '123' },
+        children: { flag: 'TEXT', children: '123', parent: null },
+        parent: null,
       });
       expect(createElement(Fragment, null!, '123', '456', createMockHostElement())).toEqual({
         flag: 'FRAGMENT',
         children: [
-          { flag: 'TEXT', children: '123' },
-          { flag: 'TEXT', children: '456' },
-          { flag: 'HOST', type: 'div', children: { flag: 'TEXT', children: '123' } },
+          { flag: 'TEXT', children: '123', parent: null },
+          { flag: 'TEXT', children: '456', parent: null },
+          { flag: 'HOST', type: 'div', children: { flag: 'TEXT', children: '123', parent: null }, parent: null },
         ],
+        parent: null,
       });
       expect(createElement(Fragment, { key: 'KEY', children: createMockHostElement() })).toEqual({
         flag: 'FRAGMENT',
         key: 'KEY',
-        children: { flag: 'HOST', type: 'div', children: { flag: 'TEXT', children: '123' } },
+        children: {
+          flag: 'HOST',
+          type: 'div',
+          children: { flag: 'TEXT', children: '123', parent: null },
+          parent: null,
+        },
+        parent: null,
       });
     });
 
@@ -257,8 +293,9 @@ describe('createElement and utils', () => {
       expect(createElement(TestContext.Provider, { value: 'PROVIDED_VALUE' }, 12)).toEqual({
         flag: 'PROVIDER',
         type: TestContext.Provider,
-        children: { flag: 'TEXT', children: 12 },
+        children: { flag: 'TEXT', children: 12, parent: null },
         props: { value: 'PROVIDED_VALUE' },
+        parent: null,
       });
       expect(
         createElement(TestContext.Provider, {
@@ -270,23 +307,26 @@ describe('createElement and utils', () => {
         type: TestContext.Provider,
         children: createMockHostElement(),
         props: { value: 'PROVIDED_VALUE' },
+        parent: null,
       });
       expect(
         createElement(TestContext.Provider, { value: 'PROVIDED_VALUE', children: 'ignored children' }, '123')
       ).toEqual({
         flag: 'PROVIDER',
         type: TestContext.Provider,
-        children: { flag: 'TEXT', children: '123' },
+        children: { flag: 'TEXT', children: '123', parent: null },
         props: { value: 'PROVIDED_VALUE' },
+        parent: null,
       });
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
       expect(createElement(TestContext.Provider, { key: '123', value: 'PROVIDED_VALUE' }, '123')).toEqual({
         flag: 'PROVIDER',
         type: TestContext.Provider,
-        children: { flag: 'TEXT', children: '123' },
+        children: { flag: 'TEXT', children: '123', parent: null },
         props: { value: 'PROVIDED_VALUE' },
         key: '123',
+        parent: null,
       });
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
@@ -295,6 +335,7 @@ describe('createElement and utils', () => {
         type: TestContext.Provider,
         props: { value: 'PROVIDED_VALUE' },
         children: undefined,
+        parent: null,
       });
     });
 
@@ -307,6 +348,7 @@ describe('createElement and utils', () => {
         flag: 'CONSUMER',
         type: TestContext.Consumer,
         props: { children: MockComponent },
+        parent: null,
       });
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
@@ -314,6 +356,7 @@ describe('createElement and utils', () => {
         flag: 'CONSUMER',
         type: TestContext.Consumer,
         props: { children: MockComponent },
+        parent: null,
       });
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
@@ -322,6 +365,7 @@ describe('createElement and utils', () => {
         type: TestContext.Consumer,
         props: { children: MockComponent },
         key: '123',
+        parent: null,
       });
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
@@ -329,6 +373,7 @@ describe('createElement and utils', () => {
         flag: 'CONSUMER',
         type: TestContext.Consumer,
         props: { children: null },
+        parent: null,
       });
     });
   });
@@ -336,11 +381,11 @@ describe('createElement and utils', () => {
   describe('normalizeRoot', () => {
     it('should wrap null in a text element', () => {
       expect(normalizeRoot(null)).toEqual(undefined);
-      expect(normalizeRoot('hello')).toEqual({ flag: 'TEXT', children: 'hello' });
-      expect(normalizeRoot(42)).toEqual({ flag: 'TEXT', children: 42 });
-      expect(normalizeRoot(123n)).toEqual({ flag: 'TEXT', children: 123n });
+      expect(normalizeRoot('hello')).toEqual({ flag: 'TEXT', children: 'hello', parent: null });
+      expect(normalizeRoot(42)).toEqual({ flag: 'TEXT', children: 42, parent: null });
+      expect(normalizeRoot(123n)).toEqual({ flag: 'TEXT', children: 123n, parent: null });
       // TODO: maybe it should be discarded as well?
-      expect(normalizeRoot('')).toEqual({ flag: 'TEXT', children: '' });
+      expect(normalizeRoot('')).toEqual({ flag: 'TEXT', children: '', parent: null });
       expect(normalizeRoot(true)).toEqual(undefined);
     });
 
@@ -349,15 +394,16 @@ describe('createElement and utils', () => {
       expect(result).toEqual({
         flag: 'FRAGMENT',
         children: [
-          { flag: 'TEXT', children: 'a' },
-          { flag: 'TEXT', children: 'b' },
-          { flag: 'TEXT', children: 'c' },
+          { flag: 'TEXT', children: 'a', parent: null },
+          { flag: 'TEXT', children: 'b', parent: null },
+          { flag: 'TEXT', children: 'c', parent: null },
         ],
+        parent: null,
       });
     });
 
     it('should return node itself if it is already a SimpElement', () => {
-      const node: SimpElement = { type: 'div', flag: 'HOST' };
+      const node: SimpElement = { type: 'div', flag: 'HOST', parent: null };
       const result = normalizeRoot(node);
       expect(result).toBe(node);
     });

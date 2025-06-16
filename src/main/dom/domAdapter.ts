@@ -1,5 +1,7 @@
 import type { Dict } from '../shared';
 import type { HostAdapter } from '../core/internal';
+import { isPropNameEventName, patchEvent } from './events';
+import { attachElementToDom } from './attach-element-to-dom';
 
 export const domAdapter: HostAdapter<HTMLElement, Text> = {
   createReference(type) {
@@ -59,6 +61,10 @@ export const domAdapter: HostAdapter<HTMLElement, Text> = {
   clearNode(reference) {
     reference.textContent = '';
   },
+
+  attachElementToReference(element, reference) {
+    attachElementToDom(element, reference);
+  },
 };
 
 function mountProps(props: Dict, reference: HTMLElement): void {
@@ -111,14 +117,13 @@ function patchProp(propName: string, prevValue: any, nextValue: any, dom: HTMLEl
       patchStyle(prevValue, nextValue, dom);
       break;
     default:
-      if (propName.charCodeAt(0) === 111 && propName.charCodeAt(1) === 110) {
+      if (isPropNameEventName(propName)) {
         patchEvent(propName, prevValue, nextValue, dom);
       } else if (nextValue == null) {
         dom.removeAttribute(propName);
       } else {
         dom.setAttribute(propName, nextValue);
       }
-      break;
   }
 }
 
@@ -129,7 +134,7 @@ function patchDomProp(nextValue: unknown, dom: HTMLElement, propKey: string): vo
   }
 }
 
-function patchStyle(lastAttrValue: any, nextAttrValue: any, dom: HTMLElement): void {
+function patchStyle(prevAttrValue: any, nextAttrValue: any, dom: HTMLElement): void {
   if (nextAttrValue == null) {
     dom.removeAttribute('style');
     return;
@@ -142,15 +147,15 @@ function patchStyle(lastAttrValue: any, nextAttrValue: any, dom: HTMLElement): v
     return;
   }
 
-  if (lastAttrValue != null && typeof lastAttrValue !== 'string') {
+  if (prevAttrValue != null && typeof prevAttrValue !== 'string') {
     for (style in nextAttrValue) {
       value = nextAttrValue[style];
-      if (value !== lastAttrValue[style]) {
+      if (value !== prevAttrValue[style]) {
         domStyle.setProperty(style, value);
       }
     }
 
-    for (style in lastAttrValue) {
+    for (style in prevAttrValue) {
       if (nextAttrValue[style] == null) {
         domStyle.removeProperty(style);
       }
@@ -160,17 +165,5 @@ function patchStyle(lastAttrValue: any, nextAttrValue: any, dom: HTMLElement): v
       value = nextAttrValue[style];
       domStyle.setProperty(style, value);
     }
-  }
-}
-
-function patchEvent(name: string, lastValue: any, nextValue: any, dom: HTMLElement): void {
-  name = name.toLowerCase().substring(2);
-
-  if (typeof lastValue === 'function') {
-    dom.removeEventListener(name, lastValue);
-  }
-
-  if (typeof nextValue === 'function') {
-    dom.addEventListener(name, nextValue);
   }
 }

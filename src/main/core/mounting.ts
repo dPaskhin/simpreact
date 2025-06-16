@@ -37,6 +37,8 @@ export function mountTextElement(
 ): void {
   const reference = (element.reference ||= GLOBAL.hostAdapter.createTextReference(element.children as string));
 
+  GLOBAL.hostAdapter.attachElementToReference(element, reference);
+
   if (parentReference != null) {
     GLOBAL.hostAdapter.insertOrAppend(parentReference, reference, nextReference);
   }
@@ -51,6 +53,9 @@ export function mountHostElement(
   const props = element.props;
   const className = element.className;
   const hostReference = (element.reference = GLOBAL.hostAdapter.createReference(element.type as string));
+
+  GLOBAL.hostAdapter.attachElementToReference(element, hostReference);
+
   // HOST element always has Maybe<Many<SimpElement>> children due to normalization process.
   const children = element.children as Maybe<Many<SimpElement>>;
 
@@ -59,8 +64,9 @@ export function mountHostElement(
   }
 
   if (Array.isArray(children)) {
-    mountArrayChildren(children, hostReference, null, contextMap);
+    mountArrayChildren(children, hostReference, null, contextMap, element);
   } else if (children != null) {
+    children.parent = element;
     mount(children, hostReference, null, contextMap);
   }
 
@@ -72,7 +78,7 @@ export function mountHostElement(
     GLOBAL.hostAdapter.mountProps(hostReference, props);
   }
 
-  applyRef(element as any);
+  applyRef(element);
 }
 
 export function mountFunctionalElement(
@@ -83,13 +89,17 @@ export function mountFunctionalElement(
 ): void {
   const type = element.type as FC;
   let children;
-  element.contextMap = contextMap;
+
+  if (contextMap) {
+    element.contextMap = contextMap;
+  }
 
   GLOBAL.eventBus.publish({ type: 'beforeRender', element });
   children = normalizeRoot(type(element.props || EMPTY_OBJECT));
   GLOBAL.eventBus.publish({ type: 'afterRender' });
 
   if (children != null) {
+    children.parent = element;
     mount((element.children = children), parentReference, nextReference, contextMap);
   }
 
@@ -104,8 +114,9 @@ export function mountFragment(
 ): void {
   // FRAGMENT element always has Maybe<Many<SimpElement>> children due to normalization process.
   if (Array.isArray(element.children)) {
-    mountArrayChildren(element.children as SimpElement[], parentReference, nextReference, contextMap);
+    mountArrayChildren(element.children as SimpElement[], parentReference, nextReference, contextMap, element);
   } else if (element.children != null) {
+    (element.children as SimpElement).parent = element;
     mount(element.children as SimpElement, parentReference, nextReference, contextMap);
   }
 }
@@ -114,9 +125,11 @@ export function mountArrayChildren(
   children: SimpElement[],
   reference: Nullable<HostReference>,
   nextReference: Nullable<HostReference>,
-  contextMap: Nullable<SimpContextMap>
+  contextMap: Nullable<SimpContextMap>,
+  parentElement: SimpElement
 ): void {
   for (const child of children) {
+    child.parent = parentElement;
     mount(child, reference, nextReference, contextMap);
   }
 }
@@ -132,8 +145,9 @@ export function mountProvider(
 
   // PROVIDER element always has Maybe<Many<SimpElement>> children due to normalization process.
   if (Array.isArray(element.children)) {
-    mountArrayChildren(element.children as SimpElement[], parentReference, nextReference, contextMap);
+    mountArrayChildren(element.children as SimpElement[], parentReference, nextReference, contextMap, element);
   } else if (element.children != null) {
+    (element.children as SimpElement).parent = element;
     mount(element.children as SimpElement, parentReference, nextReference, contextMap);
   }
 }
@@ -152,6 +166,7 @@ export function mountConsumer(
     return;
   }
 
+  children.parent = element;
   mount((element.children = children), parentReference, nextReference, contextMap);
 }
 
@@ -165,5 +180,6 @@ export function mountPortal(
     return;
   }
 
+  (element.children as SimpElement).parent = element;
   mount(element.children as SimpElement, element.ref, null, contextMap);
 }

@@ -1,4 +1,5 @@
 import type { Dict, Maybe, Nullable } from '../shared';
+import type { SimpElement } from './createElement';
 
 export type HostReference = never;
 
@@ -28,4 +29,6 @@ export interface HostAdapter<HostRef = any, HostTextRef = any> {
   findParentReference(reference: HostRef | HostTextRef): Nullable<HostRef>;
 
   clearNode(reference: HostRef | HostTextRef): void;
+
+  attachElementToReference(element: SimpElement, reference: HostRef | HostTextRef): void;
 }

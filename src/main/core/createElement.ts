@@ -1,4 +1,4 @@
-import type { Many, Maybe, Primitive } from '../shared';
+import type { Many, Maybe, Nullable, Primitive } from '../shared';
 import { isPrimitive } from '../shared';
 import { Fragment } from './fragment';
 import type { HostReference } from './hostAdapter';
@@ -21,6 +21,8 @@ export type SimpElementFlag = 'FC' | 'HOST' | 'TEXT' | 'FRAGMENT' | 'PROVIDER' |
 
 export interface SimpElement<T = Props> {
   flag: SimpElementFlag;
+
+  parent: Nullable<SimpElement>;
 
   key?: Maybe<Key>;
 
@@ -77,7 +79,7 @@ export function createElement<P = Props>(
           }
         } else if (propName === 'ref') {
           ref = {
-            provided: props[propName],
+            value: props[propName],
           };
         } else {
           (newProps ||= {})[propName] = props[propName];
@@ -88,6 +90,7 @@ export function createElement<P = Props>(
     const element: SimpElement = {
       flag: 'HOST',
       type,
+      parent: null,
     };
 
     if (className) {
@@ -114,6 +117,7 @@ export function createElement<P = Props>(
   } else if (type === Fragment) {
     const element: SimpElement = {
       flag: 'FRAGMENT',
+      parent: null,
     };
 
     element.children = normalizeChildren(definedChildren || (props != null ? (props as any).children : null));
@@ -124,7 +128,7 @@ export function createElement<P = Props>(
 
     return element;
   } else if (isProvider(type)) {
-    const element: SimpElement = { flag: 'PROVIDER', type, props: { value: (props as any).value } };
+    const element: SimpElement = { flag: 'PROVIDER', type, props: { value: (props as any).value }, parent: null };
 
     element.children = normalizeChildren(definedChildren || (props as any).children);
 
@@ -138,6 +142,7 @@ export function createElement<P = Props>(
       flag: 'CONSUMER',
       type,
       props: { children: definedChildren || (props != null ? (props as any).children : null) },
+      parent: null,
     };
 
     if (props != null && (props as any).key) {
@@ -167,6 +172,7 @@ export function createElement<P = Props>(
     const element: SimpElement = {
       flag: 'FC',
       type,
+      parent: null,
     };
 
     if (key) {
@@ -185,6 +191,7 @@ export function createTextElement(text: Primitive): SimpElement {
   return {
     flag: 'TEXT',
     children: text == null || text === true || text === false ? '' : text,
+    parent: null,
   };
 }
 
