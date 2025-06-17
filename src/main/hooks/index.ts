@@ -1,5 +1,5 @@
 import type { RefObject, SimpContext } from '../core';
-import { GLOBAL, rerender, type SimpElement } from '../core/internal';
+import { lifecycleEventBus, rerender, type SimpElement } from '../core/internal';
 import type { Maybe, Nullable, VoidFunction } from '../shared';
 
 type Cleanup = VoidFunction;
@@ -33,7 +33,7 @@ interface HooksSimpElement extends SimpElement {
 let currentIndex: number = 0;
 let currentElement: Nullable<HooksSimpElement> = null;
 
-GLOBAL.eventBus.subscribe(event => {
+lifecycleEventBus.subscribe(event => {
   if (event.type === 'beforeRender') {
     currentElement = event.element as HooksSimpElement;
     currentElement.store ||= { hookStates: [], mountEffects: [] };

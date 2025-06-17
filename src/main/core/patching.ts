@@ -3,11 +3,12 @@ import { normalizeRoot } from './createElement';
 import type { Nullable } from '../shared';
 import { EMPTY_MAP, EMPTY_OBJECT, isPrimitive } from '../shared';
 import type { HostReference } from './hostAdapter';
+import { hostAdapter } from './hostAdapter';
 import { clearElementHostReference, remove, removeAllChildren, unmount, unmountAllChildren } from './unmounting';
 import { mount, mountArrayChildren } from './mounting';
-import { GLOBAL } from './global';
 import type { SimpContext, SimpContextMap } from './context';
 import { applyRef } from './ref';
+import { lifecycleEventBus } from './lifecycleEventBus';
 
 export function patch(
   prevElement: SimpElement,
@@ -46,7 +47,7 @@ function replaceWithNewElement(
   nextElement.parent = prevElement.parent;
   if (nextElement.flag === 'HOST' && prevElement.flag === 'HOST') {
     mount(nextElement, null, null, contextMap);
-    GLOBAL.hostAdapter.replaceChild(parentReference, nextElement.reference, prevElement.reference);
+    hostAdapter.replaceChild(parentReference, nextElement.reference, prevElement.reference);
   } else {
     mount(nextElement, parentReference, findHostReferenceFromElement(prevElement), contextMap);
     clearElementHostReference(prevElement, parentReference);
@@ -60,7 +61,7 @@ function patchHostElement(prevElement: SimpElement, nextElement: SimpElement, co
 
   const hostReference = (nextElement.reference = prevElement.reference)!;
 
-  GLOBAL.hostAdapter.attachElementToReference(nextElement, hostReference);
+  hostAdapter.attachElementToReference(nextElement, hostReference);
 
   const prevProps = prevElement.props;
   const nextProps = nextElement.props;
@@ -70,18 +71,18 @@ function patchHostElement(prevElement: SimpElement, nextElement: SimpElement, co
     const nextValue = nextProps[propName];
 
     if (prevValue !== nextValue) {
-      GLOBAL.hostAdapter.patchProp(hostReference, propName, prevValue, nextValue);
+      hostAdapter.patchProp(hostReference, propName, prevValue, nextValue);
     }
   }
 
   for (const propName in prevProps) {
     if (nextProps[propName] == null && prevProps[propName] != null) {
-      GLOBAL.hostAdapter.patchProp(hostReference, propName, prevProps[propName], null);
+      hostAdapter.patchProp(hostReference, propName, prevProps[propName], null);
     }
   }
 
   if (prevElement.className !== nextElement.className) {
-    GLOBAL.hostAdapter.setClassname(hostReference, nextElement.className);
+    hostAdapter.setClassname(hostReference, nextElement.className);
   }
 
   patchChildren(prevElement.children, nextElement.children, hostReference, null, prevElement, nextElement, contextMap);
@@ -104,9 +105,9 @@ function patchFunctionalComponent(
     nextElement.contextMap = contextMap;
   }
 
-  GLOBAL.eventBus.publish({ type: 'beforeRender', element: nextElement });
+  lifecycleEventBus.publish({ type: 'beforeRender', element: nextElement });
   const nextChildren = normalizeRoot((nextElement.type as FC)(nextElement.props || EMPTY_OBJECT));
-  GLOBAL.eventBus.publish({ type: 'afterRender' });
+  lifecycleEventBus.publish({ type: 'afterRender' });
 
   patchChildren(
     prevElement.children,
@@ -122,17 +123,17 @@ function patchFunctionalComponent(
     nextElement.children = nextChildren;
   }
 
-  GLOBAL.eventBus.publish({ type: 'mounted', element: nextElement });
+  lifecycleEventBus.publish({ type: 'mounted', element: nextElement });
 }
 
 function patchText(prevElement: SimpElement, nextElement: SimpElement): void {
   const nextText = nextElement.children as string;
   const reference = (nextElement.reference = prevElement.reference);
 
-  GLOBAL.hostAdapter.attachElementToReference(nextElement, reference);
+  hostAdapter.attachElementToReference(nextElement, reference);
 
   if (nextText !== prevElement.children) {
-    GLOBAL.hostAdapter.setTextContent(reference!, nextText);
+    hostAdapter.setTextContent(reference!, nextText);
   }
 }
 
@@ -218,8 +219,8 @@ function patchPortal(prevElement: SimpElement, nextElement: SimpElement, context
   );
 
   if (prevContainer !== nextContainer && nextChildren != null) {
-    GLOBAL.hostAdapter.removeChild(prevContainer, nextChildren.reference);
-    GLOBAL.hostAdapter.appendChild(nextContainer, nextChildren.reference);
+    hostAdapter.removeChild(prevContainer, nextChildren.reference);
+    hostAdapter.appendChild(nextContainer, nextChildren.reference);
   }
 }
 
@@ -266,7 +267,7 @@ function patchChildren(
       }
     } else if (isPrimitive(nextChildren)) {
       unmountAllChildren(prevChildren as SimpElement[]);
-      GLOBAL.hostAdapter.setTextContent(parentReference, (nextChildren || '') as string);
+      hostAdapter.setTextContent(parentReference, (nextChildren || '') as string);
     } else {
       removeAllChildren(parentReference, parentElement, prevChildren as SimpElement[]);
       (nextChildren as SimpElement).parent = nextElement;
@@ -274,12 +275,12 @@ function patchChildren(
     }
   } else if (isPrimitive(prevChildren)) {
     if (Array.isArray(nextChildren)) {
-      GLOBAL.hostAdapter.clearNode(parentReference);
+      hostAdapter.clearNode(parentReference);
       mountArrayChildren(nextChildren as SimpElement[], parentReference, nextReference, contextMap, nextElement);
     } else if (isPrimitive(nextChildren)) {
       patchSingleTextChild(prevChildren as string, nextChildren as string, parentReference);
     } else {
-      GLOBAL.hostAdapter.clearNode(parentReference);
+      hostAdapter.clearNode(parentReference);
       nextChildren.parent = nextElement;
       mount(nextChildren, parentReference, nextReference, contextMap);
     }
@@ -294,7 +295,7 @@ function patchChildren(
       );
     } else if (isPrimitive(nextChildren)) {
       unmount(prevChildren);
-      GLOBAL.hostAdapter.setTextContent(parentReference, nextChildren as string);
+      hostAdapter.setTextContent(parentReference, nextChildren as string);
     } else {
       nextChildren.parent = nextElement;
       patch(prevChildren, nextChildren, parentReference, nextReference, contextMap);
@@ -322,7 +323,7 @@ function replaceOneElementWithMultipleElements(
 
 function patchSingleTextChild(prevChildren: string, nextChildren: string, parentReference: HostReference): void {
   if (prevChildren !== nextChildren) {
-    GLOBAL.hostAdapter.setTextContent(parentReference, nextChildren);
+    hostAdapter.setTextContent(parentReference, nextChildren);
   }
 }
 
@@ -409,7 +410,7 @@ export function patchKeyedChildren(
       const currentChild = nextChildren[i]!;
       const reference = nextChildren[i + 1]?.reference || nextReference;
       if (toMove[i - nextStart] !== -1) {
-        GLOBAL.hostAdapter.insertBefore(parentReference, currentChild.reference!, reference!);
+        hostAdapter.insertBefore(parentReference, currentChild.reference!, reference!);
       }
     }
   }

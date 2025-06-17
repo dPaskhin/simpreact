@@ -32,3 +32,9 @@ export interface HostAdapter<HostRef = any, HostTextRef = any> {
 
   attachElementToReference(element: SimpElement, reference: HostRef | HostTextRef): void;
 }
+
+export let hostAdapter: HostAdapter;
+
+export function provideHostAdapter(adapter: HostAdapter): void {
+  hostAdapter = adapter;
+}

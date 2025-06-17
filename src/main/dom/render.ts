@@ -1,10 +1,10 @@
 import type { HostReference } from '../core/internal';
-import { GLOBAL, mount, patch, type SimpElement } from '../core/internal';
+import { mount, patch, provideHostAdapter, type SimpElement } from '../core/internal';
 
 import type { Nullable } from '../shared';
 import { domAdapter } from './domAdapter';
 
-GLOBAL.hostAdapter = domAdapter;
+provideHostAdapter(domAdapter);
 
 export function render(element: SimpElement, parentReference: Nullable<HTMLElement>) {
   mount(element, parentReference as HostReference, null, null);
@@ -24,7 +24,7 @@ export function createRoot(container: Element | DocumentFragment): SimpRoot {
       if (currentRoot) {
         patch(currentRoot, element, container as HostReference, null, null);
       } else {
-        GLOBAL.hostAdapter.clearNode(container);
+        domAdapter.clearNode(container as HTMLElement);
         mount(element, container as HostReference, null, null);
       }
 

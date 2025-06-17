@@ -1,14 +1,15 @@
 import type { SimpElement } from './createElement';
 import type { Maybe } from '../shared';
 import type { HostReference } from './hostAdapter';
-import { GLOBAL } from './global';
+import { hostAdapter } from './hostAdapter';
 import { unmountRef } from './ref';
+import { lifecycleEventBus } from './lifecycleEventBus';
 
 export function unmount(element: SimpElement): void {
   if (element.flag === 'FC') {
     // FC element always has only one root element due to normalization.
     unmount(element.children as SimpElement);
-    GLOBAL.eventBus.publish({ type: 'unmounted', element });
+    lifecycleEventBus.publish({ type: 'unmounted', element });
     return;
   }
 
@@ -43,7 +44,7 @@ export function unmountAllChildren(children: SimpElement[]) {
 export function clearElementHostReference(element: Maybe<SimpElement>, parentHostReference: HostReference): void {
   while (element != null) {
     if (element.flag === 'HOST' || element.flag === 'TEXT') {
-      GLOBAL.hostAdapter.removeChild(parentHostReference, element.reference!);
+      hostAdapter.removeChild(parentHostReference, element.reference!);
       return;
     }
     const children = element.children;
@@ -76,7 +77,7 @@ export function removeAllChildren(hostReference: HostReference, element: SimpEle
   ) {
     clearElementHostReference(element, hostReference);
   } else {
-    GLOBAL.hostAdapter.clearNode(hostReference);
+    hostAdapter.clearNode(hostReference);
   }
 }
 

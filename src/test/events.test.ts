@@ -9,8 +9,17 @@ import {
 import { createElement } from '../main/core';
 import { createRoot } from '../main/dom';
 import { useEffect, useRef, useRerender } from '../main/hooks';
+import { provideHostAdapter } from '../main/core/hostAdapter';
+import { testHostAdapter } from './test-host-adapter';
+import { Element } from 'flyweight-dom';
+
+provideHostAdapter(testHostAdapter);
 
 describe('events', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+  });
+
   describe('isPropNameEventName', () => {
     it('should return true for names starting with "on"', () => {
       expect(isPropNameEventName('onClick')).toBe(true);
@@ -307,7 +316,7 @@ describe('events', () => {
         );
       });
 
-      createRoot(document.body).render(totalRoot);
+      createRoot(new Element('div') as any).render(totalRoot);
 
       expect(midHandler).toHaveBeenCalledOnce();
       expect(rootHandler).toHaveBeenCalledOnce();

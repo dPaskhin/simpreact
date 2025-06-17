@@ -1,14 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { HostReference, SimpContextMap, SimpElement } from '../main/core/internal';
-import { createContext, createElement, createTextElement, GLOBAL, mountConsumer } from '../main/core/internal';
-import { testHostAdapter } from './test-host-adapter2';
+import {
+  createContext,
+  createElement,
+  createTextElement,
+  lifecycleEventBus,
+  mountConsumer,
+  provideHostAdapter,
+} from '../main/core/internal';
+import { testHostAdapter } from './test-host-adapter';
 import { Element, Text } from 'flyweight-dom';
 import { mountFunctionalElement, mountHostElement, mountProvider, mountTextElement } from '../main/core/mounting';
+
+provideHostAdapter(testHostAdapter);
 
 describe('mounting', () => {
   beforeEach(() => {
     vi.resetAllMocks();
-    GLOBAL.hostAdapter = testHostAdapter;
   });
 
   describe('mountHostElement', () => {
@@ -97,13 +105,16 @@ describe('mounting', () => {
 
       parentRef.appendChild(nextRef);
 
-      const beforeRenderSpy = vi.spyOn(GLOBAL.eventBus, 'publish');
+      const listener = vi.fn();
+
+      lifecycleEventBus.subscribe(listener);
 
       mountFunctionalElement(element, parentRef as HostReference, nextRef as HostReference, contextMap);
 
-      expect(beforeRenderSpy).toHaveBeenCalledWith({ type: 'beforeRender', element });
-      expect(beforeRenderSpy).toHaveBeenCalledWith({ type: 'afterRender' });
-      expect(beforeRenderSpy).toHaveBeenCalledWith({ type: 'mounted', element });
+      expect(listener).toHaveBeenCalledWith({ type: 'beforeRender', element });
+      expect(listener).toHaveBeenCalledWith({ type: 'afterRender' });
+      expect(listener).toHaveBeenCalledWith({ type: 'mounted', element });
+      expect(listener).toHaveBeenCalledTimes(3);
       expect(testHostAdapter.insertOrAppend).toHaveBeenCalledWith(
         parentRef,
         (element.children as SimpElement).reference,

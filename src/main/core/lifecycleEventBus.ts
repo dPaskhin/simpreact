@@ -1,4 +1,3 @@
-import type { HostAdapter } from './hostAdapter';
 import type { SimpElement } from './createElement';
 import { EventBus } from '../shared';
 
@@ -8,12 +7,10 @@ export type LifecycleEvent =
   | { type: 'mounted'; element: SimpElement }
   | { type: 'unmounted'; element: SimpElement };
 
-interface Global {
-  hostAdapter: HostAdapter;
-  eventBus: EventBus<LifecycleEvent>;
-}
+export type LifecycleEventBus = EventBus<LifecycleEvent>;
 
-export const GLOBAL: Global = {
-  hostAdapter: null!,
-  eventBus: new EventBus<LifecycleEvent>(),
-};
+export let lifecycleEventBus = new EventBus<LifecycleEvent>();
+
+export function provideLifecycleEventBus(eventBus: LifecycleEventBus): void {
+  lifecycleEventBus = eventBus;
+}

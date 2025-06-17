@@ -1,11 +1,11 @@
-import type { Many, Maybe, Nullable } from '../shared';
-import { EMPTY_MAP, EMPTY_OBJECT } from '../shared';
-import { GLOBAL } from './global';
+import { EMPTY_MAP, EMPTY_OBJECT, Many, Maybe, Nullable } from '../shared';
 import type { HostReference } from './hostAdapter';
+import { hostAdapter } from './hostAdapter';
 import type { FC, SimpElement } from './createElement';
 import { normalizeRoot } from './createElement';
 import type { SimpContext, SimpContextMap } from './context';
 import { applyRef } from './ref';
+import { lifecycleEventBus } from './lifecycleEventBus';
 
 export function mount(
   element: SimpElement,
@@ -35,12 +35,12 @@ export function mountTextElement(
   parentReference: Nullable<HostReference>,
   nextReference: Nullable<HostReference>
 ): void {
-  const reference = (element.reference ||= GLOBAL.hostAdapter.createTextReference(element.children as string));
+  const reference = (element.reference ||= hostAdapter.createTextReference(element.children as string));
 
-  GLOBAL.hostAdapter.attachElementToReference(element, reference);
+  hostAdapter.attachElementToReference(element, reference);
 
   if (parentReference != null) {
-    GLOBAL.hostAdapter.insertOrAppend(parentReference, reference, nextReference);
+    hostAdapter.insertOrAppend(parentReference, reference, nextReference);
   }
 }
 
@@ -52,15 +52,15 @@ export function mountHostElement(
 ) {
   const props = element.props;
   const className = element.className;
-  const hostReference = (element.reference = GLOBAL.hostAdapter.createReference(element.type as string));
+  const hostReference = (element.reference = hostAdapter.createReference(element.type as string));
 
-  GLOBAL.hostAdapter.attachElementToReference(element, hostReference);
+  hostAdapter.attachElementToReference(element, hostReference);
 
   // HOST element always has Maybe<Many<SimpElement>> children due to normalization process.
   const children = element.children as Maybe<Many<SimpElement>>;
 
   if (className != null && className !== '') {
-    GLOBAL.hostAdapter.setClassname(hostReference, className);
+    hostAdapter.setClassname(hostReference, className);
   }
 
   if (Array.isArray(children)) {
@@ -71,11 +71,11 @@ export function mountHostElement(
   }
 
   if (parentReference != null) {
-    GLOBAL.hostAdapter.insertOrAppend(parentReference, hostReference, nextReference);
+    hostAdapter.insertOrAppend(parentReference, hostReference, nextReference);
   }
 
   if (props != null) {
-    GLOBAL.hostAdapter.mountProps(hostReference, props);
+    hostAdapter.mountProps(hostReference, props);
   }
 
   applyRef(element);
@@ -94,16 +94,16 @@ export function mountFunctionalElement(
     element.contextMap = contextMap;
   }
 
-  GLOBAL.eventBus.publish({ type: 'beforeRender', element });
+  lifecycleEventBus.publish({ type: 'beforeRender', element });
   children = normalizeRoot(type(element.props || EMPTY_OBJECT));
-  GLOBAL.eventBus.publish({ type: 'afterRender' });
+  lifecycleEventBus.publish({ type: 'afterRender' });
 
   if (children != null) {
     children.parent = element;
     mount((element.children = children), parentReference, nextReference, contextMap);
   }
 
-  GLOBAL.eventBus.publish({ type: 'mounted', element });
+  lifecycleEventBus.publish({ type: 'mounted', element });
 }
 
 export function mountFragment(
