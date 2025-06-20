@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Element, Text } from 'flyweight-dom';
+
 import type { HostReference, SimpContextMap, SimpElement } from '../main/core/internal';
 import {
   createContext,
@@ -6,11 +8,13 @@ import {
   createTextElement,
   lifecycleEventBus,
   mountConsumer,
+  mountFunctionalElement,
+  mountHostElement,
+  mountProvider,
+  mountTextElement,
   provideHostAdapter,
 } from '../main/core/internal';
 import { testHostAdapter } from './test-host-adapter';
-import { Element, Text } from 'flyweight-dom';
-import { mountFunctionalElement, mountHostElement, mountProvider, mountTextElement } from '../main/core/mounting';
 
 provideHostAdapter(testHostAdapter);
 

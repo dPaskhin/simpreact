@@ -1,5 +1,6 @@
+import type { Maybe } from '@simpreact/shared';
+
 import type { SimpElement } from './createElement';
-import type { Maybe } from '../shared';
 import type { HostReference } from './hostAdapter';
 import { hostAdapter } from './hostAdapter';
 import { unmountRef } from './ref';

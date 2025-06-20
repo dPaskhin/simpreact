@@ -1,6 +1,6 @@
-import type { RefObject, SimpContext } from '../core';
-import { lifecycleEventBus, rerender, type SimpElement } from '../core/internal';
-import type { Maybe, Nullable, VoidFunction } from '../shared';
+import type { RefObject, SimpContext, SimpElement } from '@simpreact/internal';
+import { lifecycleEventBus, rerender } from '@simpreact/internal';
+import type { Maybe, Nullable, VoidFunction } from '@simpreact/shared';
 
 type Cleanup = VoidFunction;
 type Effect = () => void | Cleanup;
@@ -61,10 +61,6 @@ lifecycleEventBus.subscribe(event => {
   }
 });
 
-export function useRef<T>(initialValue: T): RefObject<T>;
-export function useRef<T>(initialValue: T | null): RefObject<T | null>;
-export function useRef<T>(initialValue: T | undefined): RefObject<T | undefined>;
-
 export function useRef<T>(initialValue: Maybe<T>): RefObject<T> {
   return (currentElement!.store.hookStates[currentIndex++] ||= { current: initialValue }) as RefHookState<T>;
 }
@@ -100,7 +96,7 @@ export function useContext<T>(context: SimpContext<T>): T {
   return currentElement!.contextMap?.get(context) ?? context.defaultValue;
 }
 
-function areDepsEqual(nextDeps: DependencyList | undefined, prevDeps: DependencyList | undefined): boolean {
+export function areDepsEqual(nextDeps: DependencyList | undefined, prevDeps: DependencyList | undefined): boolean {
   if (nextDeps == null || prevDeps == null || nextDeps.length !== prevDeps.length) {
     return false;
   }
@@ -111,3 +107,7 @@ function areDepsEqual(nextDeps: DependencyList | undefined, prevDeps: Dependency
   }
   return true;
 }
+
+export default { useRef, useRerender, useEffect, useContext, areDepsEqual };
+
+export type * from './public';

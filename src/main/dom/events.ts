@@ -1,5 +1,6 @@
-import type { SimpElement } from '../core';
-import type { Dict, Nullable } from '../shared';
+import type { Dict, Nullable } from '@simpreact/shared';
+import type { SimpElement } from '@simpreact/internal';
+
 import { getElementFromEventTarget } from './attach-element-to-dom';
 
 const eventNameByTypes: Dict<string> = {

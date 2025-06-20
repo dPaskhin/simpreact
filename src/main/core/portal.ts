@@ -1,7 +1,7 @@
-import type { SimpElement, SimpNode } from '../core';
+import type { SimpElement, SimpNode } from './createElement';
 import { normalizeRoot } from './createElement';
 
-export function createPortal<HostRef = any>(children: SimpNode, container: HostRef): SimpElement {
+export function createPortal(children: SimpNode, container: any): SimpElement {
   const element: SimpElement = { flag: 'PORTAL', parent: null };
 
   if ((children = normalizeRoot(children))) {

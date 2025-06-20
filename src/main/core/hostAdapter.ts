@@ -1,4 +1,5 @@
-import type { Dict, Maybe, Nullable } from '../shared';
+import type { Dict, Maybe, Nullable } from '@simpreact/shared';
+
 import type { SimpElement } from './createElement';
 
 export type HostReference = never;

@@ -11,7 +11,15 @@
     "target": "ESNext",
     "module": "ESNext",
     "outDir": "./lib",
-    "erasableSyntaxOnly": true
+    "erasableSyntaxOnly": true,
+    "paths": {
+      "@simpreact/core": ["./src/main/core"],
+      "@simpreact/internal": ["./src/main/core/internal.ts"],
+      "@simpreact/dom": ["./src/main/dom"],
+      "@simpreact/hooks": ["./src/main/hooks"],
+      "@simpreact/jsx-runtime": ["./src/main/hooks"],
+      "@simpreact/shared": ["./src/main/shared"]
+    }
   },
   "include": ["./src/**/*"]
 }

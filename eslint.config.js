@@ -21,6 +21,7 @@ export default [
     rules: {
       ...eslintPluginTs.configs.recommended.rules,
       '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-empty-object-type': 'warn',
       '@typescript-eslint/consistent-type-imports': [
         'error',
         {

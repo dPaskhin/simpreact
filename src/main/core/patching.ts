@@ -1,7 +1,8 @@
+import type { Nullable } from '@simpreact/shared';
+import { EMPTY_MAP, EMPTY_OBJECT, isPrimitive } from '@simpreact/shared';
+
 import type { FC, Key, SimpElement, SimpElementFlag, SimpNode } from './createElement';
 import { normalizeRoot } from './createElement';
-import type { Nullable } from '../shared';
-import { EMPTY_MAP, EMPTY_OBJECT, isPrimitive } from '../shared';
 import type { HostReference } from './hostAdapter';
 import { hostAdapter } from './hostAdapter';
 import { clearElementHostReference, remove, removeAllChildren, unmount, unmountAllChildren } from './unmounting';

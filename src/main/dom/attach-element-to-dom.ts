@@ -1,5 +1,5 @@
-import type { Nullable } from '../shared';
-import type { SimpElement } from '../core';
+import type { Nullable } from '@simpreact/shared';
+import type { SimpElement } from '@simpreact/internal';
 
 const elementPropertyName = '__SIMP_ELEMENT__';
 

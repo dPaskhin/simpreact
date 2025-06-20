@@ -1,4 +1,4 @@
-import type { Primitive } from './types';
+import type { Primitive } from './public';
 
 export function isPrimitive(value: unknown): value is Primitive {
   return (

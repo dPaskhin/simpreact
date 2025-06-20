@@ -1,9 +1,8 @@
-import type { FunctionComponent, SimpElement } from '../core';
-import { createElement, Fragment } from '../core';
-import type { Maybe } from '../shared';
-import type { Key, Props } from '../core/createElement';
+import type { FunctionComponent, Key, SimpElement } from '@simpreact/internal';
+import { createElement, Fragment } from '@simpreact/internal';
+import type { Maybe } from '@simpreact/shared';
 
-export function jsx(type: string | FunctionComponent<any>, props?: Maybe<Props>, key?: Maybe<Key>): SimpElement {
+export function jsx(type: string | FunctionComponent, props?: any, key?: Maybe<Key>): SimpElement {
   let _key: Maybe<Key>;
 
   if (key != null) {
@@ -23,3 +22,5 @@ export function jsx(type: string | FunctionComponent<any>, props?: Maybe<Props>,
 
 export { jsx as jsxs, jsx as jsxDEV };
 export { Fragment };
+
+export type * from './public';

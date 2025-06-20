@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Element } from 'flyweight-dom';
+
 import {
   handleDelegatedCaptureEvent,
   handleDelegatedEvent,
@@ -6,12 +8,10 @@ import {
   patchDelegatedEvent,
   patchNormalEvent,
 } from '../main/dom/events';
-import { createElement } from '../main/core';
+import { createElement, provideHostAdapter } from '../main/core/internal';
 import { createRoot } from '../main/dom';
 import { useEffect, useRef, useRerender } from '../main/hooks';
-import { provideHostAdapter } from '../main/core/hostAdapter';
 import { testHostAdapter } from './test-host-adapter';
-import { Element } from 'flyweight-dom';
 
 provideHostAdapter(testHostAdapter);
 

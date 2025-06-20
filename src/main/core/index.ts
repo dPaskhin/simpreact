@@ -1,5 +1,10 @@
-export { type FC, type SimpElement, createElement, type SimpNode, type FunctionComponent } from './createElement';
-export { Fragment } from './fragment';
-export { type SimpContext, createContext } from './context';
-export type { Ref, RefCallback, RefObject } from './ref';
-export { createPortal } from './portal';
+import { createElement } from './createElement';
+import { Fragment } from './fragment';
+import { createContext } from './context';
+import { createPortal } from './portal';
+
+export { createElement, Fragment, createContext, createPortal };
+
+export default { createElement, Fragment, createContext, createPortal };
+
+export type * from './public';

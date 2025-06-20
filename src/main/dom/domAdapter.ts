@@ -1,5 +1,6 @@
-import type { Dict } from '../shared';
-import type { HostAdapter } from '../core/internal';
+import type { Dict } from '@simpreact/shared';
+import type { HostAdapter } from '@simpreact/internal';
+
 import { isPropNameEventName, patchEvent } from './events';
 import { attachElementToDom } from './attach-element-to-dom';
 

@@ -1,5 +1,6 @@
+import { EventBus } from '@simpreact/shared';
+
 import type { SimpElement } from './createElement';
-import { EventBus } from '../shared';
 
 export type LifecycleEvent =
   | { type: 'beforeRender'; element: SimpElement }

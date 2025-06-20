@@ -1,7 +1,7 @@
-import type { HostReference } from '../core/internal';
-import { mount, patch, provideHostAdapter, type SimpElement } from '../core/internal';
+import type { HostReference } from '@simpreact/internal';
+import { mount, patch, provideHostAdapter, type SimpElement } from '@simpreact/internal';
+import type { Nullable } from '@simpreact/shared';
 
-import type { Nullable } from '../shared';
 import { domAdapter } from './domAdapter';
 
 provideHostAdapter(domAdapter);

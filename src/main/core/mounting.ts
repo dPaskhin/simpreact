@@ -1,4 +1,6 @@
-import { EMPTY_MAP, EMPTY_OBJECT, Many, Maybe, Nullable } from '../shared';
+import type { Many, Maybe, Nullable } from '@simpreact/shared';
+import { EMPTY_MAP, EMPTY_OBJECT } from '@simpreact/shared';
+
 import type { HostReference } from './hostAdapter';
 import { hostAdapter } from './hostAdapter';
 import type { FC, SimpElement } from './createElement';

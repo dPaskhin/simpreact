@@ -1,5 +1,6 @@
-import type { Many, Maybe, Nullable, Primitive } from '../shared';
-import { isPrimitive } from '../shared';
+import type { Many, Maybe, Nullable, Primitive } from '@simpreact/shared';
+import { isPrimitive } from '@simpreact/shared';
+
 import { Fragment } from './fragment';
 import type { HostReference } from './hostAdapter';
 import type { SimpContextMap } from './context';
@@ -7,28 +8,26 @@ import { isConsumer, isProvider } from './context';
 
 export type SimpNode = SimpElement | string | number | bigint | Array<SimpNode> | boolean | null | undefined;
 
-export type Props = any;
-
 export type Key = string | number | bigint;
 
-export interface FunctionComponent<P = Props> {
-  (props: P): SimpNode;
+export interface FunctionComponent {
+  (props: any): SimpNode;
 }
 
-export type FC<P = Props> = FunctionComponent<P>;
+export type FC = FunctionComponent;
 
 export type SimpElementFlag = 'FC' | 'HOST' | 'TEXT' | 'FRAGMENT' | 'PROVIDER' | 'CONSUMER' | 'PORTAL';
 
-export interface SimpElement<T = Props> {
+export interface SimpElement {
   flag: SimpElementFlag;
 
   parent: Nullable<SimpElement>;
 
   key?: Maybe<Key>;
 
-  type?: Maybe<string | FunctionComponent<T>>;
+  type?: Maybe<string | FunctionComponent>;
 
-  props?: Maybe<T>;
+  props?: any;
 
   children?: Maybe<SimpNode>;
 
@@ -36,19 +35,15 @@ export interface SimpElement<T = Props> {
 
   reference?: Maybe<HostReference>;
 
-  store?: unknown;
+  store?: any;
 
   contextMap?: Maybe<SimpContextMap>;
 
   ref?: any;
 }
 
-export function createElement<P = Props>(
-  type: string | FunctionComponent<Readonly<P>>,
-  props?: Maybe<P>,
-  ...children: SimpNode[]
-): SimpElement<P> {
-  let newProps: Props;
+export function createElement(type: string | FunctionComponent, props?: any, ...children: SimpNode[]): SimpElement {
+  let newProps: any;
   let className: Maybe<string>;
   let key: Maybe<Key>;
   let definedChildren: SimpNode;

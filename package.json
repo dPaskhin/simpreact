@@ -8,28 +8,32 @@
   "types": "./core/index.d.ts",
   "exports": {
     ".": {
-      "types": "./core/index.d.ts",
-      "import": "./core/index.js"
+      "import": "./core/index.js",
+      "types": "./core/index.d.ts"
+    },
+    "./internal": {
+      "import": "./core/internal.js",
+      "types": "./core/internal.d.ts"
     },
     "./jsx-runtime": {
-      "types": "./jsx-runtime/index.d.ts",
-      "import": "./jsx-runtime/index.js"
+      "import": "./jsx-runtime/index.js",
+      "types": "./jsx-runtime/index.d.ts"
     },
     "./jsx-dev-runtime": {
-      "types": "./jsx-runtime/index.d.ts",
-      "import": "./jsx-runtime/index.js"
+      "import": "./jsx-runtime/index.js",
+      "types": "./jsx-runtime/index.d.ts"
     },
     "./hooks": {
-      "types": "./hooks/index.d.ts",
-      "import": "./hooks/index.js"
+      "import": "./hooks/index.js",
+      "types": "./hooks/index.d.ts"
     },
     "./dom": {
-      "types": "./dom/index.d.ts",
-      "import": "./dom/index.js"
+      "import": "./dom/index.js",
+      "types": "./dom/index.d.ts"
     },
     "./shared": {
-      "types": "./shared/index.d.ts",
-      "import": "./shared/index.js"
+      "import": "./shared/index.js",
+      "types": "./shared/index.d.ts"
     }
   },
   "bugs": {
@@ -43,7 +47,7 @@
   "license": "MIT",
   "author": "Dmitrii Paskhin <d.pasxin@gmail.com>",
   "scripts": {
-    "build": "tsc --project tsconfig.build.json && cp package.json README.md LICENSE.txt lib/ && cd lib && npm pkg delete scripts devDependencies",
+    "build": "npm run clean && tsc --project tsconfig.build.json && node move-types.mjs && tsc-alias && cp package.json README.md LICENSE.txt lib/ && cd lib && npm pkg delete scripts devDependencies type",
     "test": "vitest --coverage",
     "lint": "eslint . --ext .ts,.js,.jsx,.tsx",
     "format": "prettier --write .",
@@ -61,8 +65,12 @@
     "jsdom": "^26.1.0",
     "prettier": "^3.5.3",
     "rimraf": "^6.0.1",
+    "tsc-alias": "^1.8.16",
     "typescript": "^5.8.3",
     "vite": "^6.3.5",
     "vitest": "^3.1.3"
+  },
+  "dependencies": {
+    "csstype": "^3.1.3"
   }
 }

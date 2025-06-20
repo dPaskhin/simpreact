@@ -1,3 +1,5 @@
+import type { VoidFunction } from '@simpreact/shared';
+
 import type { SimpElement } from './createElement';
 
 interface RefSimpElement extends SimpElement {

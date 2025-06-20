@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import type { FC, SimpElement } from '../main/core';
-import { createContext, createElement, Fragment } from '../main/core';
-import { createTextElement, normalizeChildren, normalizeRoot } from '../main/core/createElement';
+
+import type { FC, SimpElement } from '../main/core/internal';
+import {
+  createContext,
+  createElement,
+  createTextElement,
+  Fragment,
+  normalizeChildren,
+  normalizeRoot,
+} from '../main/core/internal';
 
 function createMockHostElement(): SimpElement {
   return createElement('div', null, '123');
@@ -288,8 +295,6 @@ describe('createElement and utils', () => {
     it('creates a Provider element', () => {
       const TestContext = createContext('DEFAULT_VALUE');
 
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
       expect(createElement(TestContext.Provider, { value: 'PROVIDED_VALUE' }, 12)).toEqual({
         flag: 'PROVIDER',
         type: TestContext.Provider,
@@ -318,8 +323,6 @@ describe('createElement and utils', () => {
         props: { value: 'PROVIDED_VALUE' },
         parent: null,
       });
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
       expect(createElement(TestContext.Provider, { key: '123', value: 'PROVIDED_VALUE' }, '123')).toEqual({
         flag: 'PROVIDER',
         type: TestContext.Provider,
@@ -328,8 +331,6 @@ describe('createElement and utils', () => {
         key: '123',
         parent: null,
       });
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
       expect(createElement(TestContext.Provider, { value: 'PROVIDED_VALUE' })).toEqual({
         flag: 'PROVIDER',
         type: TestContext.Provider,

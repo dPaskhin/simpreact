@@ -1,18 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Element } from 'flyweight-dom';
-import { mount } from '../main/core/mounting';
-import type { SimpElement } from '../main/core';
-import { createElement, Fragment } from '../main/core';
-import { patch } from '../main/core/patching';
-import type { HostReference } from '../main/core/hostAdapter';
-import { provideHostAdapter } from '../main/core/hostAdapter';
-import { lifecycleEventBus } from '../main/core/lifecycleEventBus';
+
+import type { HostReference, SimpElement } from '../main/core/internal';
+import { createElement, Fragment, lifecycleEventBus, mount, patch, provideHostAdapter } from '../main/core/internal';
 import { testHostAdapter } from './test-host-adapter';
 
 provideHostAdapter(testHostAdapter);
 
 function createFragmentWithChildren(...elements: SimpElement[]): SimpElement {
-  return createElement<any>(Fragment, null!, ...elements);
+  return createElement(Fragment, null!, ...elements);
 }
 
 describe('patching', () => {
