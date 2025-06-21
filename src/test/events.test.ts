@@ -1,19 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Element } from 'flyweight-dom';
 
-import {
-  handleDelegatedCaptureEvent,
-  handleDelegatedEvent,
-  isPropNameEventName,
-  patchDelegatedEvent,
-  patchNormalEvent,
-} from '../main/dom/events';
+import { dispatchDelegatedEvent, isPropNameEventName, patchDelegatedEvent, patchNormalEvent } from '../main/dom/events';
 import { createElement, provideHostAdapter } from '@simpreact/internal';
 import { createRoot } from '@simpreact/dom';
 import { useEffect, useRef, useRerender } from '@simpreact/hooks';
 import { testHostAdapter } from './test-host-adapter';
 
 provideHostAdapter(testHostAdapter);
+
+const createEventWithTarget = (simpElement: any, type: string) => {
+  const nativeEvent = new Event(type);
+  Object.defineProperty(nativeEvent, 'target', { value: { __SIMP_ELEMENT__: simpElement }, writable: false });
+  return nativeEvent;
+};
 
 describe('events', () => {
   beforeEach(() => {
@@ -38,7 +38,7 @@ describe('events', () => {
       const dom = document.createElement('div');
       const listener = vi.fn();
 
-      patchNormalEvent('onScroll', null, listener, dom);
+      patchNormalEvent('scroll', null, listener, dom, false);
       dom.dispatchEvent(new Event('scroll'));
 
       expect(listener).toHaveBeenCalledOnce();
@@ -49,7 +49,7 @@ describe('events', () => {
       const listener = vi.fn();
 
       dom.addEventListener('scroll', listener);
-      patchNormalEvent('onScroll', listener, null, dom);
+      patchNormalEvent('scroll', listener, null, dom, false);
       dom.dispatchEvent(new Event('scroll'));
 
       expect(listener).not.toHaveBeenCalled();
@@ -62,7 +62,7 @@ describe('events', () => {
 
       dom.addEventListener('scroll', oldListener);
 
-      patchNormalEvent('onScroll', oldListener, newListener, dom);
+      patchNormalEvent('scroll', oldListener, newListener, dom, false);
       dom.dispatchEvent(new Event('scroll'));
 
       expect(oldListener).not.toHaveBeenCalled();
@@ -70,12 +70,11 @@ describe('events', () => {
     });
   });
 
-  describe('patchDelegatedEvent (bubble phase)', () => {
+  describe('patchDelegatedEvent', () => {
     const eventType = 'click';
-    const propName = 'onClick';
     const handler = vi.fn();
 
-    const eventHandlerCounts = { onClick: { capture: 0, bubble: 0 } };
+    const eventHandlerCounts = { click: 0 };
 
     beforeEach(() => {
       vi.spyOn(document, 'addEventListener');
@@ -84,99 +83,43 @@ describe('events', () => {
 
     afterEach(() => {
       vi.restoreAllMocks();
-      eventHandlerCounts.onClick.bubble = 0;
+      eventHandlerCounts.click = 0;
     });
 
-    it('adds event listener for bubble phase if handler is provided', () => {
-      patchDelegatedEvent(propName, handler, eventHandlerCounts);
+    it('adds event listener if handler is provided', () => {
+      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any);
       expect(document.addEventListener).toHaveBeenCalledWith(eventType, expect.any(Function));
     });
 
     it('does not add duplicate event listener if already added', () => {
-      patchDelegatedEvent(propName, handler, eventHandlerCounts);
-      patchDelegatedEvent(propName, handler, eventHandlerCounts);
-      patchDelegatedEvent(propName, handler, eventHandlerCounts);
-      patchDelegatedEvent(propName, handler, eventHandlerCounts);
-      patchDelegatedEvent(propName, handler, eventHandlerCounts);
+      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any);
+      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any);
+      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any);
+      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any);
+      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any);
       expect(document.addEventListener).toHaveBeenCalledTimes(1);
-      expect(eventHandlerCounts.onClick.bubble).toBe(5);
+      expect(eventHandlerCounts.click).toBe(5);
     });
 
     it('removes event listener when handler is removed and count reaches zero', () => {
-      patchDelegatedEvent(propName, handler, eventHandlerCounts);
-      patchDelegatedEvent(propName, null, eventHandlerCounts);
+      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any);
+      patchDelegatedEvent(eventType, null, eventHandlerCounts as any);
       expect(document.removeEventListener).toHaveBeenCalledWith(eventType, expect.any(Function));
     });
 
     it('does not throw if handler is null initially (no-op)', () => {
-      expect(() => patchDelegatedEvent(propName, null, eventHandlerCounts)).not.toThrow();
-      expect(eventHandlerCounts.onClick.bubble).toBe(0);
-    });
-
-    it('throws if eventHandlerCounts[name] is undefined', () => {
-      expect(() => patchDelegatedEvent('onNonexistentEvent', handler, eventHandlerCounts)).toThrow();
+      expect(() => patchDelegatedEvent(eventType, null, eventHandlerCounts as any)).not.toThrow();
+      expect(eventHandlerCounts.click).toBe(0);
     });
   });
 
-  describe('patchDelegatedEvent (capture phase)', () => {
-    const eventType = 'click';
-    const propName = 'onClickCapture';
-    const handler = vi.fn();
-
-    const eventHandlerCounts = { onClick: { capture: 0, bubble: 0 } };
-
-    beforeEach(() => {
-      vi.spyOn(document, 'addEventListener');
-      vi.spyOn(document, 'removeEventListener');
-    });
-
-    afterEach(() => {
-      vi.restoreAllMocks();
-      eventHandlerCounts.onClick.capture = 0;
-    });
-
-    it('adds event listener for capture phase if handler is provided', () => {
-      patchDelegatedEvent(propName, handler, eventHandlerCounts);
-      expect(document.addEventListener).toHaveBeenCalledWith(eventType, expect.any(Function));
-    });
-
-    it('does not add duplicate capture listeners if already added', () => {
-      patchDelegatedEvent(propName, handler, eventHandlerCounts);
-      patchDelegatedEvent(propName, handler, eventHandlerCounts);
-      patchDelegatedEvent(propName, handler, eventHandlerCounts);
-      expect(document.addEventListener).toHaveBeenCalledTimes(1);
-      expect(eventHandlerCounts.onClick.capture).toBe(3);
-    });
-
-    it('removes event listener when handler is removed and count reaches zero', () => {
-      patchDelegatedEvent(propName, handler, eventHandlerCounts);
-      patchDelegatedEvent(propName, null, eventHandlerCounts);
-      expect(document.removeEventListener).toHaveBeenCalledWith(eventType, expect.any(Function));
-    });
-
-    it('does not throw if capture handler is null initially (no-op)', () => {
-      expect(() => patchDelegatedEvent(propName, null, eventHandlerCounts)).not.toThrow();
-      expect(eventHandlerCounts.onClick.capture).toBe(0);
-    });
-
-    it('throws if capture eventHandlerCounts[name] is undefined', () => {
-      expect(() => patchDelegatedEvent('onNonexistentCapture', handler, eventHandlerCounts)).toThrow();
-    });
-  });
-
-  describe('handleDelegatedEvent', () => {
-    const createEventWithTarget = (simpElement: any, type: string) => {
-      const nativeEvent = new Event(type);
-      Object.defineProperty(nativeEvent, 'target', { value: { __SIMP_ELEMENT__: simpElement }, writable: false });
-      return nativeEvent;
-    };
-
+  describe('dispatchDelegatedEvent (bubble phase)', () => {
     it('calls handler on target element', () => {
       const handler = vi.fn();
       const simpElement = createElement('div', { onClick: handler });
       const event = createEventWithTarget(simpElement, 'click');
 
-      handleDelegatedEvent(event);
+      dispatchDelegatedEvent(event);
       expect(handler).toHaveBeenCalledOnce();
     });
 
@@ -187,7 +130,7 @@ describe('events', () => {
       child.parent = parent;
       const event = createEventWithTarget(child, 'click');
 
-      handleDelegatedEvent(event);
+      dispatchDelegatedEvent(event);
       expect(parentHandler).toHaveBeenCalledOnce();
     });
 
@@ -201,46 +144,25 @@ describe('events', () => {
       leaf.parent = mid;
       const event = createEventWithTarget(leaf, 'click');
 
-      handleDelegatedEvent(event);
+      dispatchDelegatedEvent(event);
       expect(midHandler).toHaveBeenCalledOnce();
       expect(rootHandler).toHaveBeenCalledOnce();
-    });
-
-    it('stops propagation when stopPropagation is called', () => {
-      const rootHandler = vi.fn();
-      const midHandler = vi.fn(e => e.stopPropagation());
-      const root = createElement('root', { onClick: rootHandler });
-      const mid = createElement('mid', { onClick: midHandler });
-      mid.parent = root;
-      const leaf = createElement('leaf');
-      leaf.parent = mid;
-      const event = createEventWithTarget(leaf, 'click');
-
-      handleDelegatedEvent(event);
-      expect(midHandler).toHaveBeenCalledOnce();
-      expect(rootHandler).not.toHaveBeenCalled();
     });
 
     it('does nothing if no SimpElement is found', () => {
       const event = new Event('click');
       Object.defineProperty(event, 'target', { value: {}, writable: false });
-      expect(() => handleDelegatedEvent(event)).not.toThrow();
+      expect(() => dispatchDelegatedEvent(event)).not.toThrow();
     });
   });
 
-  describe('handleDelegatedCaptureEvent', () => {
-    const createEventWithTarget = (simpElement: any, type: string) => {
-      const nativeEvent = new Event(type);
-      Object.defineProperty(nativeEvent, 'target', { value: { __SIMP_ELEMENT__: simpElement }, writable: false });
-      return nativeEvent;
-    };
-
+  describe('dispatchDelegatedEvent (capture phase)', () => {
     it('calls capture handler on target element', () => {
       const handler = vi.fn();
       const simpElement = createElement('div', { onClickCapture: handler });
       const event = createEventWithTarget(simpElement, 'click');
 
-      handleDelegatedCaptureEvent(event);
+      dispatchDelegatedEvent(event);
       expect(handler).toHaveBeenCalledOnce();
     });
 
@@ -254,9 +176,32 @@ describe('events', () => {
       leaf.parent = mid;
       const event = createEventWithTarget(leaf, 'click');
 
-      handleDelegatedCaptureEvent(event);
+      dispatchDelegatedEvent(event);
       expect(rootHandler).toHaveBeenCalledOnce();
       expect(midHandler).toHaveBeenCalledOnce();
+    });
+
+    it('does nothing if no SimpElement is found', () => {
+      const event = new Event('click');
+      Object.defineProperty(event, 'target', { value: {}, writable: false });
+      expect(() => dispatchDelegatedEvent(event)).not.toThrow();
+    });
+  });
+
+  describe('dispatchDelegatedEvent (stop propagation)', () => {
+    it('stops propagation when stopPropagation is called in bubble phase', () => {
+      const rootHandler = vi.fn();
+      const midHandler = vi.fn(e => e.stopPropagation());
+      const root = createElement('root', { onClick: rootHandler });
+      const mid = createElement('mid', { onClick: midHandler });
+      mid.parent = root;
+      const leaf = createElement('leaf');
+      leaf.parent = mid;
+      const event = createEventWithTarget(leaf, 'click');
+
+      dispatchDelegatedEvent(event);
+      expect(midHandler).toHaveBeenCalledOnce();
+      expect(rootHandler).not.toHaveBeenCalled();
     });
 
     it('stops capture when stopPropagation is called', () => {
@@ -269,15 +214,28 @@ describe('events', () => {
       leaf.parent = mid;
       const event = createEventWithTarget(leaf, 'click');
 
-      handleDelegatedCaptureEvent(event);
+      dispatchDelegatedEvent(event);
       expect(midHandler).toHaveBeenCalledOnce();
       expect(leafHandler).not.toHaveBeenCalled();
     });
 
-    it('does nothing if no SimpElement is found', () => {
-      const event = new Event('click');
-      Object.defineProperty(event, 'target', { value: {}, writable: false });
-      expect(() => handleDelegatedCaptureEvent(event)).not.toThrow();
+    it('stops capture when stopPropagation is called in capture phase with bubble handlers', () => {
+      const rootBubbleHandler = vi.fn();
+      const midCaptureHandler = vi.fn(e => e.stopPropagation());
+      const leafCaptureHandler = vi.fn();
+      const leafBubbleHandler = vi.fn();
+      const root = createElement('root', { onClick: rootBubbleHandler });
+      const mid = createElement('mid', { onClickCapture: midCaptureHandler });
+      mid.parent = root;
+      const leaf = createElement('leaf', { onClickCapture: leafCaptureHandler, onClick: leafBubbleHandler });
+      leaf.parent = mid;
+      const event = createEventWithTarget(leaf, 'click');
+
+      dispatchDelegatedEvent(event);
+      expect(midCaptureHandler).toHaveBeenCalledOnce();
+      expect(leafCaptureHandler).not.toHaveBeenCalled();
+      expect(rootBubbleHandler).not.toHaveBeenCalled();
+      expect(leafBubbleHandler).not.toHaveBeenCalled();
     });
   });
 
@@ -296,7 +254,7 @@ describe('events', () => {
         useEffect(() => {
           const nativeEvent = new Event('click');
           Object.defineProperty(nativeEvent, 'target', { value: leafRef.current, writable: false });
-          handleDelegatedEvent(nativeEvent);
+          dispatchDelegatedEvent(nativeEvent);
         }, []);
 
         return createElement(

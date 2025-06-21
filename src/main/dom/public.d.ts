@@ -235,11 +235,13 @@ export type CompositionEventHandler = NativeEventHandler<CompositionEvent>;
 export type DragEventHandler = NativeEventHandler<DragEvent>;
 export type FocusEventHandler = NativeEventHandler<FocusEvent>;
 export type FocusInOutEventHandler<T = Element> = EventHandler<SyntheticEvent<T>>;
-export type FormEventHandler = NativeEventHandler;
 export type KeyboardEventHandler<T = Element> = EventHandler<SyntheticEvent<T, KeyboardEvent>>;
 export type MouseEventHandler<T = Element> = EventHandler<SyntheticEvent<T, MouseEvent>>;
+export type NativeMouseEventHandler = NativeEventHandler<MouseEvent>;
 export type TouchEventHandler<T = Element> = EventHandler<SyntheticEvent<T, TouchEvent>>;
+export type NativeTouchEventHandler = NativeEventHandler<TouchEvent>;
 export type PointerEventHandler<T = Element> = EventHandler<SyntheticEvent<T, PointerEvent>>;
+export type NativePointerEventHandler = NativeEventHandler<PointerEvent>;
 export type UIEventHandler = NativeEventHandler<UIEvent>;
 export type WheelEventHandler = NativeEventHandler<WheelEvent>;
 export type AnimationEventHandler = NativeEventHandler<AnimationEvent>;
@@ -1563,29 +1565,39 @@ export interface DOMAttributes<T> {
 
   // Clipboard Events
   onCopy?: ClipboardEventHandler | undefined;
+  onCopyCapture?: ClipboardEventHandler | undefined;
   onCut?: ClipboardEventHandler | undefined;
+  onCutCapture?: ClipboardEventHandler | undefined;
   onPaste?: ClipboardEventHandler | undefined;
+  onPasteCapture?: ClipboardEventHandler | undefined;
 
   // Composition Events
   onCompositionEnd?: CompositionEventHandler | undefined;
+  onCompositionEndCapture?: CompositionEventHandler | undefined;
   onCompositionStart?: CompositionEventHandler | undefined;
+  onCompositionStartCapture?: CompositionEventHandler | undefined;
   onCompositionUpdate?: CompositionEventHandler | undefined;
+  onCompositionUpdateCapture?: CompositionEventHandler | undefined;
 
   // Focus Events
+  onFocusIn?: FocusInOutEventHandler<T> | undefined;
+  onFocusInCapture?: FocusInOutEventHandler<T> | undefined;
+  onFocusOut?: FocusInOutEventHandler<T> | undefined;
+  onFocusOutCapture?: FocusInOutEventHandler<T> | undefined;
   onFocus?: FocusEventHandler | undefined;
-  onFocusIn?: FocusInOutEventHandler | undefined;
-  onFocusInCapture?: FocusInOutEventHandler | undefined;
-  onFocusOut?: FocusInOutEventHandler | undefined;
-  onFocusOutCapture?: FocusInOutEventHandler | undefined;
   onBlur?: FocusEventHandler | undefined;
 
   // Form Events
-  onChange?: FormEventHandler | undefined;
-  onBeforeInput?: FormEventHandler | undefined;
-  onInput?: FormEventHandler | undefined;
-  onReset?: FormEventHandler | undefined;
-  onSubmit?: FormEventHandler | undefined;
-  onInvalid?: FormEventHandler | undefined;
+  onChange?: NativeEventHandler | undefined;
+  onChangeCapture?: NativeEventHandler | undefined;
+  onBeforeInput?: NativeEventHandler | undefined;
+  onBeforeInputCapture?: NativeEventHandler | undefined;
+  onInput?: NativeEventHandler | undefined;
+  onReset?: NativeEventHandler | undefined;
+  onResetCapture?: NativeEventHandler | undefined;
+  onSubmit?: NativeEventHandler | undefined;
+  onSubmitCapture?: NativeEventHandler | undefined;
+  onInvalid?: NativeEventHandler | undefined;
 
   // Image Events
   onLoad?: NativeEventHandler | undefined;
@@ -1623,34 +1635,48 @@ export interface DOMAttributes<T> {
   onWaiting?: NativeEventHandler | undefined;
 
   // MouseEvents
-  onAuxClick?: MouseEventHandler<T> | undefined;
+  onAuxClick?: NativeMouseEventHandler | undefined;
+  onAuxClickCapture?: NativeMouseEventHandler | undefined;
   onClick?: MouseEventHandler<T> | undefined;
   onClickCapture?: MouseEventHandler<T> | undefined;
-  onContextMenu?: MouseEventHandler<T> | undefined;
+  onContextMenu?: NativeMouseEventHandler | undefined;
+  onContextMenuCapture?: NativeMouseEventHandler | undefined;
   onDoubleClick?: MouseEventHandler<T> | undefined;
   onDoubleClickCapture?: MouseEventHandler<T> | undefined;
   onDrag?: DragEventHandler | undefined;
+  onDragCapture?: DragEventHandler | undefined;
   onDragEnd?: DragEventHandler | undefined;
+  onDragEndCapture?: DragEventHandler | undefined;
   onDragEnter?: DragEventHandler | undefined;
-  onDragExit?: DragEventHandler | undefined;
+  onDragEnterCapture?: DragEventHandler | undefined;
   onDragLeave?: DragEventHandler | undefined;
+  onDragLeaveCapture?: DragEventHandler | undefined;
   onDragOver?: DragEventHandler | undefined;
+  onDragOverCapture?: DragEventHandler | undefined;
   onDragStart?: DragEventHandler | undefined;
+  onDragStartCapture?: DragEventHandler | undefined;
   onDrop?: DragEventHandler | undefined;
+  onDropCapture?: DragEventHandler | undefined;
   onMouseDown?: MouseEventHandler<T> | undefined;
   onMouseDownCapture?: MouseEventHandler<T> | undefined;
+  onMouseEnter?: NativeMouseEventHandler | undefined;
+  onMouseLeave?: NativeMouseEventHandler | undefined;
   onMouseMove?: MouseEventHandler<T> | undefined;
   onMouseMoveCapture?: MouseEventHandler<T> | undefined;
-  onMouseOut?: MouseEventHandler<T> | undefined;
-  onMouseOver?: MouseEventHandler<T> | undefined;
+  onMouseOut?: NativeMouseEventHandler | undefined;
+  onMouseOutCapture?: NativeMouseEventHandler | undefined;
+  onMouseOver?: NativeMouseEventHandler | undefined;
+  onMouseOverCapture?: NativeMouseEventHandler | undefined;
   onMouseUp?: MouseEventHandler<T> | undefined;
   onMouseUpCapture?: MouseEventHandler<T> | undefined;
 
   // Selection Events
   onSelect?: NativeEventHandler | undefined;
+  onSelectCapture?: NativeEventHandler | undefined;
 
   // Touch Events
-  onTouchCancel?: TouchEventHandler<T> | undefined;
+  onTouchCancel?: NativeTouchEventHandler | undefined;
+  onTouchCancelCapture?: NativeTouchEventHandler | undefined;
   onTouchEnd?: TouchEventHandler<T> | undefined;
   onTouchEndCapture?: TouchEventHandler<T> | undefined;
   onTouchMove?: TouchEventHandler<T> | undefined;
@@ -1665,11 +1691,16 @@ export interface DOMAttributes<T> {
   onPointerMoveCapture?: PointerEventHandler<T> | undefined;
   onPointerUp?: PointerEventHandler<T> | undefined;
   onPointerUpCapture?: PointerEventHandler<T> | undefined;
-  onPointerCancel?: PointerEventHandler<T> | undefined;
-  onPointerEnter?: PointerEventHandler<T> | undefined;
-  onPointerLeave?: PointerEventHandler<T> | undefined;
-  onPointerOver?: PointerEventHandler<T> | undefined;
-  onPointerOut?: PointerEventHandler<T> | undefined;
+  onPointerCancel?: NativePointerEventHandler | undefined;
+  onPointerCancelCapture?: NativePointerEventHandler | undefined;
+  onPointerEnter?: NativePointerEventHandler | undefined;
+  onPointerLeave?: NativePointerEventHandler | undefined;
+  onPointerOver?: NativePointerEventHandler | undefined;
+  onPointerOverCapture?: NativePointerEventHandler | undefined;
+  onPointerOut?: NativePointerEventHandler | undefined;
+  onPointerOutCapture?: NativePointerEventHandler | undefined;
+  onGotPointerCapture?: NativePointerEventHandler | undefined;
+  onLostPointerCapture?: NativePointerEventHandler | undefined;
 
   // UI Events
   onScroll?: UIEventHandler | undefined;
@@ -1679,15 +1710,22 @@ export interface DOMAttributes<T> {
 
   // Animation Events
   onAnimationStart?: AnimationEventHandler | undefined;
+  onAnimationStartCapture?: AnimationEventHandler | undefined;
   onAnimationEnd?: AnimationEventHandler | undefined;
+  onAnimationEndCapture?: AnimationEventHandler | undefined;
   onAnimationIteration?: AnimationEventHandler | undefined;
+  onAnimationIterationCapture?: AnimationEventHandler | undefined;
 
   // Toggle Events
   onToggle?: ToggleEventHandler | undefined;
 
   // Transition Events
   onTransitionCancel?: TransitionEventHandler | undefined;
+  onTransitionCancelCapture?: TransitionEventHandler | undefined;
   onTransitionEnd?: TransitionEventHandler | undefined;
+  onTransitionEndCapture?: TransitionEventHandler | undefined;
   onTransitionRun?: TransitionEventHandler | undefined;
+  onTransitionRunCapture?: TransitionEventHandler | undefined;
   onTransitionStart?: TransitionEventHandler | undefined;
+  onTransitionStartCapture?: TransitionEventHandler | undefined;
 }

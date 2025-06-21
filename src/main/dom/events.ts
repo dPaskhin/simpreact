@@ -1,9 +1,26 @@
-import type { Dict, Nullable } from '@simpreact/shared';
+import type { Nullable } from '@simpreact/shared';
 import type { SimpElement } from '@simpreact/internal';
 
 import { getElementFromEventTarget } from './attach-element-to-dom';
 
-const eventNameByTypes: Dict<string> = {
+type DelegatedEventType =
+  | 'click'
+  | 'dblclick'
+  | 'mousedown'
+  | 'mouseup'
+  | 'mousemove'
+  | 'pointerdown'
+  | 'pointerup'
+  | 'pointermove'
+  | 'touchstart'
+  | 'touchmove'
+  | 'touchend'
+  | 'keydown'
+  | 'keyup'
+  | 'focusin'
+  | 'focusout';
+
+const eventNameByTypes: Record<DelegatedEventType, string> = {
   click: 'onClick',
   dblclick: 'onDblClick',
   mousedown: 'onMouseDown',
@@ -21,46 +38,24 @@ const eventNameByTypes: Dict<string> = {
   focusout: 'onFocusOut',
 };
 
-const eventTypeByNames: Dict<string> = {
-  onClick: 'click',
-  onDblClick: 'dblclick',
-  onMouseDown: 'mousedown',
-  onMouseUp: 'mouseup',
-  onMouseMove: 'mousemove',
-  onPointerDown: 'pointerdown',
-  onPointerUp: 'pointerup',
-  onPointerMove: 'pointermove',
-  onTouchStart: 'touchstart',
-  onTouchMove: 'touchmove',
-  onTouchEnd: 'touchend',
-  onKeyDown: 'keydown',
-  onKeyUp: 'keyup',
-  onFocusIn: 'focusin',
-  onFocusOut: 'focusout',
-};
+const delegatedEventTypes = new Set(Object.keys(eventNameByTypes));
 
-const delegatedEventNames = new Set(Object.keys(eventTypeByNames));
-
-type EventPhase = 'capture' | 'bubble';
-
-type EventHandlerCounts = Dict<Record<EventPhase, number>>;
-
-const eventHandlerCounts: EventHandlerCounts = {
-  onClick: { capture: 0, bubble: 0 },
-  onDblClick: { capture: 0, bubble: 0 },
-  onMouseDown: { capture: 0, bubble: 0 },
-  onMouseUp: { capture: 0, bubble: 0 },
-  onMouseMove: { capture: 0, bubble: 0 },
-  onPointerDown: { capture: 0, bubble: 0 },
-  onPointerUp: { capture: 0, bubble: 0 },
-  onPointerMove: { capture: 0, bubble: 0 },
-  onTouchStart: { capture: 0, bubble: 0 },
-  onTouchMove: { capture: 0, bubble: 0 },
-  onTouchEnd: { capture: 0, bubble: 0 },
-  onKeyDown: { capture: 0, bubble: 0 },
-  onKeyUp: { capture: 0, bubble: 0 },
-  onFocusIn: { capture: 0, bubble: 0 },
-  onFocusOut: { capture: 0, bubble: 0 },
+const eventHandlerCounts: Record<DelegatedEventType, number> = {
+  click: 0,
+  dblclick: 0,
+  mousedown: 0,
+  mouseup: 0,
+  mousemove: 0,
+  pointerdown: 0,
+  pointerup: 0,
+  pointermove: 0,
+  touchstart: 0,
+  touchmove: 0,
+  touchend: 0,
+  keydown: 0,
+  keyup: 0,
+  focusin: 0,
+  focusout: 0,
 };
 
 export class SyntheticEvent {
@@ -92,91 +87,87 @@ export class SyntheticEvent {
   }
 }
 
-export function handleDelegatedCaptureEvent(event: Event): void {
+export function dispatchDelegatedEvent(event: Event): void {
   const syntheticEvent = new SyntheticEvent(event);
+
   const captureHandlers: Array<{ element: SimpElement; handler: (event: SyntheticEvent) => void }> = [];
+  const bubbleHandlers: Array<{ element: SimpElement; handler: (event: SyntheticEvent) => void }> = [];
 
   let element: Nullable<SimpElement> = getElementFromEventTarget(event.target);
 
   while (element) {
     if (element.flag === 'HOST') {
-      const handler = element.props?.[eventNameByTypes[event.type]! + 'Capture'];
-      if (handler) {
-        captureHandlers.push({ element, handler });
+      const captureHandler = element.props?.[eventNameByTypes[event.type as DelegatedEventType] + 'Capture'];
+      const bubbleHandler = element.props?.[eventNameByTypes[event.type as DelegatedEventType]];
+      if (captureHandler) {
+        captureHandlers.push({ element, handler: captureHandler });
+      }
+      if (bubbleHandler) {
+        bubbleHandlers.push({ element, handler: bubbleHandler });
       }
     }
     element = element.parent;
   }
 
-  for (const captureHandler of captureHandlers.reverse()) {
-    syntheticEvent.currentTarget = captureHandler.element.reference as unknown as EventTarget;
-    captureHandler.handler(syntheticEvent);
+  for (const { handler, element } of captureHandlers.reverse()) {
+    syntheticEvent.currentTarget = element.reference as unknown as EventTarget;
+    handler(syntheticEvent);
+    if (syntheticEvent.isPropagationStopped) {
+      return;
+    }
+  }
+  for (const { element, handler } of bubbleHandlers) {
+    syntheticEvent.currentTarget = element.reference as unknown as EventTarget;
+    handler(syntheticEvent);
     if (syntheticEvent.isPropagationStopped) {
       return;
     }
   }
 }
 
-export function handleDelegatedEvent(event: Event): void {
-  const syntheticEvent = new SyntheticEvent(event);
-  let element: Nullable<SimpElement> = getElementFromEventTarget(event.target);
-
-  while (element) {
-    if (element.flag === 'HOST') {
-      const handler = element.props?.[eventNameByTypes[event.type]!];
-      if (handler) {
-        syntheticEvent.currentTarget = element.reference as unknown as EventTarget;
-        handler(syntheticEvent);
-        if (syntheticEvent.isPropagationStopped) {
-          return;
-        }
-      }
-    }
-    element = element.parent;
-  }
-}
-
-export function patchEvent(name: string, prevValue: any, nextValue: any, dom: HTMLElement): void {
-  if (delegatedEventNames.has(name)) {
-    patchDelegatedEvent(name, nextValue, eventHandlerCounts);
-  } else {
-    patchNormalEvent(name, prevValue, nextValue, dom);
-  }
-}
-
 const captureRegex = /Capture/;
 
-export function patchDelegatedEvent(name: string, handler: any, eventHandlerCounts: EventHandlerCounts): void {
-  const phase: EventPhase = captureRegex.test(name) ? 'capture' : 'bubble';
+export function patchEvent(name: string, prevValue: any, nextValue: any, dom: Element): void {
+  const isCapture = captureRegex.test(name);
 
-  name = phase === 'capture' ? name.replace(captureRegex, '') : name;
+  name = name.replace(captureRegex, '').substring(2).toLowerCase();
 
+  if (delegatedEventTypes.has(name)) {
+    patchDelegatedEvent(name as DelegatedEventType, nextValue, eventHandlerCounts);
+  } else {
+    patchNormalEvent(name, prevValue, nextValue, dom, isCapture);
+  }
+}
+
+export function patchDelegatedEvent(
+  eventType: DelegatedEventType,
+  handler: any,
+  eventHandlerCounts: Record<DelegatedEventType, number>
+): void {
   if (typeof handler === 'function') {
-    if (++eventHandlerCounts[name]![phase] === 1) {
-      document.addEventListener(
-        eventTypeByNames[name]!,
-        phase === 'capture' ? handleDelegatedCaptureEvent : handleDelegatedEvent
-      );
+    if (++eventHandlerCounts[eventType]! === 1) {
+      document.addEventListener(eventType, dispatchDelegatedEvent);
     }
   } else {
-    if (eventHandlerCounts[name]![phase] !== 0 && --eventHandlerCounts[name]![phase] === 0) {
-      document.removeEventListener(
-        eventTypeByNames[name]!,
-        phase === 'capture' ? handleDelegatedCaptureEvent : handleDelegatedEvent
-      );
+    if (eventHandlerCounts[eventType] !== 0 && --eventHandlerCounts[eventType]! === 0) {
+      document.removeEventListener(eventType, dispatchDelegatedEvent);
     }
   }
 }
 
-export function patchNormalEvent(name: string, prevValue: any, nextValue: any, dom: HTMLElement): void {
-  name = name.toLowerCase().substring(2);
-
+export function patchNormalEvent(
+  eventType: string,
+  prevValue: any,
+  nextValue: any,
+  dom: Element,
+  capture: boolean
+): void {
   if (typeof prevValue === 'function') {
-    dom.removeEventListener(name, prevValue);
+    dom.removeEventListener(eventType, prevValue, { capture });
   }
 
   if (typeof nextValue === 'function') {
-    dom.addEventListener(name, nextValue);
+    dom.addEventListener(eventType, nextValue, { capture });
   }
 }
 
