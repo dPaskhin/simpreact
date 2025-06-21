@@ -1,13 +1,28 @@
-import type { HostReference } from '@simpreact/internal';
-import { mount, patch, provideHostAdapter, type SimpElement } from '@simpreact/internal';
+import { hostAdapter, mount, patch, provideHostAdapter, remove, type SimpElement } from '@simpreact/internal';
 import type { Nullable } from '@simpreact/shared';
 
 import { domAdapter } from './domAdapter';
 
 provideHostAdapter(domAdapter);
 
-export function render(element: SimpElement, parentReference: Nullable<HTMLElement>) {
-  mount(element, parentReference as HostReference, null, null);
+export function render(element: Nullable<SimpElement>, container: Nullable<Element | DocumentFragment>) {
+  let currentRoot: SimpElement | null = (container as any).__SIMP_ROOT__;
+
+  if (currentRoot == null) {
+    if (element != null) {
+      hostAdapter.clearNode(container);
+      mount(element, container, null, null);
+      (container as any).__SIMP_ROOT__ = element;
+    }
+  } else {
+    if (element == null) {
+      remove(currentRoot, container);
+      (container as any).__SIMP_ROOT__ = null;
+    } else {
+      patch(currentRoot, element, container, null, null);
+      (container as any).__SIMP_ROOT__ = element;
+    }
+  }
 }
 
 interface SimpRoot {
@@ -17,26 +32,12 @@ interface SimpRoot {
 }
 
 export function createRoot(container: Element | DocumentFragment): SimpRoot {
-  let currentRoot: SimpElement | null = (container as any).__SIMP_ROOT__;
-
   return {
     render(element: SimpElement) {
-      if (currentRoot) {
-        patch(currentRoot, element, container as HostReference, null, null);
-      } else {
-        domAdapter.clearNode(container as HTMLElement);
-        mount(element, container as HostReference, null, null);
-      }
-
-      currentRoot = element;
-      (container as any).__SIMP_ROOT__ = currentRoot;
+      render(element, container);
     },
     unmount() {
-      // if (currentRoot != null) {
-      //   enqueueRender(currentRoot, null);
-      //   currentRoot = null;
-      // }
-      currentRoot = null;
+      render(null, container);
     },
   };
 }

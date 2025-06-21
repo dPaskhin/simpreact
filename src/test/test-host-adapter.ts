@@ -54,7 +54,7 @@ export const testHostAdapter: HostAdapter<Element, Text> = {
   }),
 
   replaceChild: vi.fn((parent, replacer, toBeReplaced) => {
-    parent.replaceChild(toBeReplaced, replacer);
+    parent.replaceChild(replacer, toBeReplaced);
   }),
 
   findParentReference: vi.fn(reference => {
