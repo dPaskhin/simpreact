@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Element } from 'flyweight-dom';
 
-import type { HostReference, SimpElement } from '../main/core/internal';
-import { createElement, Fragment, lifecycleEventBus, mount, patch, provideHostAdapter } from '../main/core/internal';
+import type { HostReference, SimpElement } from '@simpreact/internal';
+import { createElement, Fragment, lifecycleEventBus, mount, patch, provideHostAdapter } from '@simpreact/internal';
 import { testHostAdapter } from './test-host-adapter';
 
 provideHostAdapter(testHostAdapter);

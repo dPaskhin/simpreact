@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { FC, SimpElement } from '../main/core/internal';
+import type { FC, SimpElement } from '@simpreact/internal';
 import {
   createContext,
   createElement,
@@ -8,7 +8,7 @@ import {
   Fragment,
   normalizeChildren,
   normalizeRoot,
-} from '../main/core/internal';
+} from '@simpreact/internal';
 
 function createMockHostElement(): SimpElement {
   return createElement('div', null, '123');

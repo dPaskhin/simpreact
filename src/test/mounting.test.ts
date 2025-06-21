@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Element, Text } from 'flyweight-dom';
 
-import type { HostReference, SimpContextMap, SimpElement } from '../main/core/internal';
+import type { HostReference, SimpContextMap, SimpElement } from '@simpreact/internal';
 import {
   createContext,
   createElement,
@@ -13,7 +13,7 @@ import {
   mountProvider,
   mountTextElement,
   provideHostAdapter,
-} from '../main/core/internal';
+} from '@simpreact/internal';
 import { testHostAdapter } from './test-host-adapter';
 
 provideHostAdapter(testHostAdapter);

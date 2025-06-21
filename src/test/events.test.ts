@@ -8,9 +8,9 @@ import {
   patchDelegatedEvent,
   patchNormalEvent,
 } from '../main/dom/events';
-import { createElement, provideHostAdapter } from '../main/core/internal';
-import { createRoot } from '../main/dom';
-import { useEffect, useRef, useRerender } from '../main/hooks';
+import { createElement, provideHostAdapter } from '@simpreact/internal';
+import { createRoot } from '@simpreact/dom';
+import { useEffect, useRef, useRerender } from '@simpreact/hooks';
 import { testHostAdapter } from './test-host-adapter';
 
 provideHostAdapter(testHostAdapter);

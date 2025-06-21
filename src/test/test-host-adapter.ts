@@ -1,7 +1,7 @@
 import { Element, Text } from 'flyweight-dom';
 import { vi } from 'vitest';
 
-import type { HostAdapter } from '../main/core/internal';
+import type { HostAdapter } from '@simpreact/internal';
 import { attachElementToDom } from '../main/dom/attach-element-to-dom';
 
 export const testHostAdapter: HostAdapter<Element, Text> = {

@@ -10,8 +10,4 @@ export type LifecycleEvent =
 
 export type LifecycleEventBus = EventBus<LifecycleEvent>;
 
-export let lifecycleEventBus = new EventBus<LifecycleEvent>();
-
-export function provideLifecycleEventBus(eventBus: LifecycleEventBus): void {
-  lifecycleEventBus = eventBus;
-}
+export const lifecycleEventBus = new EventBus<LifecycleEvent>();
