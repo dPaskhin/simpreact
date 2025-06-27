@@ -125,10 +125,6 @@ describe('createElement and utils', () => {
       expect(createTextElement('')).toEqual({ flag: 'TEXT', children: '', parent: null });
       expect(createTextElement(true)).toEqual({ flag: 'TEXT', children: '', parent: null });
       expect(createTextElement(false)).toEqual({ flag: 'TEXT', children: '', parent: null });
-      expect(createTextElement(undefined)).toEqual({ flag: 'TEXT', children: '', parent: null });
-      // @ts-expect-error Just another undefined.
-      expect(createTextElement()).toEqual({ flag: 'TEXT', children: '', parent: null });
-      expect(createTextElement(null)).toEqual({ flag: 'TEXT', children: '', parent: null });
     });
   });
 

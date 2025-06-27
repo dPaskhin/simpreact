@@ -182,10 +182,10 @@ export function createElement(type: string | FunctionComponent, props?: any, ...
   }
 }
 
-export function createTextElement(text: Primitive): SimpElement {
+export function createTextElement(text: NonNullable<Primitive>): SimpElement {
   return {
     flag: 'TEXT',
-    children: text == null || text === true || text === false ? '' : text,
+    children: text === true || text === false ? '' : text,
     parent: null,
   };
 }

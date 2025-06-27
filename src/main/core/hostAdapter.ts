@@ -9,9 +9,16 @@ export interface HostAdapter<HostRef = any, HostTextRef = any> {
 
   createTextReference(text: string): HostTextRef;
 
-  mountProps(reference: HostRef, props: Dict): void;
+  mountProps(reference: HostRef, props: Dict, prevElement: Maybe<SimpElement>, nextElement: Maybe<SimpElement>): void;
 
-  patchProp(reference: HostRef, propName: string, prevValue: unknown, nextValue: unknown): void;
+  patchProp(
+    reference: HostRef,
+    prevElement: Maybe<SimpElement>,
+    nextElement: Maybe<SimpElement>,
+    propName: string,
+    prevValue: unknown,
+    nextValue: unknown
+  ): void;
 
   setClassname(reference: HostRef, className: Maybe<string>): void;
 

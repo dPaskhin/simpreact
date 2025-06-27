@@ -43,7 +43,7 @@ describe('patching', () => {
     });
 
     it('patches nodes with same keys', () => {
-      const prev = createElement(Fragment, { children: createElement('a', { id: 'prev', key: '1' }) });
+      const prev = createElement(Fragment, { children: createElement('a', { id: 'prev', key: '1' }, '1') });
       mount(prev, parent as HostReference, null, null);
 
       const next = createElement(Fragment, { children: createElement('a', { id: 'next', key: '1' }) });
@@ -56,6 +56,8 @@ describe('patching', () => {
       expect((prev.children as SimpElement).reference).toStrictEqual((next.children as SimpElement).reference);
       expect(testHostAdapter.patchProp).toHaveBeenCalledWith(
         (prev.children as SimpElement).reference,
+        prev.children,
+        next.children,
         'id',
         'prev',
         'next'
@@ -199,7 +201,7 @@ describe('patching', () => {
 
       expect(prevRef).not.toBe(nextRef);
 
-      expect(testHostAdapter.mountProps).toHaveBeenCalledExactlyOnceWith(nextRef, { id: 'next' });
+      expect(testHostAdapter.mountProps).toHaveBeenCalledExactlyOnceWith(nextRef, { id: 'next' }, null, next.children);
 
       // Because of unmount and mount sequence there are remove and append mutations in DOM.
       expect(testHostAdapter.removeChild).toHaveBeenNthCalledWith(

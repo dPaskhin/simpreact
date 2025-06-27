@@ -1,5 +1,6 @@
-import type { Dict } from '@simpreact/shared';
-import type { HostAdapter } from '@simpreact/internal';
+import type { Dict, Maybe } from '@simpreact/shared';
+import type { HostAdapter, SimpElement } from '@simpreact/internal';
+import { unmount, unmountAllChildren } from '@simpreact/internal';
 
 import { isPropNameEventName, patchEvent } from './events';
 import { attachElementToDom } from './attach-element-to-dom';
@@ -11,12 +12,13 @@ export const domAdapter: HostAdapter<HTMLElement, Text> = {
   createTextReference(text) {
     return document.createTextNode(text);
   },
-  mountProps(reference, props) {
-    mountProps(props, reference);
+
+  mountProps(reference, props, prevElement, nextElement) {
+    mountProps(props, reference, prevElement, nextElement);
   },
 
-  patchProp(reference, propName, prevValue, nextValue) {
-    patchProp(propName, prevValue, nextValue, reference);
+  patchProp(reference, prevElement, nextElement, propName, prevValue, nextValue) {
+    patchProp(propName, reference, prevElement, nextElement, prevValue, nextValue);
   },
 
   setClassname(reference, className) {
@@ -68,13 +70,25 @@ export const domAdapter: HostAdapter<HTMLElement, Text> = {
   },
 };
 
-function mountProps(props: Dict, reference: HTMLElement): void {
-  for (const propsKey in props) {
-    patchProp(propsKey, null, props[propsKey], reference);
+function mountProps(
+  props: Dict,
+  reference: HTMLElement,
+  prevElement: Maybe<SimpElement>,
+  nextElement: Maybe<SimpElement>
+): void {
+  for (const propName in props) {
+    patchProp(propName, reference, prevElement, nextElement, null, props[propName]);
   }
 }
 
-function patchProp(propName: string, prevValue: any, nextValue: any, dom: HTMLElement): void {
+function patchProp(
+  propName: string,
+  dom: HTMLElement,
+  prevElement: Maybe<SimpElement>,
+  nextElement: Maybe<SimpElement>,
+  prevValue: any,
+  nextValue: any
+): void {
   switch (propName) {
     case 'children':
     case 'childrenType':
@@ -116,6 +130,9 @@ function patchProp(propName: string, prevValue: any, nextValue: any, dom: HTMLEl
       break;
     case 'style':
       patchStyle(prevValue, nextValue, dom);
+      break;
+    case 'dangerouslySetInnerHTML':
+      patchDangerInnerHTML(prevValue, nextValue, prevElement, nextElement, dom);
       break;
     default:
       if (isPropNameEventName(propName)) {
@@ -167,4 +184,57 @@ function patchStyle(prevAttrValue: any, nextAttrValue: any, dom: HTMLElement): v
       domStyle.setProperty(style, value);
     }
   }
+}
+
+export function patchDangerInnerHTML(
+  prevValue: Maybe<{ __html: string }>,
+  nextValue: Maybe<{ __html: string }>,
+  prevElement: Maybe<SimpElement>,
+  nextElement: Maybe<SimpElement>,
+  dom: Element
+): void {
+  if (!nextElement) {
+    return;
+  }
+
+  const nextHTML = nextValue?.__html ?? '';
+
+  if (!prevElement) {
+    if (nextElement.children) {
+      warnAboutUsingChildrenAndDangerouslySetInnerHTML();
+      nextElement.children = undefined;
+    }
+
+    dom.innerHTML = nextHTML;
+    return;
+  }
+
+  if (prevValue && !nextValue) {
+    dom.innerHTML = '';
+    return;
+  }
+
+  const shouldPatch = (!prevValue && nextValue) || (prevValue && nextValue && prevValue.__html !== nextValue.__html);
+
+  if (shouldPatch && prevElement.children) {
+    if (Array.isArray(prevElement.children)) {
+      unmountAllChildren(prevElement.children as SimpElement[]);
+    } else {
+      unmount(prevElement.children as SimpElement);
+    }
+    prevElement.children = undefined;
+  }
+
+  if (shouldPatch && nextElement.children) {
+    warnAboutUsingChildrenAndDangerouslySetInnerHTML();
+    nextElement.children = undefined;
+  }
+
+  if (shouldPatch) {
+    dom.innerHTML = nextHTML;
+  }
+}
+
+function warnAboutUsingChildrenAndDangerouslySetInnerHTML() {
+  console.warn('Avoid setting both `children` and `props.dangerouslySetInnerHTML` simultaneously.');
 }
