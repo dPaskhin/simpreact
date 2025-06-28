@@ -44,7 +44,7 @@ export function unmountAllChildren(children: SimpElement[]) {
 
 export function clearElementHostReference(element: Maybe<SimpElement>, parentHostReference: HostReference): void {
   while (element != null) {
-    if (element.flag === 'HOST' || element.flag === 'TEXT') {
+    if (element.flag === 'HOST' || element.flag === 'TEXT' || element.flag === 'PORTAL') {
       hostAdapter.removeChild(parentHostReference, element.reference!);
       return;
     }
@@ -67,15 +67,18 @@ export function clearElementHostReference(element: Maybe<SimpElement>, parentHos
   }
 }
 
-export function removeAllChildren(hostReference: HostReference, element: SimpElement, children: SimpElement[]): void {
-  unmountAllChildren(children);
+/**
+ * Deletes all element' children from provided hostReference.
+ *
+ * Only FRAGMENT, PROVIDER, and HOST elements can have multiple children.
+ *
+ * @param hostReference - Reference from which element children should be deleted.
+ * @param element       - Element who has the children to be deleted.
+ */
+export function removeAllChildren(hostReference: HostReference, element: SimpElement): void {
+  unmountAllChildren(element.children as SimpElement[]);
 
-  if (
-    element.flag === 'FRAGMENT' ||
-    element.flag === 'FC' ||
-    element.flag === 'PROVIDER' ||
-    element.flag === 'CONSUMER'
-  ) {
+  if (element.flag === 'FRAGMENT' || element.flag === 'PROVIDER') {
     clearElementHostReference(element, hostReference);
   } else {
     hostAdapter.clearNode(hostReference);

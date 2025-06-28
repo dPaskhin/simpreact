@@ -64,8 +64,8 @@ function patchHostElement(prevElement: SimpElement, nextElement: SimpElement, co
 
   hostAdapter.attachElementToReference(nextElement, hostReference);
 
-  const prevProps = prevElement.props;
-  const nextProps = nextElement.props;
+  const prevProps = prevElement.props || EMPTY_OBJECT;
+  const nextProps = nextElement.props || EMPTY_OBJECT;
 
   for (const propName in nextProps) {
     const prevValue = prevProps[propName];
@@ -204,7 +204,11 @@ function patchConsumer(
   );
 }
 
-function patchPortal(prevElement: SimpElement, nextElement: SimpElement, contextMap: Nullable<SimpContextMap>): void {
+export function patchPortal(
+  prevElement: SimpElement,
+  nextElement: SimpElement,
+  contextMap: Nullable<SimpContextMap>
+): void {
   const prevContainer = prevElement.ref;
   const nextContainer = nextElement.ref;
   const nextChildren = nextElement.children as SimpElement;
@@ -218,6 +222,8 @@ function patchPortal(prevElement: SimpElement, nextElement: SimpElement, context
     nextElement,
     contextMap
   );
+
+  nextElement.reference = prevElement.reference;
 
   if (prevContainer !== nextContainer && nextChildren != null) {
     hostAdapter.removeChild(prevContainer, nextChildren.reference);
@@ -253,7 +259,7 @@ function patchChildren(
           mountArrayChildren(nextChildren as SimpElement[], parentReference, nextReference, contextMap, nextElement);
         }
       } else if (nextChildrenLength === 0) {
-        removeAllChildren(parentReference, parentElement, prevChildren as SimpElement[]);
+        removeAllChildren(parentReference, parentElement);
       } else {
         for (const child of nextChildren) {
           (child as SimpElement).parent = nextElement;
@@ -267,7 +273,7 @@ function patchChildren(
         );
       }
     } else if (nextChildren) {
-      removeAllChildren(parentReference, parentElement, prevChildren as SimpElement[]);
+      removeAllChildren(parentReference, parentElement);
       (nextChildren as SimpElement).parent = nextElement;
       mount(nextChildren as SimpElement, parentReference, nextReference, contextMap);
     } else {
@@ -446,7 +452,7 @@ export function findHostReferenceFromElement(element: SimpElement): Nullable<Hos
   while (temp != null) {
     flag = temp.flag;
 
-    if (flag === 'HOST' || flag === 'TEXT') {
+    if (flag === 'HOST' || flag === 'TEXT' || flag === 'PORTAL') {
       return temp.reference as HostReference;
     }
 

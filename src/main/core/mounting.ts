@@ -4,7 +4,7 @@ import { EMPTY_MAP, EMPTY_OBJECT } from '@simpreact/shared';
 import type { HostReference } from './hostAdapter';
 import { hostAdapter } from './hostAdapter';
 import type { FC, SimpElement } from './createElement';
-import { normalizeRoot } from './createElement';
+import { createTextElement, normalizeRoot } from './createElement';
 import type { SimpContext, SimpContextMap } from './context';
 import { applyRef } from './ref';
 import { lifecycleEventBus } from './lifecycleEventBus';
@@ -178,10 +178,14 @@ export function mountPortal(
   nextReference: Nullable<HostReference>,
   contextMap: Nullable<SimpContextMap>
 ): void {
-  if (element.children == null) {
-    return;
+  if (element.children) {
+    (element.children as SimpElement).parent = element;
+    mount(element.children as SimpElement, element.ref, null, contextMap);
   }
 
-  (element.children as SimpElement).parent = element;
-  mount(element.children as SimpElement, element.ref, null, contextMap);
+  const placeHolderElement = createTextElement('');
+
+  mountTextElement(placeHolderElement, parentReference, nextReference);
+
+  element.reference = placeHolderElement.reference;
 }

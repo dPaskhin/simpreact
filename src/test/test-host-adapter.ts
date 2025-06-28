@@ -2,7 +2,6 @@ import { Element, Text } from 'flyweight-dom';
 import { vi } from 'vitest';
 
 import type { HostAdapter } from '@simpreact/internal';
-import { attachElementToDom } from '../main/dom/attach-element-to-dom';
 
 export const testHostAdapter: HostAdapter<Element, Text> = {
   createReference: vi.fn(type => {
@@ -13,13 +12,9 @@ export const testHostAdapter: HostAdapter<Element, Text> = {
     node.textContent = text;
     return node;
   }),
-  mountProps: vi.fn(() => {
-    // noop
-  }),
+  mountProps: vi.fn(),
 
-  patchProp: vi.fn(() => {
-    // noop
-  }),
+  patchProp: vi.fn(),
 
   setClassname: vi.fn((reference, className) => {
     if (!className) {
@@ -66,6 +61,6 @@ export const testHostAdapter: HostAdapter<Element, Text> = {
   }),
 
   attachElementToReference: vi.fn((element, reference) => {
-    attachElementToDom(element, reference);
+    reference.__SIMP_ELEMENT__ = element;
   }),
 };

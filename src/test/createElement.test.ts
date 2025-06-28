@@ -26,15 +26,9 @@ describe('createElement and utils', () => {
       expect(normalizeChildren(true)).toBeUndefined();
       expect(normalizeChildren(false)).toBeUndefined();
       expect(normalizeChildren([])).toBeUndefined();
-      expect(
-        normalizeChildren([
-          [[], [[], [], []], []],
-          [false, undefined],
-        ])
-      ).toBeUndefined();
+      expect(normalizeChildren([[[], [[], [], []], []], [false, undefined], [''], ''])).toBeUndefined();
       expect(normalizeChildren([undefined, null, false, true])).toBeUndefined();
-      // TODO: maybe it should be discarded as well?
-      expect(normalizeChildren('')).toEqual({ flag: 'TEXT', children: '', parent: null });
+      expect(normalizeChildren('')).toBeUndefined();
     });
 
     it('wraps string and number into text elements', () => {
@@ -123,8 +117,6 @@ describe('createElement and utils', () => {
       expect(createTextElement(-1)).toEqual({ flag: 'TEXT', children: -1, parent: null });
       expect(createTextElement(42n)).toEqual({ flag: 'TEXT', children: 42n, parent: null });
       expect(createTextElement('')).toEqual({ flag: 'TEXT', children: '', parent: null });
-      expect(createTextElement(true)).toEqual({ flag: 'TEXT', children: '', parent: null });
-      expect(createTextElement(false)).toEqual({ flag: 'TEXT', children: '', parent: null });
     });
   });
 
@@ -377,17 +369,18 @@ describe('createElement and utils', () => {
 
   describe('normalizeRoot', () => {
     it('should wrap null in a text element', () => {
-      expect(normalizeRoot(null)).toEqual(undefined);
       expect(normalizeRoot('hello')).toEqual({ flag: 'TEXT', children: 'hello', parent: null });
       expect(normalizeRoot(42)).toEqual({ flag: 'TEXT', children: 42, parent: null });
       expect(normalizeRoot(123n)).toEqual({ flag: 'TEXT', children: 123n, parent: null });
-      // TODO: maybe it should be discarded as well?
-      expect(normalizeRoot('')).toEqual({ flag: 'TEXT', children: '', parent: null });
-      expect(normalizeRoot(true)).toEqual(undefined);
+      expect(normalizeRoot('')).toBeUndefined();
+      expect(normalizeRoot(true)).toBeUndefined();
+      expect(normalizeRoot(false)).toBeUndefined();
+      expect(normalizeRoot(null)).toBeUndefined();
+      expect(normalizeRoot(undefined)).toBeUndefined();
     });
 
     it('should wrap an array in a fragment element', () => {
-      const result = normalizeRoot(['a', 'b', ['c']]);
+      const result = normalizeRoot(['a', 'b', ['c'], '', false, [[[true]], '']]);
       expect(result).toEqual({
         flag: 'FRAGMENT',
         children: [

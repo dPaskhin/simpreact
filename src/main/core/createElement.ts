@@ -1,12 +1,12 @@
-import type { Many, Maybe, Nullable, Primitive } from '@simpreact/shared';
-import { isPrimitive } from '@simpreact/shared';
+import type { Many, Maybe, Nullable, SimpText } from '@simpreact/shared';
+import { isSimpText } from '@simpreact/shared';
 
 import { Fragment } from './fragment';
 import type { HostReference } from './hostAdapter';
 import type { SimpContextMap } from './context';
 import { isConsumer, isProvider } from './context';
 
-export type SimpNode = SimpElement | string | number | bigint | Array<SimpNode> | boolean | null | undefined;
+export type SimpNode = SimpElement | SimpText | Array<SimpNode> | boolean | null | undefined;
 
 export type Key = string | number | bigint;
 
@@ -182,16 +182,16 @@ export function createElement(type: string | FunctionComponent, props?: any, ...
   }
 }
 
-export function createTextElement(text: NonNullable<Primitive>): SimpElement {
+export function createTextElement(text: SimpText): SimpElement {
   return {
     flag: 'TEXT',
-    children: text === true || text === false ? '' : text,
+    children: text,
     parent: null,
   };
 }
 
 export function normalizeChildren(children: SimpNode): Maybe<Many<SimpElement>> {
-  if (children == null || typeof children === 'boolean') {
+  if (children == null || typeof children === 'boolean' || children === '') {
     return;
   }
 
@@ -207,11 +207,11 @@ export function normalizeChildren(children: SimpNode): Maybe<Many<SimpElement>> 
 }
 
 function normalizeNode(child: SimpNode, result: SimpElement[]): void {
-  if (child == null || typeof child === 'boolean') {
+  if (child == null || typeof child === 'boolean' || child === '') {
     return;
   }
 
-  if (isPrimitive(child)) {
+  if (isSimpText(child)) {
     result.push(createTextElement(child));
     return;
   }
@@ -232,10 +232,10 @@ function normalizeNode(child: SimpNode, result: SimpElement[]): void {
 }
 
 export function normalizeRoot(node: SimpNode): SimpElement | undefined {
-  if (node == null || typeof node === 'boolean') {
+  if (node == null || typeof node === 'boolean' || node === '') {
     return;
   }
-  if (isPrimitive(node)) {
+  if (isSimpText(node)) {
     return createTextElement(node);
   }
   if (Array.isArray(node)) {

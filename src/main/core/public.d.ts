@@ -1,4 +1,4 @@
-import type { VoidFunction } from '@simpreact/shared';
+import type { SimpText, VoidFunction } from '@simpreact/shared';
 
 export type ComponentType<P = {}> = FunctionComponent<P>;
 
@@ -24,7 +24,7 @@ export interface SimpElement<P = unknown, T extends string | FunctionComponent<P
   key?: string | null;
 }
 
-export type SimpNode = SimpElement | string | number | bigint | Array<SimpNode> | boolean | null | undefined;
+export type SimpNode = SimpElement | SimpText | Array<SimpNode> | boolean | null | undefined;
 
 export interface ProviderProps<T> {
   value: T;
