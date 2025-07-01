@@ -1,5 +1,5 @@
-export const EMPTY_OBJECT = Object.freeze({});
+export const emptyObject = Object.freeze({});
 
-export const EMPTY_ARRAY = Object.freeze([]);
+export const emptyArray = Object.freeze([]);
 
-export const EMPTY_MAP = new Map();
+export const emptyMap = new Map();

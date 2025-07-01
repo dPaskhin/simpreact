@@ -3,11 +3,7 @@ import { createElement, Fragment } from '@simpreact/internal';
 import type { Maybe } from '@simpreact/shared';
 
 export function jsx(type: string | FunctionComponent, props?: any, key?: Maybe<Key>): SimpElement {
-  let _key: Maybe<Key>;
-
-  if (key != null) {
-    _key = key;
-  }
+  let _key = key;
 
   if (props && props.key != null) {
     _key = props.key;

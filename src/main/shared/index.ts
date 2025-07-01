@@ -1,9 +1,9 @@
 import { EventBus } from './EventBus';
-import { EMPTY_ARRAY, EMPTY_MAP, EMPTY_OBJECT } from './lang';
+import { emptyArray, emptyMap, emptyObject } from './lang';
 import { isSimpText } from './utils';
 
-export { EMPTY_OBJECT, EMPTY_MAP, EMPTY_ARRAY, isSimpText, EventBus };
+export { emptyObject, emptyMap, emptyArray, isSimpText, EventBus };
 
-export default { isSimpText, EMPTY_MAP, EMPTY_ARRAY, EMPTY_OBJECT, EventBus };
+export default { isSimpText, EMPTY_MAP: emptyMap, EMPTY_ARRAY: emptyArray, EMPTY_OBJECT: emptyObject, EventBus };
 
 export type * from './public';

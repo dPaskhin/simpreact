@@ -1,5 +1,5 @@
 import type { Many, Maybe, Nullable } from '@simpreact/shared';
-import { EMPTY_MAP, EMPTY_OBJECT } from '@simpreact/shared';
+import { emptyMap, emptyObject } from '@simpreact/shared';
 
 import type { HostReference } from './hostAdapter';
 import { hostAdapter } from './hostAdapter';
@@ -97,7 +97,7 @@ export function mountFunctionalElement(
   }
 
   lifecycleEventBus.publish({ type: 'beforeRender', element });
-  children = normalizeRoot(type(element.props || EMPTY_OBJECT));
+  children = normalizeRoot(type(element.props || emptyObject));
   lifecycleEventBus.publish({ type: 'afterRender' });
 
   if (children != null) {
@@ -161,7 +161,7 @@ export function mountConsumer(
   contextMap: Nullable<SimpContextMap>
 ): void {
   const children = normalizeRoot(
-    (element.type as SimpContext<any>['Consumer'])(element.props || EMPTY_OBJECT, contextMap || EMPTY_MAP)
+    (element.type as SimpContext<any>['Consumer'])(element.props || emptyObject, contextMap || emptyMap)
   );
 
   if (children == null) {

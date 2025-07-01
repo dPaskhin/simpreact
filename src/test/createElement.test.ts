@@ -54,22 +54,82 @@ describe('createElement and utils', () => {
       expect(normalizeChildren(el)).toBe(el);
     });
 
-    it('flattens nested arrays of strings and numbers', () => {
-      const result = normalizeChildren(['a', [1, ['b']]]);
+    it('flattens nested arrays of elements and provides proper keys to each element', () => {
+      const result = normalizeChildren([
+        createElement('span'),
+        createElement('span'),
+        '123',
+        [createElement('p'), createElement('p'), [createElement('s'), createElement('s')]],
+        [createElement('b', { key: 'bKeyI' }), createElement('b', { key: 'bKeyII' })],
+        createElement('b', { key: 'bKeyII' }),
+        createElement('span'),
+      ]);
+
       expect(result).toEqual([
         {
-          flag: 'TEXT',
-          children: 'a',
+          key: '.0',
+          type: 'span',
+          flag: 'HOST',
           parent: null,
         },
         {
-          flag: 'TEXT',
-          children: 1,
+          key: '.1',
+          type: 'span',
+          flag: 'HOST',
           parent: null,
         },
         {
+          children: '123',
+          key: '.2',
           flag: 'TEXT',
-          children: 'b',
+          parent: null,
+        },
+        {
+          key: '.3.0',
+          type: 'p',
+          flag: 'HOST',
+          parent: null,
+        },
+        {
+          key: '.3.1',
+          type: 'p',
+          flag: 'HOST',
+          parent: null,
+        },
+        {
+          key: '.3.2.0',
+          type: 's',
+          flag: 'HOST',
+          parent: null,
+        },
+        {
+          key: '.3.2.1',
+          type: 's',
+          flag: 'HOST',
+          parent: null,
+        },
+        {
+          key: '.4bKeyI',
+          type: 'b',
+          flag: 'HOST',
+          parent: null,
+        },
+        {
+          key: '.4bKeyII',
+          type: 'b',
+          flag: 'HOST',
+          parent: null,
+        },
+        {
+          key: 'bKeyII',
+          type: 'b',
+          flag: 'HOST',
+          parent: null,
+        },
+        {
+          key: '.6',
+          type: 'span',
+          flag: 'HOST',
           parent: null,
         },
       ]);
@@ -83,12 +143,14 @@ describe('createElement and utils', () => {
           flag: 'TEXT',
           children: 'a',
           parent: null,
+          key: '.0',
         },
-        el,
+        { ...el, key: '.1' },
         {
           flag: 'TEXT',
           children: 2,
           parent: null,
+          key: '.2',
         },
       ]);
     });
@@ -167,9 +229,9 @@ describe('createElement and utils', () => {
         type: 'div',
         props: { id: 'it' },
         children: [
-          { flag: 'TEXT', children: 'child1', parent: null },
-          { flag: 'TEXT', children: 'child2', parent: null },
-          createMockHostElement(),
+          { flag: 'TEXT', children: 'child1', parent: null, key: '.0' },
+          { flag: 'TEXT', children: 'child2', parent: null, key: '.1' },
+          { ...createMockHostElement(), key: '.2' },
         ],
         parent: null,
       });
@@ -178,9 +240,9 @@ describe('createElement and utils', () => {
         type: 'div',
         props: { id: 'it' },
         children: [
-          { flag: 'TEXT', children: 'child1', parent: null },
-          { flag: 'TEXT', children: 'child2', parent: null },
-          createMockHostElement(),
+          { flag: 'TEXT', children: 'child1', parent: null, key: '.0' },
+          { flag: 'TEXT', children: 'child2', parent: null, key: '.1' },
+          { ...createMockHostElement(), key: '.2' },
         ],
         parent: null,
       });
@@ -228,8 +290,8 @@ describe('createElement and utils', () => {
         type: 'div',
         props: { foo: 'bar' },
         children: [
-          { flag: 'TEXT', children: 'child1', parent: null },
-          { flag: 'TEXT', children: 'child2', parent: null },
+          { flag: 'TEXT', children: 'child1', parent: null, key: '.0' },
+          { flag: 'TEXT', children: 'child2', parent: null, key: '.1' },
         ],
         parent: null,
       });
@@ -261,9 +323,15 @@ describe('createElement and utils', () => {
       expect(createElement(Fragment, null!, '123', '456', createMockHostElement())).toEqual({
         flag: 'FRAGMENT',
         children: [
-          { flag: 'TEXT', children: '123', parent: null },
-          { flag: 'TEXT', children: '456', parent: null },
-          { flag: 'HOST', type: 'div', children: { flag: 'TEXT', children: '123', parent: null }, parent: null },
+          { flag: 'TEXT', children: '123', parent: null, key: '.0' },
+          { flag: 'TEXT', children: '456', parent: null, key: '.1' },
+          {
+            flag: 'HOST',
+            type: 'div',
+            children: { flag: 'TEXT', children: '123', parent: null },
+            parent: null,
+            key: '.2',
+          },
         ],
         parent: null,
       });
@@ -384,9 +452,9 @@ describe('createElement and utils', () => {
       expect(result).toEqual({
         flag: 'FRAGMENT',
         children: [
-          { flag: 'TEXT', children: 'a', parent: null },
-          { flag: 'TEXT', children: 'b', parent: null },
-          { flag: 'TEXT', children: 'c', parent: null },
+          { flag: 'TEXT', children: 'a', parent: null, key: '.0' },
+          { flag: 'TEXT', children: 'b', parent: null, key: '.1' },
+          { flag: 'TEXT', children: 'c', parent: null, key: '.2.0' },
         ],
         parent: null,
       });

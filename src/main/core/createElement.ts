@@ -1,4 +1,4 @@
-import type { Many, Maybe, Nullable, SimpText } from '@simpreact/shared';
+import type { Dict, Many, Maybe, Nullable, SimpText } from '@simpreact/shared';
 import { isSimpText } from '@simpreact/shared';
 
 import { Fragment } from './fragment';
@@ -35,7 +35,7 @@ export interface SimpElement {
 
   reference?: Maybe<HostReference>;
 
-  store?: any;
+  store?: Dict;
 
   contextMap?: Maybe<SimpContextMap>;
 
@@ -206,19 +206,23 @@ export function normalizeChildren(children: SimpNode): Maybe<Many<SimpElement>> 
   return result.length === 1 ? result[0] : result;
 }
 
-function normalizeNode(child: SimpNode, result: SimpElement[]): void {
+function normalizeNode(child: SimpNode, result: SimpElement[], currentKey = ''): void {
   if (child == null || typeof child === 'boolean' || child === '') {
     return;
   }
 
   if (isSimpText(child)) {
-    result.push(createTextElement(child));
+    child = createTextElement(child);
+    if (currentKey !== '') {
+      child.key = currentKey;
+    }
+    result.push(child);
     return;
   }
 
   if (Array.isArray(child)) {
-    for (const nestedChild of child) {
-      normalizeNode(nestedChild, result);
+    for (let i = 0; i < child.length; i++) {
+      normalizeNode(child[i], result, currentKey + '.' + i);
     }
     return;
   }
@@ -226,6 +230,12 @@ function normalizeNode(child: SimpNode, result: SimpElement[]): void {
   if (typeof child === 'object') {
     if (typeof child.flag !== 'string') {
       throw new TypeError(`Objects are not valid as a child: ${JSON.stringify(child)}.`);
+    }
+    if (currentKey !== '') {
+      if (child.key) {
+        currentKey = currentKey.slice(0, -2) + child.key;
+      }
+      child.key = currentKey;
     }
     result.push(child);
   }

@@ -1,5 +1,5 @@
 import type { Nullable } from '@simpreact/shared';
-import { EMPTY_MAP, EMPTY_OBJECT } from '@simpreact/shared';
+import { emptyMap, emptyObject } from '@simpreact/shared';
 
 import type { FC, Key, SimpElement, SimpElementFlag, SimpNode } from './createElement';
 import { normalizeRoot } from './createElement';
@@ -64,8 +64,8 @@ function patchHostElement(prevElement: SimpElement, nextElement: SimpElement, co
 
   hostAdapter.attachElementToReference(nextElement, hostReference);
 
-  const prevProps = prevElement.props || EMPTY_OBJECT;
-  const nextProps = nextElement.props || EMPTY_OBJECT;
+  const prevProps = prevElement.props || emptyObject;
+  const nextProps = nextElement.props || emptyObject;
 
   for (const propName in nextProps) {
     const prevValue = prevProps[propName];
@@ -107,7 +107,7 @@ function patchFunctionalComponent(
   }
 
   lifecycleEventBus.publish({ type: 'beforeRender', element: nextElement });
-  const nextChildren = normalizeRoot((nextElement.type as FC)(nextElement.props || EMPTY_OBJECT));
+  const nextChildren = normalizeRoot((nextElement.type as FC)(nextElement.props || emptyObject));
   lifecycleEventBus.publish({ type: 'afterRender' });
 
   patchChildren(
@@ -186,7 +186,7 @@ function patchConsumer(
   contextMap: Nullable<SimpContextMap>
 ): void {
   const children = normalizeRoot(
-    (nextElement.type as SimpContext<any>['Consumer'])(nextElement.props || EMPTY_OBJECT, contextMap || EMPTY_MAP)
+    (nextElement.type as SimpContext<any>['Consumer'])(nextElement.props || emptyObject, contextMap || emptyMap)
   );
 
   if (children != null) {
@@ -245,7 +245,7 @@ function patchChildren(
   nextChildren: SimpNode,
   parentReference: HostReference,
   nextReference: Nullable<HostReference>,
-  parentElement: SimpElement,
+  prevElement: SimpElement,
   nextElement: SimpElement,
   contextMap: Nullable<SimpContextMap>
 ): void {
@@ -259,7 +259,7 @@ function patchChildren(
           mountArrayChildren(nextChildren as SimpElement[], parentReference, nextReference, contextMap, nextElement);
         }
       } else if (nextChildrenLength === 0) {
-        removeAllChildren(parentReference, parentElement);
+        removeAllChildren(parentReference, prevElement);
       } else {
         for (const child of nextChildren) {
           (child as SimpElement).parent = nextElement;
@@ -273,7 +273,7 @@ function patchChildren(
         );
       }
     } else if (nextChildren) {
-      removeAllChildren(parentReference, parentElement);
+      removeAllChildren(parentReference, prevElement);
       (nextChildren as SimpElement).parent = nextElement;
       mount(nextChildren as SimpElement, parentReference, nextReference, contextMap);
     } else {
@@ -373,7 +373,9 @@ export function patchKeyedChildren(
     const keyToPrevIndexMap = new Map<Key, number>();
     for (let i = prevStart; i <= prevEnd; i++) {
       const key = prevChildren[i]!.key;
-      if (key != null) keyToPrevIndexMap.set(key, i);
+      if (key != null) {
+        keyToPrevIndexMap.set(key, i);
+      }
     }
 
     // Track reused indices and move plan
@@ -412,38 +414,6 @@ export function patchKeyedChildren(
     }
   }
 }
-
-// export function patchNonKeyedChildren(
-//   prevChildren: SimpElement[],
-//   nextChildren: SimpElement[],
-//   parentReference: HostReference,
-//   prevChildrenLength: number,
-//   nextChildrenLength: number,
-//   nextReference: Nullable<HostReference>
-// ): void {
-//   const commonLength = prevChildrenLength > nextChildrenLength ? nextChildrenLength : prevChildrenLength;
-//   let i = 0;
-//   let prevChild;
-//   let nextChild;
-//
-//   for (; i < commonLength; ++i) {
-//     nextChild = nextChildren[i];
-//     prevChild = prevChildren[i];
-//
-//     patch(prevChild as SimpElement, nextChild as SimpElement, parentReference, nextReference);
-//     prevChildren[i] = nextChild!;
-//   }
-//   if (prevChildrenLength < nextChildrenLength) {
-//     for (i = commonLength; i < nextChildrenLength; ++i) {
-//       nextChild = nextChildren[i];
-//       mount(nextChild as SimpElement, parentReference, nextReference);
-//     }
-//   } else if (prevChildrenLength > nextChildrenLength) {
-//     for (i = commonLength; i < prevChildrenLength; ++i) {
-//       remove(prevChildren[i] as SimpElement, parentReference);
-//     }
-//   }
-// }
 
 export function findHostReferenceFromElement(element: SimpElement): Nullable<HostReference> {
   let flag: SimpElementFlag;
