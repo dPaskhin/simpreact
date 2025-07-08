@@ -98,9 +98,7 @@ function patchFunctionalComponent(
   nextReference: Nullable<HostReference>,
   contextMap: Nullable<SimpContextMap>
 ): void {
-  if (prevElement.store != null) {
-    nextElement.store = prevElement.store;
-  }
+  (nextElement.store = prevElement.store ||= {}).latestElement = nextElement;
 
   if (contextMap) {
     nextElement.contextMap = contextMap;
@@ -237,7 +235,7 @@ export function updateFunctionalComponent(
   nextReference: Nullable<HostReference>,
   contextMap: Nullable<SimpContextMap>
 ): void {
-  patch(element, element, parentReference, nextReference, contextMap);
+  patchFunctionalComponent(element, element, parentReference, nextReference, contextMap);
 }
 
 function patchChildren(

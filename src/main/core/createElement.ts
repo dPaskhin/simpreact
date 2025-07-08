@@ -1,4 +1,4 @@
-import type { Dict, Many, Maybe, Nullable, SimpText } from '@simpreact/shared';
+import type { Many, Maybe, Nullable, SimpText } from '@simpreact/shared';
 import { isSimpText } from '@simpreact/shared';
 
 import { Fragment } from './fragment';
@@ -18,6 +18,12 @@ export type FC = FunctionComponent;
 
 export type SimpElementFlag = 'FC' | 'HOST' | 'TEXT' | 'FRAGMENT' | 'PROVIDER' | 'CONSUMER' | 'PORTAL';
 
+export interface SimpElementStore {
+  latestElement?: Maybe<SimpElement>;
+
+  [key: string]: unknown;
+}
+
 export interface SimpElement {
   flag: SimpElementFlag;
 
@@ -35,7 +41,7 @@ export interface SimpElement {
 
   reference?: Maybe<HostReference>;
 
-  store?: Dict;
+  store?: SimpElementStore;
 
   contextMap?: Maybe<SimpContextMap>;
 

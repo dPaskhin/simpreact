@@ -1,5 +1,6 @@
 import type { Nullable } from '@simpreact/shared';
 import type { SimpElement } from '@simpreact/internal';
+import { syncRerenderLocker } from '@simpreact/internal';
 
 import { getElementFromEventTarget } from './attach-element-to-dom';
 
@@ -88,6 +89,8 @@ export class SyntheticEvent {
 }
 
 export function dispatchDelegatedEvent(event: Event): void {
+  syncRerenderLocker.lock();
+
   const syntheticEvent = new SyntheticEvent(event);
 
   const captureHandlers: Array<{ element: SimpElement; handler: (event: SyntheticEvent) => void }> = [];
@@ -123,6 +126,9 @@ export function dispatchDelegatedEvent(event: Event): void {
       return;
     }
   }
+
+  // When "using" becomes more stable this will be removed.
+  syncRerenderLocker[Symbol.dispose]();
 }
 
 const captureRegex = /Capture/;

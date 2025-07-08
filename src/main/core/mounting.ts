@@ -90,14 +90,15 @@ export function mountFunctionalElement(
   contextMap: Nullable<SimpContextMap>
 ): void {
   const type = element.type as FC;
-  let children;
 
   if (contextMap) {
     element.contextMap = contextMap;
   }
 
+  (element.store ||= {}).latestElement = element;
+
   lifecycleEventBus.publish({ type: 'beforeRender', element });
-  children = normalizeRoot(type(element.props || emptyObject));
+  const children = normalizeRoot(type(element.props || emptyObject));
   lifecycleEventBus.publish({ type: 'afterRender' });
 
   if (children != null) {
