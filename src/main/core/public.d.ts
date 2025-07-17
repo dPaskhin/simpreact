@@ -1,10 +1,10 @@
-import type { SimpText, VoidFunction } from '@simpreact/shared';
+import type { SimpText } from '@simpreact/shared';
 
 export type ComponentType<P = {}> = FunctionComponent<P>;
 
 export type RefObject<T> = { current: T };
 export type RefCallback<T> = {
-  bivarianceHack(instance: T | null): (VoidFunction | undefined) | void;
+  bivarianceHack(instance: T | null): (() => void | undefined) | void;
 }['bivarianceHack'];
 export type Ref<T> = RefCallback<T> | RefObject<T> | null;
 

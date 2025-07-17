@@ -43,6 +43,7 @@
     "type": "git",
     "url": "git+https://github.com/dPaskhin/simpreact.git"
   },
+  "sideEffects": false,
   "type": "module",
   "license": "MIT",
   "author": "Dmitrii Paskhin <d.pasxin@gmail.com>",

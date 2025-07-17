@@ -196,8 +196,9 @@ export function createTextElement(text: SimpText): SimpElement {
   };
 }
 
+// TODO: add a flag to skip ignored nodes checking?
 export function normalizeChildren(children: SimpNode): Maybe<Many<SimpElement>> {
-  if (children == null || typeof children === 'boolean' || children === '') {
+  if (isIgnoredNode(children)) {
     return;
   }
 
@@ -213,7 +214,7 @@ export function normalizeChildren(children: SimpNode): Maybe<Many<SimpElement>> 
 }
 
 function normalizeNode(child: SimpNode, result: SimpElement[], currentKey = ''): void {
-  if (child == null || typeof child === 'boolean' || child === '') {
+  if (isIgnoredNode(child)) {
     return;
   }
 
@@ -233,30 +234,47 @@ function normalizeNode(child: SimpNode, result: SimpElement[], currentKey = ''):
     return;
   }
 
-  if (typeof child === 'object') {
-    if (typeof child.flag !== 'string') {
-      throw new TypeError(`Objects are not valid as a child: ${JSON.stringify(child)}.`);
+  if (currentKey !== '') {
+    if (child.key) {
+      currentKey = currentKey.slice(0, -2) + child.key;
     }
-    if (currentKey !== '') {
-      if (child.key) {
-        currentKey = currentKey.slice(0, -2) + child.key;
-      }
-      child.key = currentKey;
-    }
-    result.push(child);
+    child.key = currentKey;
   }
+  result.push(child);
 }
 
 export function normalizeRoot(node: SimpNode): SimpElement | undefined {
-  if (node == null || typeof node === 'boolean' || node === '') {
+  if (isIgnoredNode(node)) {
     return;
   }
+
   if (isSimpText(node)) {
     return createTextElement(node);
   }
+
+  if (!Array.isArray(node)) {
+    return node;
+  }
+
+  node = normalizeChildren(node);
   if (Array.isArray(node)) {
     return createElement(Fragment, { children: node });
   }
+  return node || undefined;
+}
 
-  return node;
+function isIgnoredNode(node: SimpNode): node is Extract<SimpNode, '' | null | undefined | boolean> {
+  if (node == null || typeof node === 'boolean' || node === '') {
+    return true;
+  }
+  if (Array.isArray(node)) {
+    return node.length === 0;
+  }
+  if (isSimpText(node)) {
+    return false;
+  }
+  if (node.flag === 'FRAGMENT' || node.flag === 'PROVIDER') {
+    return node.children == null;
+  }
+  return false;
 }

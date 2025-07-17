@@ -1,11 +1,9 @@
-import type { VoidFunction } from '@simpreact/shared';
-
 import type { SimpElement } from './createElement';
 
 interface RefSimpElement extends SimpElement {
   ref?: {
     value: NonNullable<Ref<unknown>>;
-    cleanup?: VoidFunction;
+    cleanup?: () => void;
   };
 }
 
@@ -14,7 +12,7 @@ export interface RefObject<T> {
 }
 
 export type RefCallback<T> = {
-  bivarianceHack(instance: T | null): VoidFunction | void;
+  bivarianceHack(instance: T | null): (() => void) | void;
 }['bivarianceHack'];
 
 export type Ref<T> = RefCallback<T> | RefObject<T> | null;

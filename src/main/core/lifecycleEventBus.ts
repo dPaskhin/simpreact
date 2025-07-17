@@ -6,6 +6,7 @@ export type LifecycleEvent =
   | { type: 'beforeRender'; element: SimpElement }
   | { type: 'afterRender' }
   | { type: 'mounted'; element: SimpElement }
+  | { type: 'updated'; element: SimpElement }
   | { type: 'unmounted'; element: SimpElement };
 
 export type LifecycleEventBus = EventBus<LifecycleEvent>;

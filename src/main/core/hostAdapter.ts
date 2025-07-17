@@ -36,6 +36,8 @@ export interface HostAdapter<HostRef = any, HostTextRef = any> {
 
   findParentReference(reference: HostRef | HostTextRef): Nullable<HostRef>;
 
+  findNextSiblingReference(reference: HostRef | HostTextRef): Nullable<HostRef>;
+
   clearNode(reference: HostRef | HostTextRef): void;
 
   attachElementToReference(element: SimpElement, reference: HostRef | HostTextRef): void;

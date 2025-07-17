@@ -56,6 +56,10 @@ export const testHostAdapter: HostAdapter<Element, Text> = {
     return reference.parentElement as Element;
   }),
 
+  findNextSiblingReference: vi.fn(reference => {
+    return reference.nextSibling as Element;
+  }),
+
   clearNode: vi.fn(reference => {
     reference.textContent = '';
   }),

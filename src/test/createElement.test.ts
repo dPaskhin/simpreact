@@ -166,10 +166,6 @@ describe('createElement and utils', () => {
       const result = normalizeChildren([el1, el2]);
       expect(result).toEqual([el1, el2]);
     });
-
-    it('throws in development if object lacks flag', () => {
-      expect(() => normalizeChildren({ notAValidElement: true } as any)).toThrow(TypeError);
-    });
   });
 
   describe('createTextElement', () => {
@@ -436,7 +432,7 @@ describe('createElement and utils', () => {
   });
 
   describe('normalizeRoot', () => {
-    it('should wrap null in a text element', () => {
+    it('should wrap null in a text element or return nothing', () => {
       expect(normalizeRoot('hello')).toEqual({ flag: 'TEXT', children: 'hello', parent: null });
       expect(normalizeRoot(42)).toEqual({ flag: 'TEXT', children: 42, parent: null });
       expect(normalizeRoot(123n)).toEqual({ flag: 'TEXT', children: 123n, parent: null });
@@ -445,6 +441,10 @@ describe('createElement and utils', () => {
       expect(normalizeRoot(false)).toBeUndefined();
       expect(normalizeRoot(null)).toBeUndefined();
       expect(normalizeRoot(undefined)).toBeUndefined();
+      expect(normalizeRoot([''])).toBeUndefined();
+      expect(normalizeRoot([null])).toBeUndefined();
+      expect(normalizeRoot([])).toBeUndefined();
+      expect(normalizeRoot([undefined, ['', [[], ['']]]])).toBeUndefined();
     });
 
     it('should wrap an array in a fragment element', () => {
@@ -458,6 +458,11 @@ describe('createElement and utils', () => {
         ],
         parent: null,
       });
+    });
+
+    it('should not wrap elements which left single element after normalization', () => {
+      const result = normalizeRoot([createElement('a'), undefined]);
+      expect(result).toEqual({ flag: 'HOST', type: 'a', parent: null, key: '.0' });
     });
 
     it('should return node itself if it is already a SimpElement', () => {

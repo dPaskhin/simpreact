@@ -12,6 +12,10 @@ declare function useRerender(): () => void;
 
 declare function useEffect(effect: Effect, deps?: DependencyList): void;
 
+declare function useMounted(effect: Effect): void;
+
+declare function useUnmounted(cleanup: Cleanup): void;
+
 declare function useContext<T>(context: SimpContext<T>): T;
 
 declare function areDepsEqual(nextDeps: DependencyList | undefined, prevDeps: DependencyList | undefined): boolean;

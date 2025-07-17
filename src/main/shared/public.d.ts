@@ -8,10 +8,6 @@ export type Dict<T = any> = Record<string, T>;
 
 export type SimpText = string | number | bigint;
 
-export interface VoidFunction {
-  (): void;
-}
-
 type Subscriber<Event> = (event: Event) => boolean | void;
 
 declare class EventBus<Event = void> {

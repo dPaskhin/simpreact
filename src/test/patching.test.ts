@@ -2,7 +2,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Element } from 'flyweight-dom';
 
 import type { HostReference, SimpElement } from '@simpreact/internal';
-import { createElement, Fragment, lifecycleEventBus, mount, patch, provideHostAdapter } from '@simpreact/internal';
+import {
+  createContext,
+  createElement,
+  Fragment,
+  lifecycleEventBus,
+  mount,
+  patch,
+  provideHostAdapter,
+} from '@simpreact/internal';
 import { testHostAdapter } from './test-host-adapter';
 
 provideHostAdapter(testHostAdapter);
@@ -223,6 +231,64 @@ describe('patching', () => {
       expect(listener).toHaveBeenCalledWith({ type: 'beforeRender', element: next });
       expect(listener).toHaveBeenCalledWith({ type: 'afterRender' });
       expect(listener).toHaveBeenCalledTimes(4);
+    });
+  });
+
+  describe('patch children', () => {
+    describe('fragment', () => {
+      it('fragment children - from many elements to single element', () => {
+        const prev = createElement(
+          'div',
+          null,
+          createFragmentWithChildren(createElement('a'), createElement('b')),
+          createElement('span')
+        );
+        mount(prev, parent as HostReference, null, null);
+
+        const next = createElement(
+          'div',
+          null,
+          createFragmentWithChildren(createElement('a', { key: '3' })),
+          createElement('span')
+        );
+
+        // Restore mocks before accumulation of host provider methods invokes.
+        vi.resetAllMocks();
+
+        patch(prev, next, parent as HostReference, null, null);
+
+        expect((next.reference as Element).children[0]).toEqual(expect.objectContaining({ nodeName: 'a' }));
+        expect((next.reference as Element).children[1]).toEqual(expect.objectContaining({ nodeName: 'span' }));
+      });
+    });
+
+    describe('provider element', () => {
+      const context = createContext('TEST');
+
+      it('from many elements to single element', () => {
+        const prev = createElement(
+          'div',
+          null,
+          createElement(context.Provider, { value: '' }, createElement('a'), createElement('b')),
+          createElement('span')
+        );
+        mount(prev, parent as HostReference, null, null);
+
+        const next = createElement(
+          'div',
+          null,
+          createElement(context.Provider, { value: '' }, createElement('a')),
+          createElement('span')
+        );
+
+        // Restore mocks before accumulation of host provider methods invokes.
+        vi.resetAllMocks();
+
+        patch(prev, next, parent as HostReference, null, null);
+
+        expect((next.reference as Element).children[0]).toEqual(expect.objectContaining({ nodeName: 'a' }));
+        expect((next.reference as Element).children[1]).toEqual(expect.objectContaining({ nodeName: 'span' }));
+      });
     });
   });
 });

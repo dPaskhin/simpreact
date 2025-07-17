@@ -61,6 +61,10 @@ export const domAdapter: HostAdapter<HTMLElement, Text> = {
     return reference.parentElement as HTMLElement;
   },
 
+  findNextSiblingReference(reference) {
+    return reference.nextSibling as HTMLElement;
+  },
+
   clearNode(reference) {
     reference.textContent = '';
   },
