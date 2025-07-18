@@ -98,7 +98,7 @@ export function mountFunctionalElement(
   (element.store ||= {}).latestElement = element;
 
   lifecycleEventBus.publish({ type: 'beforeRender', element });
-  const children = normalizeRoot(type(element.props || emptyObject));
+  const children = normalizeRoot(type(element.props || emptyObject), false);
   lifecycleEventBus.publish({ type: 'afterRender' });
 
   if (children != null) {
@@ -162,7 +162,8 @@ export function mountConsumer(
   contextMap: Nullable<SimpContextMap>
 ): void {
   const children = normalizeRoot(
-    (element.type as SimpContext<any>['Consumer'])(element.props || emptyObject, contextMap || emptyMap)
+    (element.type as SimpContext<any>['Consumer'])(element.props || emptyObject, contextMap || emptyMap),
+    false
   );
 
   if (children == null) {

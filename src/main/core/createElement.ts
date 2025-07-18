@@ -102,7 +102,7 @@ export function createElement(type: string | FunctionComponent, props?: any, ...
       element.key = key;
     }
 
-    if ((definedChildren = normalizeChildren(definedChildren))) {
+    if ((definedChildren = normalizeChildren(definedChildren, false))) {
       element.children = definedChildren;
     }
 
@@ -121,7 +121,11 @@ export function createElement(type: string | FunctionComponent, props?: any, ...
       parent: null,
     };
 
-    element.children = normalizeChildren(definedChildren || (props != null ? (props as any).children : null));
+    if (
+      (definedChildren = normalizeChildren(definedChildren || (props != null ? (props as any).children : null), false))
+    ) {
+      element.children = definedChildren;
+    }
 
     if (props != null && (props as any).key) {
       element.key = (props as any)?.key;
@@ -131,7 +135,9 @@ export function createElement(type: string | FunctionComponent, props?: any, ...
   } else if (isProvider(type)) {
     const element: SimpElement = { flag: 'PROVIDER', type, props: { value: (props as any).value }, parent: null };
 
-    element.children = normalizeChildren(definedChildren || (props as any).children);
+    if ((definedChildren = normalizeChildren(definedChildren || (props as any).children, false))) {
+      element.children = definedChildren;
+    }
 
     if (props != null && (props as any).key) {
       element.key = (props as any)?.key;
@@ -196,15 +202,14 @@ export function createTextElement(text: SimpText): SimpElement {
   };
 }
 
-// TODO: add a flag to skip ignored nodes checking?
-export function normalizeChildren(children: SimpNode): Maybe<Many<SimpElement>> {
-  if (isIgnoredNode(children)) {
+export function normalizeChildren(children: SimpNode, skipIgnoredCheck: boolean): Maybe<Many<SimpElement>> {
+  if (!skipIgnoredCheck && isIgnoredNode(children)) {
     return;
   }
 
   const result: SimpElement[] = [];
 
-  normalizeNode(children, result);
+  normalizeNode(children, result, undefined, true);
 
   if (result.length === 0) {
     return;
@@ -213,8 +218,8 @@ export function normalizeChildren(children: SimpNode): Maybe<Many<SimpElement>> 
   return result.length === 1 ? result[0] : result;
 }
 
-function normalizeNode(child: SimpNode, result: SimpElement[], currentKey = ''): void {
-  if (isIgnoredNode(child)) {
+function normalizeNode(child: SimpNode, result: SimpElement[], currentKey = '', skipIgnoredCheck: boolean): void {
+  if (!skipIgnoredCheck && isIgnoredNode(child)) {
     return;
   }
 
@@ -229,22 +234,22 @@ function normalizeNode(child: SimpNode, result: SimpElement[], currentKey = ''):
 
   if (Array.isArray(child)) {
     for (let i = 0; i < child.length; i++) {
-      normalizeNode(child[i], result, currentKey + '.' + i);
+      normalizeNode(child[i], result, currentKey + '.' + i, false);
     }
     return;
   }
 
   if (currentKey !== '') {
-    if (child.key) {
-      currentKey = currentKey.slice(0, -2) + child.key;
+    if ((child as SimpElement).key) {
+      currentKey = currentKey.slice(0, -2) + (child as SimpElement).key;
     }
-    child.key = currentKey;
+    (child as SimpElement).key = currentKey;
   }
-  result.push(child);
+  result.push(child as SimpElement);
 }
 
-export function normalizeRoot(node: SimpNode): SimpElement | undefined {
-  if (isIgnoredNode(node)) {
+export function normalizeRoot(node: SimpNode, skipIgnoredCheck: boolean): Maybe<SimpElement> {
+  if (!skipIgnoredCheck && isIgnoredNode(node)) {
     return;
   }
 
@@ -253,14 +258,14 @@ export function normalizeRoot(node: SimpNode): SimpElement | undefined {
   }
 
   if (!Array.isArray(node)) {
-    return node;
+    return node as SimpElement;
   }
 
-  node = normalizeChildren(node);
+  node = normalizeChildren(node, true);
   if (Array.isArray(node)) {
     return createElement(Fragment, { children: node });
   }
-  return node || undefined;
+  return node;
 }
 
 function isIgnoredNode(node: SimpNode): node is Extract<SimpNode, '' | null | undefined | boolean> {

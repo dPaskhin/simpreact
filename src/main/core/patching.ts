@@ -105,22 +105,16 @@ function patchFunctionalComponent(
   }
 
   lifecycleEventBus.publish({ type: 'beforeRender', element: nextElement });
-  const nextChildren = normalizeRoot((nextElement.type as FC)(nextElement.props || emptyObject));
+  const nextChildren = normalizeRoot((nextElement.type as FC)(nextElement.props || emptyObject), false);
   lifecycleEventBus.publish({ type: 'afterRender' });
 
-  patchChildren(
-    prevElement.children,
-    nextChildren,
-    parentReference,
-    nextReference,
-    prevElement,
-    nextElement,
-    contextMap
-  );
+  const prevChildren = prevElement.children;
 
   if (nextChildren != null) {
     nextElement.children = nextChildren;
   }
+
+  patchChildren(prevChildren, nextChildren, parentReference, nextReference, prevElement, nextElement, contextMap);
 
   lifecycleEventBus.publish({ type: 'updated', element: nextElement });
 }
@@ -198,7 +192,8 @@ function patchConsumer(
   contextMap: Nullable<SimpContextMap>
 ): void {
   const children = normalizeRoot(
-    (nextElement.type as SimpContext<any>['Consumer'])(nextElement.props || emptyObject, contextMap || emptyMap)
+    (nextElement.type as SimpContext<any>['Consumer'])(nextElement.props || emptyObject, contextMap || emptyMap),
+    false
   );
 
   if (children != null) {

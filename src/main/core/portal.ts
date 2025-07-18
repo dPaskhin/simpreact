@@ -4,7 +4,7 @@ import { normalizeRoot } from './createElement';
 export function createPortal(children: SimpNode, container: any): SimpElement {
   const element: SimpElement = { flag: 'PORTAL', parent: null };
 
-  if ((children = normalizeRoot(children))) {
+  if ((children = normalizeRoot(children, false))) {
     element.children = children;
   }
 

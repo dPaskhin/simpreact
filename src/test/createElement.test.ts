@@ -21,28 +21,28 @@ const MockComponent: FC = props => {
 describe('createElement and utils', () => {
   describe('normalizeChildren', () => {
     it('returns undefined for null, undefined, boolean, or empty arrays', () => {
-      expect(normalizeChildren(null)).toBeUndefined();
-      expect(normalizeChildren(undefined)).toBeUndefined();
-      expect(normalizeChildren(true)).toBeUndefined();
-      expect(normalizeChildren(false)).toBeUndefined();
-      expect(normalizeChildren([])).toBeUndefined();
-      expect(normalizeChildren([[[], [[], [], []], []], [false, undefined], [''], ''])).toBeUndefined();
-      expect(normalizeChildren([undefined, null, false, true])).toBeUndefined();
-      expect(normalizeChildren('')).toBeUndefined();
+      expect(normalizeChildren(null, false)).toBeUndefined();
+      expect(normalizeChildren(undefined, false)).toBeUndefined();
+      expect(normalizeChildren(true, false)).toBeUndefined();
+      expect(normalizeChildren(false, false)).toBeUndefined();
+      expect(normalizeChildren([], false)).toBeUndefined();
+      expect(normalizeChildren([[[], [[], [], []], []], [false, undefined], [''], ''], false)).toBeUndefined();
+      expect(normalizeChildren([undefined, null, false, true], false)).toBeUndefined();
+      expect(normalizeChildren('', false)).toBeUndefined();
     });
 
     it('wraps string and number into text elements', () => {
-      expect(normalizeChildren('hello')).toEqual({
+      expect(normalizeChildren('hello', true)).toEqual({
         flag: 'TEXT',
         children: 'hello',
         parent: null,
       });
-      expect(normalizeChildren(42)).toEqual({
+      expect(normalizeChildren(42, true)).toEqual({
         flag: 'TEXT',
         children: 42,
         parent: null,
       });
-      expect(normalizeChildren(42n)).toEqual({
+      expect(normalizeChildren(42n, true)).toEqual({
         flag: 'TEXT',
         children: 42n,
         parent: null,
@@ -51,19 +51,22 @@ describe('createElement and utils', () => {
 
     it('returns the element itself if valid SimpElement', () => {
       const el = createMockHostElement();
-      expect(normalizeChildren(el)).toBe(el);
+      expect(normalizeChildren(el, true)).toBe(el);
     });
 
     it('flattens nested arrays of elements and provides proper keys to each element', () => {
-      const result = normalizeChildren([
-        createElement('span'),
-        createElement('span'),
-        '123',
-        [createElement('p'), createElement('p'), [createElement('s'), createElement('s')]],
-        [createElement('b', { key: 'bKeyI' }), createElement('b', { key: 'bKeyII' })],
-        createElement('b', { key: 'bKeyII' }),
-        createElement('span'),
-      ]);
+      const result = normalizeChildren(
+        [
+          createElement('span'),
+          createElement('span'),
+          '123',
+          [createElement('p'), createElement('p'), [createElement('s'), createElement('s')]],
+          [createElement('b', { key: 'bKeyI' }), createElement('b', { key: 'bKeyII' })],
+          createElement('b', { key: 'bKeyII' }),
+          createElement('span'),
+        ],
+        true
+      );
 
       expect(result).toEqual([
         {
@@ -137,7 +140,7 @@ describe('createElement and utils', () => {
 
     it('flattens mixed array of elements and text', () => {
       const el = createMockHostElement();
-      const result = normalizeChildren(['a', el, 2]);
+      const result = normalizeChildren(['a', el, 2], true);
       expect(result).toEqual([
         {
           flag: 'TEXT',
@@ -157,13 +160,13 @@ describe('createElement and utils', () => {
 
     it('returns single element directly', () => {
       const el = createMockHostElement();
-      expect(normalizeChildren(el)).toBe(el);
+      expect(normalizeChildren(el, true)).toBe(el);
     });
 
     it('returns array if more than one element after normalization', () => {
       const el1 = createMockHostElement();
       const el2 = createMockHostElement();
-      const result = normalizeChildren([el1, el2]);
+      const result = normalizeChildren([el1, el2], true);
       expect(result).toEqual([el1, el2]);
     });
   });
@@ -433,22 +436,22 @@ describe('createElement and utils', () => {
 
   describe('normalizeRoot', () => {
     it('should wrap null in a text element or return nothing', () => {
-      expect(normalizeRoot('hello')).toEqual({ flag: 'TEXT', children: 'hello', parent: null });
-      expect(normalizeRoot(42)).toEqual({ flag: 'TEXT', children: 42, parent: null });
-      expect(normalizeRoot(123n)).toEqual({ flag: 'TEXT', children: 123n, parent: null });
-      expect(normalizeRoot('')).toBeUndefined();
-      expect(normalizeRoot(true)).toBeUndefined();
-      expect(normalizeRoot(false)).toBeUndefined();
-      expect(normalizeRoot(null)).toBeUndefined();
-      expect(normalizeRoot(undefined)).toBeUndefined();
-      expect(normalizeRoot([''])).toBeUndefined();
-      expect(normalizeRoot([null])).toBeUndefined();
-      expect(normalizeRoot([])).toBeUndefined();
-      expect(normalizeRoot([undefined, ['', [[], ['']]]])).toBeUndefined();
+      expect(normalizeRoot('hello', false)).toEqual({ flag: 'TEXT', children: 'hello', parent: null });
+      expect(normalizeRoot(42, false)).toEqual({ flag: 'TEXT', children: 42, parent: null });
+      expect(normalizeRoot(123n, false)).toEqual({ flag: 'TEXT', children: 123n, parent: null });
+      expect(normalizeRoot('', false)).toBeUndefined();
+      expect(normalizeRoot(true, false)).toBeUndefined();
+      expect(normalizeRoot(false, false)).toBeUndefined();
+      expect(normalizeRoot(null, false)).toBeUndefined();
+      expect(normalizeRoot(undefined, false)).toBeUndefined();
+      expect(normalizeRoot([''], false)).toBeUndefined();
+      expect(normalizeRoot([null], false)).toBeUndefined();
+      expect(normalizeRoot([], false)).toBeUndefined();
+      expect(normalizeRoot([undefined, ['', [[], ['']]]], false)).toBeUndefined();
     });
 
     it('should wrap an array in a fragment element', () => {
-      const result = normalizeRoot(['a', 'b', ['c'], '', false, [[[true]], '']]);
+      const result = normalizeRoot(['a', 'b', ['c'], '', false, [[[true]], '']], true);
       expect(result).toEqual({
         flag: 'FRAGMENT',
         children: [
@@ -461,13 +464,13 @@ describe('createElement and utils', () => {
     });
 
     it('should not wrap elements which left single element after normalization', () => {
-      const result = normalizeRoot([createElement('a'), undefined]);
+      const result = normalizeRoot([createElement('a'), undefined], true);
       expect(result).toEqual({ flag: 'HOST', type: 'a', parent: null, key: '.0' });
     });
 
     it('should return node itself if it is already a SimpElement', () => {
       const node: SimpElement = { type: 'div', flag: 'HOST', parent: null };
-      const result = normalizeRoot(node);
+      const result = normalizeRoot(node, true);
       expect(result).toBe(node);
     });
   });
