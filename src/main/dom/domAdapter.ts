@@ -5,27 +5,37 @@ import { unmount, unmountAllChildren } from '@simpreact/internal';
 import { isPropNameEventName, patchEvent } from './events';
 import { attachElementToDom } from './attach-element-to-dom';
 
-export const domAdapter: HostAdapter<HTMLElement, Text> = {
-  createReference(type) {
-    return document.createElement(type);
+type Namespace = 'http://www.w3.org/1999/xhtml' | 'http://www.w3.org/2000/svg' | (string & {});
+
+const defaultNamespace = 'http://www.w3.org/1999/xhtml';
+
+export const domAdapter: HostAdapter<HTMLElement | SVGElement, Text, Namespace> = {
+  createReference(type, namespace) {
+    if (namespace) {
+      return document.createElementNS(namespace, type) as SVGElement;
+    } else {
+      return document.createElement(type);
+    }
   },
   createTextReference(text) {
     return document.createTextNode(text);
   },
 
-  mountProps(reference, props, prevElement, nextElement) {
-    mountProps(props, reference, prevElement, nextElement);
+  mountProps(reference, props, prevElement, nextElement, namespace) {
+    mountProps(props, reference, prevElement, nextElement, namespace || defaultNamespace);
   },
 
-  patchProp(reference, prevElement, nextElement, propName, prevValue, nextValue) {
-    patchProp(propName, reference, prevElement, nextElement, prevValue, nextValue);
+  patchProp(reference, prevElement, nextElement, propName, prevValue, nextValue, namespace) {
+    patchProp(propName, reference, prevElement, nextElement, prevValue, nextValue, namespace || defaultNamespace);
   },
 
-  setClassname(reference, className) {
+  setClassname(reference, className, namespace) {
     if (!className) {
       reference.removeAttribute('class');
+    } else if (namespace === 'http://www.w3.org/2000/svg') {
+      reference.setAttribute('class', className);
     } else {
-      reference.className = className;
+      (reference as HTMLElement).className = className;
     }
   },
 
@@ -58,11 +68,11 @@ export const domAdapter: HostAdapter<HTMLElement, Text> = {
   },
 
   findParentReference(reference) {
-    return reference.parentElement as HTMLElement;
+    return reference.parentElement as HTMLElement | SVGElement;
   },
 
   findNextSiblingReference(reference) {
-    return reference.nextSibling as HTMLElement;
+    return reference.nextSibling as HTMLElement | SVGElement;
   },
 
   clearNode(reference) {
@@ -72,26 +82,41 @@ export const domAdapter: HostAdapter<HTMLElement, Text> = {
   attachElementToReference(element, reference) {
     attachElementToDom(element, reference);
   },
+
+  getHostNamespaces(element, currentNamespace) {
+    if (element.type === 'svg') {
+      return { self: 'http://www.w3.org/2000/svg', children: 'http://www.w3.org/2000/svg' };
+    }
+    if (element.type === 'foreignObject') {
+      return { self: 'http://www.w3.org/2000/svg', children: null };
+    }
+    if (currentNamespace && currentNamespace !== 'http://www.w3.org/1999/xhtml') {
+      return { self: currentNamespace, children: currentNamespace };
+    }
+    return null;
+  },
 };
 
 function mountProps(
   props: Dict,
-  reference: HTMLElement,
+  reference: HTMLElement | SVGElement,
   prevElement: Maybe<SimpElement>,
-  nextElement: Maybe<SimpElement>
+  nextElement: Maybe<SimpElement>,
+  namespace: Namespace
 ): void {
   for (const propName in props) {
-    patchProp(propName, reference, prevElement, nextElement, null, props[propName]);
+    patchProp(propName, reference, prevElement, nextElement, null, props[propName], namespace);
   }
 }
 
 function patchProp(
   propName: string,
-  dom: HTMLElement,
+  dom: HTMLElement | SVGElement,
   prevElement: Maybe<SimpElement>,
   nextElement: Maybe<SimpElement>,
   prevValue: any,
-  nextValue: any
+  nextValue: any,
+  namespace: Namespace
 ): void {
   switch (propName) {
     case 'children':
@@ -144,26 +169,32 @@ function patchProp(
       } else if (nextValue == null) {
         dom.removeAttribute(propName);
       } else {
-        dom.setAttribute(propName, nextValue);
+        if (namespace === 'http://www.w3.org/2000/svg' && svgAttrsNamespaces[propName]) {
+          dom.setAttributeNS(svgAttrsNamespaces[propName], propName, nextValue);
+        } else {
+          dom.setAttribute(propName, nextValue);
+        }
       }
   }
 }
 
-function patchDomProp(nextValue: unknown, dom: HTMLElement, propKey: string): void {
+function patchDomProp(nextValue: unknown, dom: HTMLElement | SVGElement, propKey: string): void {
   const value = nextValue == null ? '' : nextValue;
   if ((dom as any)[propKey] !== value) {
     (dom as any)[propKey] = value;
   }
 }
 
-function patchStyle(prevAttrValue: any, nextAttrValue: any, dom: HTMLElement): void {
+function patchStyle(prevAttrValue: any, nextAttrValue: any, dom: HTMLElement | SVGElement): void {
   if (nextAttrValue == null) {
     dom.removeAttribute('style');
     return;
   }
+
   const domStyle = dom.style;
   let style;
   let value;
+
   if (typeof nextAttrValue === 'string') {
     domStyle.cssText = nextAttrValue;
     return;
@@ -242,3 +273,16 @@ export function patchDangerInnerHTML(
 function warnAboutUsingChildrenAndDangerouslySetInnerHTML() {
   console.warn('Avoid setting both `children` and `props.dangerouslySetInnerHTML` simultaneously.');
 }
+
+const svgAttrsNamespaces: Record<string, string> = {
+  'xlink:actuate': 'http://www.w3.org/1999/xlink',
+  'xlink:arcrole': 'http://www.w3.org/1999/xlink',
+  'xlink:href': 'http://www.w3.org/1999/xlink',
+  'xlink:role': 'http://www.w3.org/1999/xlink',
+  'xlink:show': 'http://www.w3.org/1999/xlink',
+  'xlink:title': 'http://www.w3.org/1999/xlink',
+  'xlink:type': 'http://www.w3.org/1999/xlink',
+  'xml:base': 'http://www.w3.org/XML/1998/namespace',
+  'xml:lang': 'http://www.w3.org/XML/1998/namespace',
+  'xml:space': 'http://www.w3.org/XML/1998/namespace',
+};

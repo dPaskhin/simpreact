@@ -3,7 +3,7 @@ import type { SimpElement } from '@simpreact/internal';
 
 const elementPropertyName = '__SIMP_ELEMENT__';
 
-export function attachElementToDom(element: SimpElement, dom: HTMLElement | Text) {
+export function attachElementToDom(element: SimpElement, dom: HTMLElement | SVGElement | Text) {
   if (dom.nodeType !== Node.TEXT_NODE) {
     Object.defineProperty(dom, elementPropertyName, { value: element, writable: true });
   }

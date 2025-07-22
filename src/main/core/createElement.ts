@@ -21,6 +21,8 @@ export type SimpElementFlag = 'FC' | 'HOST' | 'TEXT' | 'FRAGMENT' | 'PROVIDER' |
 export interface SimpElementStore {
   latestElement?: Maybe<SimpElement>;
 
+  hostNamespace?: Maybe<string>;
+
   [key: string]: unknown;
 }
 
@@ -278,6 +280,7 @@ function isIgnoredNode(node: SimpNode): node is Extract<SimpNode, '' | null | un
   if (isSimpText(node)) {
     return false;
   }
+  // TODO: ignore empty portals as well?
   if (node.flag === 'FRAGMENT' || node.flag === 'PROVIDER') {
     return node.children == null;
   }

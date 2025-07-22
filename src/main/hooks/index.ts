@@ -48,6 +48,7 @@ lifecycleEventBus.subscribe(event => {
       syncRerenderLocker.lock();
 
       const effects = element.store.effectsHookStates;
+      // TODO: use delete keyword here?
       element.store.effectsHookStates = undefined;
 
       for (const state of effects) {
@@ -65,6 +66,7 @@ lifecycleEventBus.subscribe(event => {
       syncRerenderLocker.lock();
 
       const effects = element.store.effectsHookStates;
+      // TODO: use delete keyword here?
       element.store.effectsHookStates = undefined;
 
       for (const state of effects) {

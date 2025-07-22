@@ -4,12 +4,18 @@ import type { SimpElement } from './createElement';
 
 export type HostReference = any;
 
-export interface HostAdapter<HostRef = any, HostTextRef = any> {
-  createReference(type: string): HostRef;
+export interface HostAdapter<HostRef = any, HostTextRef = any, NS = string> {
+  createReference(type: string, namespace?: Maybe<NS>): HostRef;
 
   createTextReference(text: string): HostTextRef;
 
-  mountProps(reference: HostRef, props: Dict, prevElement: Maybe<SimpElement>, nextElement: Maybe<SimpElement>): void;
+  mountProps(
+    reference: HostRef,
+    props: Dict,
+    prevElement: Maybe<SimpElement>,
+    nextElement: Maybe<SimpElement>,
+    namespace?: Maybe<NS>
+  ): void;
 
   patchProp(
     reference: HostRef,
@@ -17,10 +23,11 @@ export interface HostAdapter<HostRef = any, HostTextRef = any> {
     nextElement: Maybe<SimpElement>,
     propName: string,
     prevValue: unknown,
-    nextValue: unknown
+    nextValue: unknown,
+    namespace?: Maybe<NS>
   ): void;
 
-  setClassname(reference: HostRef, className: Maybe<string>): void;
+  setClassname(reference: HostRef, className: Maybe<string>, namespace?: Maybe<NS>): void;
 
   setTextContent(reference: HostRef, text: string): void;
 
@@ -41,6 +48,14 @@ export interface HostAdapter<HostRef = any, HostTextRef = any> {
   clearNode(reference: HostRef | HostTextRef): void;
 
   attachElementToReference(element: SimpElement, reference: HostRef | HostTextRef): void;
+
+  getHostNamespaces(
+    element: SimpElement,
+    currentNamespace: Maybe<NS>
+  ): Nullable<{
+    self: Nullable<NS>;
+    children: Nullable<NS>;
+  }>;
 }
 
 export let hostAdapter: HostAdapter;

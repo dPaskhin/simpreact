@@ -15,7 +15,8 @@ export function rerender(element: SimpElement) {
       element,
       hostAdapter.findParentReference(findHostReferenceFromElement(element)) as HostReference,
       null,
-      element.contextMap || null
+      element.contextMap || null,
+      element.store!.hostNamespace
     );
   }
 }

@@ -27,7 +27,7 @@ export function unmount(element: SimpElement): void {
   // with Maybe<Many<SimpElement>> children due to normalization.
   if (Array.isArray(element.children)) {
     unmountAllChildren(element.children as SimpElement[]);
-  } else if (element.children != null) {
+  } else if (element.children) {
     unmount(element.children as SimpElement);
   }
 
@@ -60,7 +60,7 @@ export function clearElementHostReference(element: Maybe<SimpElement>, parentHos
           clearElementHostReference(children[i] as SimpElement, parentHostReference);
         }
         return;
-      } else if (children != null) {
+      } else if (children) {
         element = children as SimpElement;
       }
     }

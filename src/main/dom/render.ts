@@ -11,7 +11,7 @@ export function render(element: Nullable<SimpElement>, container: Nullable<Eleme
   if (currentRoot == null) {
     if (element != null) {
       hostAdapter.clearNode(container);
-      mount(element, container, null, null);
+      mount(element, container, null, null, hostAdapter.getHostNamespaces(element, undefined)?.self);
       (container as any).__SIMP_ROOT__ = element;
     }
   } else {
@@ -19,7 +19,7 @@ export function render(element: Nullable<SimpElement>, container: Nullable<Eleme
       remove(currentRoot, container);
       (container as any).__SIMP_ROOT__ = null;
     } else {
-      patch(currentRoot, element, container, null, null);
+      patch(currentRoot, element, container, null, null, hostAdapter.getHostNamespaces(element, undefined)?.self);
       (container as any).__SIMP_ROOT__ = element;
     }
   }
