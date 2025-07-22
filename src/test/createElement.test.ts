@@ -4,6 +4,7 @@ import type { FC, SimpElement } from '@simpreact/internal';
 import {
   createContext,
   createElement,
+  createPortal,
   createTextElement,
   Fragment,
   normalizeChildren,
@@ -18,6 +19,8 @@ const MockComponent: FC = props => {
   return createElement('div', props);
 };
 
+const TestContext = createContext('DEFAULT_VALUE');
+
 describe('createElement and utils', () => {
   describe('normalizeChildren', () => {
     it('returns undefined for null, undefined, boolean, or empty arrays', () => {
@@ -29,6 +32,21 @@ describe('createElement and utils', () => {
       expect(normalizeChildren([[[], [[], [], []], []], [false, undefined], [''], ''], false)).toBeUndefined();
       expect(normalizeChildren([undefined, null, false, true], false)).toBeUndefined();
       expect(normalizeChildren('', false)).toBeUndefined();
+      expect(normalizeChildren(createElement(Fragment), false)).toBeUndefined();
+      expect(normalizeChildren(createElement(TestContext.Provider, { value: '1' }), false)).toBeUndefined();
+      expect(normalizeChildren(createPortal(undefined, {}), false)).toBeUndefined();
+      expect(
+        normalizeChildren(
+          [
+            undefined,
+            [
+              createElement(TestContext.Provider, { value: '1' }),
+              [[[createElement(Fragment)]], [createPortal(undefined, {})]],
+            ],
+          ],
+          false
+        )
+      ).toBeUndefined();
     });
 
     it('wraps string and number into text elements', () => {
@@ -348,8 +366,6 @@ describe('createElement and utils', () => {
     });
 
     it('creates a Provider element', () => {
-      const TestContext = createContext('DEFAULT_VALUE');
-
       expect(createElement(TestContext.Provider, { value: 'PROVIDED_VALUE' }, 12)).toEqual({
         flag: 'PROVIDER',
         type: TestContext.Provider,
@@ -448,6 +464,21 @@ describe('createElement and utils', () => {
       expect(normalizeRoot([null], false)).toBeUndefined();
       expect(normalizeRoot([], false)).toBeUndefined();
       expect(normalizeRoot([undefined, ['', [[], ['']]]], false)).toBeUndefined();
+      expect(normalizeRoot(createElement(Fragment), false)).toBeUndefined();
+      expect(normalizeRoot(createElement(TestContext.Provider, { value: '1' }), false)).toBeUndefined();
+      expect(normalizeRoot(createPortal(undefined, {}), false)).toBeUndefined();
+      expect(
+        normalizeRoot(
+          [
+            undefined,
+            [
+              createElement(TestContext.Provider, { value: '1' }),
+              [[[createElement(Fragment)]], [createPortal(undefined, {})]],
+            ],
+          ],
+          false
+        )
+      ).toBeUndefined();
     });
 
     it('should wrap an array in a fragment element', () => {

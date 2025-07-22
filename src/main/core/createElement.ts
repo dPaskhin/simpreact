@@ -280,8 +280,7 @@ function isIgnoredNode(node: SimpNode): node is Extract<SimpNode, '' | null | un
   if (isSimpText(node)) {
     return false;
   }
-  // TODO: ignore empty portals as well?
-  if (node.flag === 'FRAGMENT' || node.flag === 'PROVIDER') {
+  if (node.flag === 'FRAGMENT' || node.flag === 'PROVIDER' || node.flag === 'PORTAL') {
     return node.children == null;
   }
   return false;
