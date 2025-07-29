@@ -62,13 +62,10 @@ describe('patching', () => {
       patch(prev, next, parent as HostReference, null, null, '');
 
       expect((prev.children as SimpElement).reference).toStrictEqual((next.children as SimpElement).reference);
-      expect(testHostAdapter.patchProp).toHaveBeenCalledWith(
+      expect(testHostAdapter.patchProps).toHaveBeenCalledWith(
         (prev.children as SimpElement).reference,
         prev.children,
         next.children,
-        'id',
-        'prev',
-        'next',
         ''
       );
     });
@@ -210,13 +207,7 @@ describe('patching', () => {
 
       expect(prevRef).not.toBe(nextRef);
 
-      expect(testHostAdapter.mountProps).toHaveBeenCalledExactlyOnceWith(
-        nextRef,
-        { id: 'next' },
-        null,
-        next.children,
-        ''
-      );
+      expect(testHostAdapter.mountProps).toHaveBeenCalledExactlyOnceWith(nextRef, next.children, '');
 
       // Because of unmount and mount sequence there are remove and append mutations in DOM.
       expect(testHostAdapter.removeChild).toHaveBeenNthCalledWith(

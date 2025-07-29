@@ -14,7 +14,7 @@ export const testHostAdapter: HostAdapter<Element, Text> = {
   }),
   mountProps: vi.fn(),
 
-  patchProp: vi.fn(),
+  patchProps: vi.fn(),
 
   setClassname: vi.fn((reference, className) => {
     if (!className) {

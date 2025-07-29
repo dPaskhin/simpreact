@@ -59,14 +59,6 @@ export function mountHostElement(
 
   hostAdapter.attachElementToReference(element, hostReference);
 
-  if (element.props) {
-    hostAdapter.mountProps(hostReference, element.props, null, element, hostNamespace);
-  }
-
-  if (element.className) {
-    hostAdapter.setClassname(hostReference, element.className, hostNamespace);
-  }
-
   // HOST element always has Maybe<Many<SimpElement>> children due to normalization process.
   const children = element.children as Maybe<Many<SimpElement>>;
 
@@ -79,6 +71,14 @@ export function mountHostElement(
 
   if (parentReference) {
     hostAdapter.insertOrAppend(parentReference, hostReference, nextReference);
+  }
+
+  if (element.props) {
+    hostAdapter.mountProps(hostReference, element, hostNamespace);
+  }
+
+  if (element.className) {
+    hostAdapter.setClassname(hostReference, element.className, hostNamespace);
   }
 
   applyRef(element);

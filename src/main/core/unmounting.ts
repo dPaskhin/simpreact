@@ -32,6 +32,8 @@ export function unmount(element: SimpElement): void {
   }
 
   if (element.flag === 'HOST') {
+    // TODO: unsubscribe related delegated events
+    // TODO: add unmount props?
     unmountRef(element);
   }
 }

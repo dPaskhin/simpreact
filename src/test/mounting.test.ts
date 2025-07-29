@@ -95,7 +95,7 @@ describe('mounting', () => {
 
       mountHostElement(element, null, null, null, '');
 
-      expect(testHostAdapter.mountProps).toHaveBeenCalledWith(element.reference, props, null, element, '');
+      expect(testHostAdapter.mountProps).toHaveBeenCalledWith(element.reference, element, '');
     });
   });
 
@@ -146,8 +146,6 @@ describe('mounting', () => {
       expect(testFn).toHaveBeenCalledWith(props);
       expect(testHostAdapter.mountProps).toHaveBeenCalledWith(
         (element.children as SimpElement).reference,
-        props,
-        null,
         element.children,
         ''
       );
@@ -263,8 +261,6 @@ describe('mounting', () => {
       expect(testHostAdapter.createReference).toHaveBeenCalledWith('div', '');
       expect(testHostAdapter.mountProps).toHaveBeenCalledWith(
         expect.objectContaining({ nodeName: 'div' }),
-        { fromContext: 'PROVIDED_VALUE' },
-        null,
         element.children,
         ''
       );

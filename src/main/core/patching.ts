@@ -74,44 +74,6 @@ function patchHostElement(
 
   hostAdapter.attachElementToReference(nextElement, nextElement.reference);
 
-  const prevProps = prevElement.props || emptyObject;
-  const nextProps = nextElement.props || emptyObject;
-
-  for (const propName in nextProps) {
-    const prevValue = prevProps[propName];
-    const nextValue = nextProps[propName];
-
-    if (prevValue !== nextValue) {
-      hostAdapter.patchProp(
-        nextElement.reference,
-        prevElement,
-        nextElement,
-        propName,
-        prevValue,
-        nextValue,
-        hostNamespace
-      );
-    }
-  }
-
-  for (const propName in prevProps) {
-    if (nextProps[propName] == null && prevProps[propName] != null) {
-      hostAdapter.patchProp(
-        nextElement.reference,
-        prevElement,
-        nextElement,
-        propName,
-        prevProps[propName],
-        null,
-        hostNamespace
-      );
-    }
-  }
-
-  if (prevElement.className !== nextElement.className) {
-    hostAdapter.setClassname(nextElement.reference, nextElement.className, hostNamespace);
-  }
-
   patchChildren(
     prevElement.children,
     nextElement.children,
@@ -122,6 +84,12 @@ function patchHostElement(
     contextMap,
     hostNamespaces?.children
   );
+
+  hostAdapter.patchProps(nextElement.reference, prevElement, nextElement, hostNamespace);
+
+  if (prevElement.className !== nextElement.className) {
+    hostAdapter.setClassname(nextElement.reference, nextElement.className, hostNamespace);
+  }
 
   applyRef(nextElement);
 }

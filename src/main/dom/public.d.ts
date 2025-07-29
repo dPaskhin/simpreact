@@ -1190,6 +1190,8 @@ export interface CssVariables {
 export interface HTMLAttributes<T> extends AriaAttributes, DOMAttributes<T> {
   // SimpReact-specific Attributes
   class?: string | null | undefined;
+  defaultChecked?: boolean | undefined;
+  defaultValue?: string | number | readonly string[] | undefined;
 
   // Standard HTML Attributes
   accessKey?: string | undefined;

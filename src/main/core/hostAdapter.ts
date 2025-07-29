@@ -1,4 +1,4 @@
-import type { Dict, Maybe, Nullable } from '@simpreact/shared';
+import type { Maybe, Nullable } from '@simpreact/shared';
 
 import type { SimpElement } from './createElement';
 
@@ -9,23 +9,9 @@ export interface HostAdapter<HostRef = any, HostTextRef = any, NS = string> {
 
   createTextReference(text: string): HostTextRef;
 
-  mountProps(
-    reference: HostRef,
-    props: Dict,
-    prevElement: Maybe<SimpElement>,
-    nextElement: Maybe<SimpElement>,
-    namespace?: Maybe<NS>
-  ): void;
+  mountProps(reference: HostRef, element: SimpElement, namespace?: Maybe<NS>): void;
 
-  patchProp(
-    reference: HostRef,
-    prevElement: Maybe<SimpElement>,
-    nextElement: Maybe<SimpElement>,
-    propName: string,
-    prevValue: unknown,
-    nextValue: unknown,
-    namespace?: Maybe<NS>
-  ): void;
+  patchProps(reference: HostRef, prevElement: SimpElement, nextElement: SimpElement, namespace?: Maybe<NS>): void;
 
   setClassname(reference: HostRef, className: Maybe<string>, namespace?: Maybe<NS>): void;
 

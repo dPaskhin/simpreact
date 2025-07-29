@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { patchDangerInnerHTML } from '../../main/dom/domAdapter';
 import { createElement } from '@simpreact/core';
 import { unmount, unmountAllChildren } from '@simpreact/internal';
+
+import { patchDangerInnerHTML } from '../../main/dom/props/dangerInnerHTML';
 
 vi.mock('@simpreact/internal', () => ({
   unmount: vi.fn(),
@@ -24,9 +25,8 @@ describe('patchDangerInnerHTML', () => {
     patchDangerInnerHTML(null, nextValue, null, nextElement, dom);
 
     expect(dom.innerHTML).toBe('<b>Hello</b>');
-    expect(nextElement.children).toBeUndefined();
     expect(warn).toHaveBeenCalledWith(
-      'Avoid setting both `children` and `props.dangerouslySetInnerHTML` simultaneously.'
+      'Avoid setting both children and props.dangerouslySetInnerHTML at the same time — this can cause unpredictable behavior.'
     );
     warn.mockRestore();
   });
@@ -56,7 +56,6 @@ describe('patchDangerInnerHTML', () => {
 
     expect(unmount).toHaveBeenCalledWith(prevElementChildren);
     expect(dom.innerHTML).toBe('<i>Updated</i>');
-    expect(nextElement.children).toBeUndefined();
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
   });
@@ -72,7 +71,6 @@ describe('patchDangerInnerHTML', () => {
 
     expect(unmountAllChildren).toHaveBeenCalledWith(prevElementChildren);
     expect(dom.innerHTML).toBe('<i>Updated</i>');
-    expect(nextElement.children).toBeUndefined();
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
   });
@@ -90,7 +88,6 @@ describe('patchDangerInnerHTML', () => {
     expect(unmountAllChildren).toHaveBeenCalledWith(prevElementChildren);
     expect(dom.innerHTML).toBe('new');
     expect(prevElement.children).toBeUndefined();
-    expect(nextElement.children).toBeUndefined();
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
   });
@@ -108,7 +105,6 @@ describe('patchDangerInnerHTML', () => {
     expect(unmount).toHaveBeenCalledWith(prevElementChildren);
     expect(dom.innerHTML).toBe('new');
     expect(prevElement.children).toBeUndefined();
-    expect(nextElement.children).toBeUndefined();
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
   });
