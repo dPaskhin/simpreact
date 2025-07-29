@@ -227,9 +227,10 @@ function normalizeNode(child: SimpNode, result: SimpElement[], currentKey = '', 
 
   if (isSimpText(child)) {
     child = createTextElement(child);
-    if (currentKey !== '') {
-      child.key = currentKey;
-    }
+    child.key =
+      currentKey ||
+      // Hack to treat a single child as a one-item list for more consistent reconciliation.
+      '.0';
     result.push(child);
     return;
   }
@@ -241,12 +242,13 @@ function normalizeNode(child: SimpNode, result: SimpElement[], currentKey = '', 
     return;
   }
 
-  if (currentKey !== '') {
-    if ((child as SimpElement).key) {
-      currentKey = currentKey.slice(0, -2) + (child as SimpElement).key;
-    }
-    (child as SimpElement).key = currentKey;
+  if ((child as SimpElement).key) {
+    currentKey = currentKey.slice(0, -2) + (child as SimpElement).key;
   }
+  (child as SimpElement).key =
+    currentKey ||
+    // Hack to treat a single child as a one-item list for more consistent reconciliation.
+    '.0';
   result.push(child as SimpElement);
 }
 

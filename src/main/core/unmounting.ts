@@ -69,24 +69,6 @@ export function clearElementHostReference(element: Maybe<SimpElement>, parentHos
   }
 }
 
-/**
- * Deletes all element's children from provided hostReference.
- *
- * Only FRAGMENT, PROVIDER, and HOST elements can have multiple children.
- *
- * @param hostReference - Reference from which element children should be deleted.
- * @param element       - Element which has the children to be deleted.
- */
-export function removeAllChildren(hostReference: HostReference, element: SimpElement): void {
-  unmountAllChildren(element.children as SimpElement[]);
-
-  if (element.flag === 'FRAGMENT' || element.flag === 'PROVIDER') {
-    clearElementHostReference(element, hostReference);
-  } else {
-    hostAdapter.clearNode(hostReference);
-  }
-}
-
 export function remove(element: SimpElement, parentReference: HostReference): void {
   unmount(element);
   clearElementHostReference(element, parentReference);

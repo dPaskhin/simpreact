@@ -360,6 +360,7 @@ describe('createElement and utils', () => {
           type: 'div',
           children: { flag: 'TEXT', children: '123', parent: null },
           parent: null,
+          key: '.0',
         },
         parent: null,
       });
@@ -381,7 +382,7 @@ describe('createElement and utils', () => {
       ).toEqual({
         flag: 'PROVIDER',
         type: TestContext.Provider,
-        children: createMockHostElement(),
+        children: { ...createMockHostElement(), key: '.0' },
         props: { value: 'PROVIDED_VALUE' },
         parent: null,
       });

@@ -5,7 +5,7 @@ import type { FC, Key, SimpElement, SimpElementFlag, SimpNode } from './createEl
 import { normalizeRoot } from './createElement';
 import type { HostReference } from './hostAdapter';
 import { hostAdapter } from './hostAdapter';
-import { clearElementHostReference, remove, removeAllChildren, unmount, unmountAllChildren } from './unmounting';
+import { clearElementHostReference, remove, unmount, unmountAllChildren } from './unmounting';
 import { mount, mountArrayChildren } from './mounting';
 import type { SimpContext, SimpContextMap } from './context';
 import { applyRef } from './ref';
@@ -79,7 +79,6 @@ function patchHostElement(
     nextElement.children,
     nextElement.reference,
     null,
-    prevElement,
     nextElement,
     contextMap,
     hostNamespaces?.children
@@ -122,16 +121,7 @@ function patchFunctionalComponent(
     nextElement.children = nextChildren;
   }
 
-  patchChildren(
-    prevChildren,
-    nextChildren,
-    parentReference,
-    nextReference,
-    prevElement,
-    nextElement,
-    contextMap,
-    hostNamespace
-  );
+  patchChildren(prevChildren, nextChildren, parentReference, nextReference, nextElement, contextMap, hostNamespace);
 
   lifecycleEventBus.publish({ type: 'updated', element: nextElement });
 }
@@ -164,7 +154,6 @@ function patchFragment(
     nextElement.children,
     parentReference,
     nextReference,
-    prevElement,
     nextElement,
     contextMap,
     hostNamespace
@@ -194,7 +183,6 @@ function patchProvider(
     nextElement.children,
     parentReference,
     nextReference,
-    prevElement,
     nextElement,
     contextMap,
     hostNamespace
@@ -223,7 +211,6 @@ function patchConsumer(
     nextElement.children,
     parentReference,
     nextReference,
-    prevElement,
     nextElement,
     contextMap,
     hostNamespace
@@ -244,7 +231,6 @@ export function patchPortal(
     nextChildren,
     prevContainer as HostReference,
     null,
-    prevElement,
     nextElement,
     contextMap,
     hostAdapter.getHostNamespaces(nextChildren, undefined)?.self
@@ -273,7 +259,6 @@ function patchChildren(
   nextChildren: SimpNode,
   parentReference: HostReference,
   nextReference: Nullable<HostReference>,
-  prevElement: SimpElement,
   nextElement: SimpElement,
   contextMap: Nullable<SimpContextMap>,
   hostNamespace: Maybe<string>
@@ -292,21 +277,26 @@ function patchChildren(
         hostNamespace
       );
     } else if (nextChildren) {
-      removeAllChildren(parentReference, prevElement);
-      (nextChildren as SimpElement).parent = nextElement;
-      mount(nextChildren as SimpElement, parentReference, nextReference, contextMap, hostNamespace);
+      patchKeyedChildren(
+        prevChildren as SimpElement[],
+        [nextChildren] as SimpElement[],
+        parentReference,
+        nextReference,
+        contextMap,
+        hostNamespace
+      );
     } else {
       unmountAllChildren(prevChildren as SimpElement[]);
       hostAdapter.clearNode(parentReference);
     }
   } else if (prevChildren) {
     if (Array.isArray(nextChildren)) {
-      replaceOneElementWithMultipleElements(
-        prevChildren as SimpElement,
+      patchKeyedChildren(
+        [prevChildren] as SimpElement[],
         nextChildren as SimpElement[],
         parentReference,
+        nextReference,
         contextMap,
-        nextElement,
         hostNamespace
       );
     } else if (nextChildren) {
@@ -338,26 +328,6 @@ function patchChildren(
       mount(nextChildren as SimpElement, parentReference, nextReference, contextMap, hostNamespace);
     }
   }
-}
-
-function replaceOneElementWithMultipleElements(
-  prevChildren: SimpElement,
-  nextChildren: SimpElement[],
-  parentReference: HostReference,
-  contextMap: Nullable<SimpContextMap>,
-  parentElement: SimpElement,
-  hostNamespace: Maybe<string>
-): void {
-  unmount(prevChildren);
-  mountArrayChildren(
-    nextChildren,
-    parentReference,
-    findHostReferenceFromElement(prevChildren),
-    contextMap,
-    parentElement,
-    hostNamespace
-  );
-  clearElementHostReference(prevChildren, parentReference);
 }
 
 export function patchKeyedChildren(
