@@ -1,7 +1,7 @@
 import type { HostAdapter } from '@simpreact/internal';
 
 import { attachElementToDom } from './attach-element-to-dom';
-import { mountProps, patchProps } from './props';
+import { mountProps, patchProps, unmountProps } from './props';
 import type { Namespace } from './namespace';
 import { defaultNamespace } from './namespace';
 
@@ -23,6 +23,10 @@ export const domAdapter: HostAdapter<HTMLElement | SVGElement, Text, Namespace> 
 
   patchProps(dom, prevElement, nextElement, namespace) {
     patchProps(dom, prevElement, nextElement, namespace || defaultNamespace);
+  },
+
+  unmountProps(dom, element) {
+    unmountProps(dom, element);
   },
 
   setClassname(reference, className, namespace) {

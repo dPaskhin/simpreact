@@ -34,6 +34,18 @@ export function mountProps(dom: HTMLElement | SVGElement, element: SimpElement, 
   }
 }
 
+export function unmountProps(dom: HTMLElement | SVGElement, element: SimpElement): void {
+  if (!element.props) {
+    return;
+  }
+
+  for (const propName in element.props) {
+    if (isPropNameEventName(propName)) {
+      patchEvent(propName, element.props[propName], null, dom);
+    }
+  }
+}
+
 export function patchProps(
   dom: HTMLElement | SVGElement,
   prevElement: SimpElement,

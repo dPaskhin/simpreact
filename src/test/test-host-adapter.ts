@@ -16,6 +16,8 @@ export const testHostAdapter: HostAdapter<Element, Text> = {
 
   patchProps: vi.fn(),
 
+  unmountProps: vi.fn(),
+
   setClassname: vi.fn((reference, className) => {
     if (!className) {
       reference.removeAttribute('class');

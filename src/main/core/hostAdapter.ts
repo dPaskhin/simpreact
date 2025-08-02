@@ -13,6 +13,8 @@ export interface HostAdapter<HostRef = any, HostTextRef = any, NS = string> {
 
   patchProps(reference: HostRef, prevElement: SimpElement, nextElement: SimpElement, namespace?: Maybe<NS>): void;
 
+  unmountProps(reference: HostRef, element: SimpElement): void;
+
   setClassname(reference: HostRef, className: Maybe<string>, namespace?: Maybe<NS>): void;
 
   setTextContent(reference: HostRef, text: string): void;
