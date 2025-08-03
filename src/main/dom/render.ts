@@ -1,4 +1,12 @@
-import { hostAdapter, mount, patch, provideHostAdapter, remove, type SimpElement } from '@simpreact/internal';
+import {
+  hostAdapter,
+  mount,
+  patch,
+  provideHostAdapter,
+  remove,
+  type SimpElement,
+  syncRerenderLocker,
+} from '@simpreact/internal';
 import type { Nullable } from '@simpreact/shared';
 
 import { domAdapter } from './domAdapter';
@@ -7,6 +15,8 @@ provideHostAdapter(domAdapter);
 
 export function render(element: Nullable<SimpElement>, container: Nullable<Element | DocumentFragment>) {
   let currentRoot: SimpElement | null = (container as any).__SIMP_ROOT__;
+
+  syncRerenderLocker.lock();
 
   if (currentRoot == null) {
     if (element != null) {
@@ -23,6 +33,9 @@ export function render(element: Nullable<SimpElement>, container: Nullable<Eleme
       (container as any).__SIMP_ROOT__ = element;
     }
   }
+
+  // When "using" becomes more stable this will be removed.
+  syncRerenderLocker[Symbol.dispose]();
 }
 
 interface SimpRoot {

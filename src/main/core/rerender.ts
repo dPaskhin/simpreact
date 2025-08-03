@@ -11,6 +11,8 @@ export function rerender(element: SimpElement) {
   if (syncRerenderLocker.isLocked) {
     syncRerenderLocker.track(element);
   } else {
+    syncRerenderLocker.lock();
+
     updateFunctionalComponent(
       element,
       hostAdapter.findParentReference(findHostReferenceFromElement(element)) as HostReference,
@@ -18,6 +20,9 @@ export function rerender(element: SimpElement) {
       element.contextMap || null,
       element.store!.hostNamespace
     );
+
+    // When "using" becomes more stable this will be removed.
+    syncRerenderLocker[Symbol.dispose]();
   }
 }
 
