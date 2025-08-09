@@ -7,7 +7,8 @@ export type LifecycleEvent =
   | { type: 'afterRender' }
   | { type: 'mounted'; element: SimpElement }
   | { type: 'updated'; element: SimpElement }
-  | { type: 'unmounted'; element: SimpElement };
+  | { type: 'unmounted'; element: SimpElement }
+  | { type: 'errored'; element: SimpElement; error: any };
 
 export type LifecycleEventBus = EventBus<LifecycleEvent>;
 

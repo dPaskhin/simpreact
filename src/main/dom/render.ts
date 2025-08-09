@@ -1,41 +1,50 @@
 import {
+  asyncRerenderLocker,
   hostAdapter,
   mount,
   patch,
   provideHostAdapter,
   remove,
   type SimpElement,
-  syncRerenderLocker,
 } from '@simpreact/internal';
 import type { Nullable } from '@simpreact/shared';
 
 import { domAdapter } from './domAdapter';
+import { attachElementToDom, getElementFromDom } from './attach-element-to-dom';
 
 provideHostAdapter(domAdapter);
 
-export function render(element: Nullable<SimpElement>, container: Nullable<Element | DocumentFragment>) {
-  let currentRoot: SimpElement | null = (container as any).__SIMP_ROOT__;
+export function render(element: Nullable<SimpElement>, container: Nullable<Element | DocumentFragment>): void {
+  if (!container) {
+    return;
+  }
 
-  syncRerenderLocker.lock();
+  const currentRootElement = getElementFromDom(container as Element);
 
-  if (currentRoot == null) {
-    if (element != null) {
+  asyncRerenderLocker.lock();
+
+  if (!currentRootElement) {
+    if (element) {
       hostAdapter.clearNode(container);
+      attachElementToDom(
+        (element.parent = { flag: 'HOST', reference: container, children: element, parent: null }),
+        container as Element
+      );
       mount(element, container, null, null, hostAdapter.getHostNamespaces(element, undefined)?.self);
-      (container as any).__SIMP_ROOT__ = element;
     }
   } else {
-    if (element == null) {
-      remove(currentRoot, container);
-      (container as any).__SIMP_ROOT__ = null;
+    if (!element) {
+      remove(currentRootElement.children as SimpElement, container);
+      currentRootElement.children = null;
     } else {
-      patch(currentRoot, element, container, null, null, hostAdapter.getHostNamespaces(element, undefined)?.self);
-      (container as any).__SIMP_ROOT__ = element;
+      const prevChildren = currentRootElement.children as SimpElement;
+      currentRootElement.children = element;
+      element.parent = currentRootElement;
+      patch(prevChildren, element, container, null, null, hostAdapter.getHostNamespaces(element, undefined)?.self);
     }
   }
 
-  // When "using" becomes more stable this will be removed.
-  syncRerenderLocker[Symbol.dispose]();
+  asyncRerenderLocker.flush();
 }
 
 interface SimpRoot {

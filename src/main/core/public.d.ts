@@ -60,7 +60,7 @@ declare function createPortal<HostRef = {}>(children: SimpNode, container: HostR
 
 declare function createContext<T>(defaultValue: T): SimpContext<T>;
 
-declare function Fragment(props: PropsWithChildren): SimpNode;
+declare function Fragment(props: PropsWithChildren): SimpElement;
 
 export type FunctionComponent<P = {}> = (props: P) => SimpNode;
 export type FC<P = {}> = FunctionComponent<P>;

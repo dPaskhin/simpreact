@@ -1,7 +1,5 @@
 import type { SimpElement } from './createElement';
-import { findHostReferenceFromElement, updateFunctionalComponent } from './patching';
-import type { HostReference } from './hostAdapter';
-import { hostAdapter } from './hostAdapter';
+import { findParentReferenceFromElement, updateFunctionalComponent } from './patching';
 
 export function rerender(element: SimpElement) {
   if (element.flag !== 'FC') {
@@ -10,19 +8,21 @@ export function rerender(element: SimpElement) {
 
   if (syncRerenderLocker.isLocked) {
     syncRerenderLocker.track(element);
+    return;
+  } else if (asyncRerenderLocker.isLocked) {
+    asyncRerenderLocker.track(element);
   } else {
-    syncRerenderLocker.lock();
+    asyncRerenderLocker.lock();
 
     updateFunctionalComponent(
       element,
-      hostAdapter.findParentReference(findHostReferenceFromElement(element)) as HostReference,
+      findParentReferenceFromElement(element),
       null,
       element.contextMap || null,
       element.store!.hostNamespace
     );
 
-    // When "using" becomes more stable this will be removed.
-    syncRerenderLocker[Symbol.dispose]();
+    asyncRerenderLocker.flush();
   }
 }
 
@@ -47,7 +47,7 @@ class RerenderLocker {
     this.#isLocked = true;
   }
 
-  [Symbol.dispose]() {
+  flush() {
     this.#isLocked = false;
 
     for (const element of this.#elements) {
@@ -57,4 +57,38 @@ class RerenderLocker {
   }
 }
 
+class AsyncRerenderLocker {
+  #isLocked = false;
+
+  #elements = new Set<SimpElement>();
+
+  get isLocked() {
+    return this.#isLocked;
+  }
+
+  track(element: SimpElement) {
+    if (element.flag !== 'FC') {
+      throw new TypeError('Re-rendering is only supported for FC elements.');
+    }
+
+    this.#elements.add(element);
+  }
+
+  lock() {
+    this.#isLocked = true;
+  }
+
+  flush() {
+    this.#isLocked = false;
+
+    queueMicrotask(() => {
+      for (const element of this.#elements) {
+        this.#elements.delete(element);
+        rerender(element.store!.latestElement!);
+      }
+    });
+  }
+}
+
 export const syncRerenderLocker = new RerenderLocker();
+export const asyncRerenderLocker = new AsyncRerenderLocker();

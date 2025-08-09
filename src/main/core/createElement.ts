@@ -26,6 +26,7 @@ export interface SimpElementStore {
   [key: string]: unknown;
 }
 
+// TODO: Add unmounted as in Inferno Component
 export interface SimpElement {
   flag: SimpElementFlag;
 

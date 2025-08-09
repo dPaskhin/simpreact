@@ -1,6 +1,6 @@
 import type { RefObject, SimpContext, SimpElement } from '@simpreact/internal';
 import { lifecycleEventBus, rerender, syncRerenderLocker } from '@simpreact/internal';
-import type { Maybe } from '@simpreact/shared';
+import type { Maybe, Nullable } from '@simpreact/shared';
 import { noop } from '@simpreact/shared';
 
 type Cleanup = () => void;
@@ -25,6 +25,7 @@ interface HooksSimpElement extends SimpElement {
   store?: SimpElement['store'] & {
     hookStates?: HookState[];
     effectsHookStates?: EffectHookState[];
+    erroredHookStates?: Array<(error: any) => void>;
   };
 }
 
@@ -35,8 +36,12 @@ let currentElement: HooksSimpElement;
 lifecycleEventBus.subscribe(event => {
   if (event.type === 'beforeRender') {
     currentElement = event.element as HooksSimpElement;
+
+    if (currentElement.store?.erroredHookStates) {
+      currentElement.store.erroredHookStates = undefined;
+    }
   }
-  if (event.type === 'afterRender') {
+  if (event.type === 'afterRender' || event.type === 'errored') {
     currentElement = null!;
     currentIndex = 0;
   }
@@ -48,15 +53,13 @@ lifecycleEventBus.subscribe(event => {
       syncRerenderLocker.lock();
 
       const effects = element.store.effectsHookStates;
-      // TODO: use delete keyword here?
       element.store.effectsHookStates = undefined;
 
       for (const state of effects) {
         state.cleanup = state.effect() || undefined;
       }
 
-      // When "using" becomes more stable this will be removed.
-      syncRerenderLocker[Symbol.dispose]();
+      syncRerenderLocker.flush();
     }
   }
   if (event.type === 'updated') {
@@ -66,7 +69,6 @@ lifecycleEventBus.subscribe(event => {
       syncRerenderLocker.lock();
 
       const effects = element.store.effectsHookStates;
-      // TODO: use delete keyword here?
       element.store.effectsHookStates = undefined;
 
       for (const state of effects) {
@@ -76,8 +78,7 @@ lifecycleEventBus.subscribe(event => {
         state.cleanup = state.effect() || undefined;
       }
 
-      // When "using" becomes more stable this will be removed.
-      syncRerenderLocker[Symbol.dispose]();
+      syncRerenderLocker.flush();
     }
   }
   if (event.type === 'unmounted') {
@@ -94,7 +95,38 @@ lifecycleEventBus.subscribe(event => {
       }
     }
   }
+  if (event.type === 'errored') {
+    const erroredHookStatesElement = findElementWithErroredHookStates(event.element as HooksSimpElement);
+
+    if (!erroredHookStatesElement) {
+      throw new Error('Error occurred during rendering a component', { cause: event.error });
+    }
+
+    if (erroredHookStatesElement.store!.erroredHookStates) {
+      syncRerenderLocker.lock();
+
+      for (const state of erroredHookStatesElement.store!.erroredHookStates) {
+        state(event.error);
+      }
+
+      syncRerenderLocker.flush();
+    }
+  }
 });
+
+function findElementWithErroredHookStates(element: HooksSimpElement): Nullable<HooksSimpElement> {
+  let temp: Nullable<HooksSimpElement> = element;
+
+  while (temp != null) {
+    if (temp.store?.erroredHookStates) {
+      return temp;
+    }
+
+    temp = temp.parent;
+  }
+
+  return null;
+}
 
 export function useRef<T>(initialValue: T): RefObject<T>;
 export function useRef<T>(initialValue: T | null): RefObject<T | null>;
@@ -161,6 +193,18 @@ export function useUnmounted(cleanup: Cleanup): void {
 
 export function useContext<T>(context: SimpContext<T>): T {
   return currentElement.contextMap?.get(context) ?? context.defaultValue;
+}
+
+export function useDidCatchError(effect: (error: any) => void): void {
+  if (!currentElement.store) {
+    currentElement.store = {};
+  }
+
+  if (!currentElement.store.erroredHookStates) {
+    currentElement.store.erroredHookStates = [];
+  }
+
+  currentElement.store.erroredHookStates.push(effect);
 }
 
 export function areDepsEqual(nextDeps: DependencyList | undefined, prevDeps: DependencyList | undefined): boolean {

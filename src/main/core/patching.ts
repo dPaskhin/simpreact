@@ -5,7 +5,7 @@ import type { FC, Key, SimpElement, SimpElementFlag, SimpNode } from './createEl
 import { normalizeRoot } from './createElement';
 import type { HostReference } from './hostAdapter';
 import { hostAdapter } from './hostAdapter';
-import { clearElementHostReference, remove, unmount, unmountAllChildren } from './unmounting';
+import { clearElementHostReference, remove, unmount } from './unmounting';
 import { mount, mountArrayChildren } from './mounting';
 import type { SimpContext, SimpContextMap } from './context';
 import { applyRef } from './ref';
@@ -62,7 +62,7 @@ function patchHostElement(
   nextElement: SimpElement,
   contextMap: Nullable<SimpContextMap>,
   hostNamespace: Maybe<string>
-) {
+): void {
   if (prevElement.ref) {
     nextElement.ref = prevElement.ref;
   }
@@ -111,13 +111,20 @@ function patchFunctionalComponent(
     nextElement.contextMap = contextMap;
   }
 
-  lifecycleEventBus.publish({ type: 'beforeRender', element: nextElement });
-  const nextChildren = normalizeRoot((nextElement.type as FC)(nextElement.props || emptyObject), false);
-  lifecycleEventBus.publish({ type: 'afterRender' });
+  let nextChildren: Maybe<SimpElement>;
+
+  try {
+    lifecycleEventBus.publish({ type: 'beforeRender', element: nextElement });
+    nextChildren = normalizeRoot((nextElement.type as FC)(nextElement.props || emptyObject), false);
+    lifecycleEventBus.publish({ type: 'afterRender' });
+  } catch (error) {
+    lifecycleEventBus.publish({ type: 'errored', element: nextElement, error });
+    return;
+  }
 
   const prevChildren = prevElement.children;
 
-  if (nextChildren != null) {
+  if (nextChildren) {
     nextElement.children = nextChildren;
   }
 
@@ -286,7 +293,7 @@ function patchChildren(
         hostNamespace
       );
     } else {
-      unmountAllChildren(prevChildren as SimpElement[]);
+      unmount(prevChildren as SimpElement[]);
       hostAdapter.clearNode(parentReference);
     }
   } else if (prevChildren) {
@@ -420,6 +427,23 @@ export function patchKeyedChildren(
       }
     }
   }
+}
+
+export function findParentReferenceFromElement(element: SimpElement): Nullable<HostReference> {
+  let flag: SimpElementFlag;
+  let temp: Nullable<SimpElement> = element;
+
+  while (temp != null) {
+    flag = temp.flag;
+
+    if (flag === 'HOST') {
+      return temp.reference as HostReference;
+    }
+
+    temp = temp.parent;
+  }
+
+  return null;
 }
 
 export function findHostReferenceFromElement(element: SimpElement): Nullable<HostReference> {

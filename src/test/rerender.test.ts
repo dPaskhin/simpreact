@@ -10,13 +10,13 @@ import { dispatchDelegatedEvent } from '../main/dom/events';
 provideHostAdapter(testHostAdapter);
 
 describe('rerender (integration tests)', () => {
-  it('should batch several rerenders of one FC element (effect)', () => {
-    const rerenderFn = vi.fn();
+  it('should batch several rerenders of one FC element (effect)', async () => {
+    const renderFn = vi.fn();
 
     const totalRoot = createElement(function App() {
       const rerender = useRerender();
 
-      rerenderFn();
+      renderFn();
 
       useEffect(() => {
         rerender();
@@ -32,17 +32,23 @@ describe('rerender (integration tests)', () => {
 
     createRoot(new Element('div') as any).render(totalRoot);
 
-    expect(rerenderFn).toHaveBeenCalledTimes(2);
+    // First render happens in sync flow when root.render is ongoing.
+    expect(renderFn).toHaveBeenCalledTimes(1);
+
+    await Promise.resolve();
+
+    // Second render happens in async flow when asyncRenderLocker flushes.
+    expect(renderFn).toHaveBeenCalledTimes(2);
   });
 
-  it('should batch several rerenders of one FC element (delegated event handler)', () => {
-    const rerenderFn = vi.fn();
+  it('should batch several rerenders of one FC element (delegated event handler)', async () => {
+    const renderFn = vi.fn();
 
     const totalRoot = createElement(function App() {
       const rerender = useRerender();
       const buttonRef = useRef(null);
 
-      rerenderFn();
+      renderFn();
 
       useEffect(() => {
         const nativeEvent = new Event('click');
@@ -65,10 +71,16 @@ describe('rerender (integration tests)', () => {
 
     createRoot(new Element('div') as any).render(totalRoot);
 
-    expect(rerenderFn).toHaveBeenCalledTimes(2);
+    // First render happens in sync flow when root.render is ongoing.
+    expect(renderFn).toHaveBeenCalledTimes(1);
+
+    await Promise.resolve();
+
+    // Second render happens in async flow when asyncRenderLocker flushes.
+    expect(renderFn).toHaveBeenCalledTimes(2);
   });
 
-  it('should batch several layers rerenders of one FC element', () => {
+  it('should batch several layers rerenders of one FC element', async () => {
     const innerElementRerenderFn = vi.fn();
     const rootElementRerenderFn = vi.fn();
 
@@ -106,6 +118,8 @@ describe('rerender (integration tests)', () => {
     }
 
     createRoot(new Element('div') as any).render(createElement(App));
+
+    await Promise.resolve();
 
     expect(innerElementRerenderFn).toHaveBeenCalledTimes(3);
     expect(innerElementRerenderFn).toHaveBeenNthCalledWith(1, 0);

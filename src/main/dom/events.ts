@@ -2,7 +2,7 @@ import type { Nullable } from '@simpreact/shared';
 import type { SimpElement } from '@simpreact/internal';
 import { syncRerenderLocker } from '@simpreact/internal';
 
-import { getElementFromEventTarget } from './attach-element-to-dom';
+import { getElementFromDom } from './attach-element-to-dom';
 
 type DelegatedEventType =
   | 'click'
@@ -96,7 +96,7 @@ export function dispatchDelegatedEvent(event: Event): void {
   const captureHandlers: Array<{ element: SimpElement; handler: (event: SyntheticEvent) => void }> = [];
   const bubbleHandlers: Array<{ element: SimpElement; handler: (event: SyntheticEvent) => void }> = [];
 
-  let element: Nullable<SimpElement> = getElementFromEventTarget(event.target);
+  let element: Nullable<SimpElement> = getElementFromDom(event.target);
 
   while (element) {
     if (element.flag === 'HOST') {
@@ -127,8 +127,7 @@ export function dispatchDelegatedEvent(event: Event): void {
     }
   }
 
-  // When "using" becomes more stable this will be removed.
-  syncRerenderLocker[Symbol.dispose]();
+  syncRerenderLocker.flush();
 }
 
 const captureRegex = /Capture/;

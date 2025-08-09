@@ -59,6 +59,10 @@ export function mountHostElement(
 
   hostAdapter.attachElementToReference(element, hostReference);
 
+  if (parentReference) {
+    hostAdapter.insertOrAppend(parentReference, hostReference, nextReference);
+  }
+
   // HOST element always has Maybe<Many<SimpElement>> children due to normalization process.
   const children = element.children as Maybe<Many<SimpElement>>;
 
@@ -67,10 +71,6 @@ export function mountHostElement(
   } else if (children) {
     children.parent = element;
     mount(children, hostReference, null, contextMap, hostNamespaces?.children);
-  }
-
-  if (parentReference) {
-    hostAdapter.insertOrAppend(parentReference, hostReference, nextReference);
   }
 
   if (element.props) {
@@ -101,9 +101,16 @@ export function mountFunctionalElement(
     element.store.hostNamespace = hostNamespace;
   }
 
-  lifecycleEventBus.publish({ type: 'beforeRender', element });
-  const children = normalizeRoot((element.type as FC)(element.props || emptyObject), false);
-  lifecycleEventBus.publish({ type: 'afterRender' });
+  let children: Maybe<SimpElement>;
+
+  try {
+    lifecycleEventBus.publish({ type: 'beforeRender', element });
+    children = normalizeRoot((element.type as FC)(element.props || emptyObject), false);
+    lifecycleEventBus.publish({ type: 'afterRender' });
+  } catch (error) {
+    lifecycleEventBus.publish({ type: 'errored', element, error });
+    return;
+  }
 
   if (children) {
     children.parent = element;

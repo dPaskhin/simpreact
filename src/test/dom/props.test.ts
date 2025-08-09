@@ -1,12 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createElement } from '@simpreact/core';
-import { unmount, unmountAllChildren } from '@simpreact/internal';
+import { unmount } from '@simpreact/internal';
 
 import { patchDangerInnerHTML } from '../../main/dom/props/dangerInnerHTML';
 
 vi.mock('@simpreact/internal', () => ({
   unmount: vi.fn(),
-  unmountAllChildren: vi.fn(),
 }));
 
 const createDomElement = () => document.createElement('div');
@@ -69,13 +68,13 @@ describe('patchDangerInnerHTML', () => {
 
     patchDangerInnerHTML(null, { __html: '<i>Updated</i>' }, prevElement, nextElement, dom);
 
-    expect(unmountAllChildren).toHaveBeenCalledWith(prevElementChildren);
+    expect(unmount).toHaveBeenCalledWith(prevElementChildren);
     expect(dom.innerHTML).toBe('<i>Updated</i>');
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
   });
 
-  it('should call unmountAllChildren if prev children is array', () => {
+  it('should call unmount if prev children is array', () => {
     const dom = createDomElement();
     const prevElement = createElement('div', null, createElement('span'), createElement('p'));
     const prevElementChildren = prevElement.children;
@@ -85,7 +84,7 @@ describe('patchDangerInnerHTML', () => {
 
     patchDangerInnerHTML({ __html: 'old' }, { __html: 'new' }, prevElement, nextElement, dom);
 
-    expect(unmountAllChildren).toHaveBeenCalledWith(prevElementChildren);
+    expect(unmount).toHaveBeenCalledWith(prevElementChildren);
     expect(dom.innerHTML).toBe('new');
     expect(prevElement.children).toBeUndefined();
     expect(warn).toHaveBeenCalled();
@@ -119,6 +118,5 @@ describe('patchDangerInnerHTML', () => {
 
     expect(dom.innerHTML).toBe('same');
     expect(unmount).not.toHaveBeenCalled();
-    expect(unmountAllChildren).not.toHaveBeenCalled();
   });
 });

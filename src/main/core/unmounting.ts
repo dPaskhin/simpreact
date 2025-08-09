@@ -1,4 +1,4 @@
-import type { Maybe } from '@simpreact/shared';
+import type { Many, Maybe } from '@simpreact/shared';
 
 import type { SimpElement } from './createElement';
 import type { HostReference } from './hostAdapter';
@@ -6,10 +6,19 @@ import { hostAdapter } from './hostAdapter';
 import { unmountRef } from './ref';
 import { lifecycleEventBus } from './lifecycleEventBus';
 
-export function unmount(element: SimpElement): void {
+export function unmount(element: Many<SimpElement>): void {
+  if (Array.isArray(element)) {
+    for (const child of element) {
+      unmount(child);
+    }
+    return;
+  }
+
   if (element.flag === 'FC') {
-    // FC element always has only one root element due to normalization.
-    unmount(element.children as SimpElement);
+    // FC element always has Maybe<SimpElement> due to normalization.
+    if (element.children) {
+      unmount(element.children as SimpElement);
+    }
     lifecycleEventBus.publish({ type: 'unmounted', element });
     return;
   }
@@ -25,21 +34,13 @@ export function unmount(element: SimpElement): void {
 
   // Only FRAGMENT, PROVIDER, CONSUMER, and HOST elements remain,
   // with Maybe<Many<SimpElement>> children due to normalization.
-  if (Array.isArray(element.children)) {
-    unmountAllChildren(element.children as SimpElement[]);
-  } else if (element.children) {
-    unmount(element.children as SimpElement);
+  if (element.children) {
+    unmount(element.children as Many<SimpElement>);
   }
 
   if (element.flag === 'HOST') {
     unmountRef(element);
     hostAdapter.unmountProps(element.reference, element);
-  }
-}
-
-export function unmountAllChildren(children: SimpElement[]) {
-  for (const child of children) {
-    unmount(child);
   }
 }
 

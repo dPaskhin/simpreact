@@ -1,24 +1,27 @@
 import type { SimpElement } from '@simpreact/internal';
+import { syncRerenderLocker } from '@simpreact/internal';
 import type { Dict, Many, Maybe } from '@simpreact/shared';
 import { emptyObject } from '@simpreact/shared';
 
-import { getElementFromEventTarget } from '../../attach-element-to-dom';
+import { getElementFromDom } from '../../attach-element-to-dom';
 
 export function isEventNameIgnored(eventName: string): boolean {
   return eventName === 'onChange';
 }
 
 function onControlledInputChange(event: Event): void {
-  let element = getElementFromEventTarget(event.target);
+  let element = getElementFromDom(event.target);
 
   if (!element || !element.props) {
     return;
   }
 
   if (element.props['onChange']) {
-    // TODO: add rerender batching block here?
+    syncRerenderLocker.lock();
     element.props['onChange'](event);
-    element = getElementFromEventTarget(event.target);
+    syncRerenderLocker.flush();
+
+    element = getElementFromDom(event.target);
   }
 
   if (element) {

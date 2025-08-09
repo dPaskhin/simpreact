@@ -3,12 +3,12 @@ import type { SimpElement } from '@simpreact/internal';
 
 const elementPropertyName = '__SIMP_ELEMENT__';
 
-export function attachElementToDom(element: SimpElement, dom: HTMLElement | SVGElement | Text) {
+export function attachElementToDom(element: SimpElement, dom: Node): void {
   if (dom.nodeType !== Node.TEXT_NODE) {
     Object.defineProperty(dom, elementPropertyName, { value: element, writable: true });
   }
 }
 
-export function getElementFromEventTarget(target: Nullable<EventTarget>): Nullable<SimpElement> {
+export function getElementFromDom(target: Nullable<EventTarget>): Nullable<SimpElement> {
   return (target as any)?.[elementPropertyName] ?? null;
 }

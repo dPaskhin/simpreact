@@ -21,7 +21,8 @@ describe('render', () => {
       render(element, container as any);
 
       expect(testHostAdapter.clearNode).toHaveBeenCalledWith(container);
-      expect((container as any).__SIMP_ROOT__).toBe(element);
+      expect((container as any).__SIMP_ELEMENT__.flag).toBe('HOST');
+      expect((container as any).__SIMP_ELEMENT__.children).toBe(element);
     });
 
     it('should patch existing root if new element is provided', () => {
@@ -31,16 +32,17 @@ describe('render', () => {
       render(initial, container as any);
       render(next, container as any);
 
-      expect((container as any).__SIMP_ROOT__).toBe(next);
+      expect((container as any).__SIMP_ELEMENT__.flag).toBe('HOST');
+      expect((container as any).__SIMP_ELEMENT__.children).toBe(next);
     });
 
-    it('should remove root if null element is passed', () => {
+    it('should remove root element children if null element is passed', () => {
       const existing = createElement('div');
 
       render(existing, container as any);
       render(null, container as any);
 
-      expect((container as any).__SIMP_ROOT__).toBe(null);
+      expect((container as any).__SIMP_ELEMENT__.children).toBe(null);
     });
 
     it('should do nothing if both root and new element are null', () => {
@@ -61,7 +63,8 @@ describe('render', () => {
 
       root.render(element);
 
-      expect((container as any).__SIMP_ROOT__).toBe(element);
+      expect((container as any).__SIMP_ELEMENT__.flag).toBe('HOST');
+      expect((container as any).__SIMP_ELEMENT__.children).toBe(element);
     });
 
     it('should patch existing root if present', () => {
@@ -72,7 +75,8 @@ describe('render', () => {
       root.render(first);
       root.render(second);
 
-      expect((container as any).__SIMP_ROOT__).toBe(second);
+      expect((container as any).__SIMP_ELEMENT__.flag).toBe('HOST');
+      expect((container as any).__SIMP_ELEMENT__.children).toBe(second);
     });
 
     it('should unmount the root element', () => {
@@ -82,7 +86,8 @@ describe('render', () => {
       root.render(element);
       root.unmount();
 
-      expect((container as any).__SIMP_ROOT__).toBe(null);
+      expect((container as any).__SIMP_ELEMENT__.flag).toBe('HOST');
+      expect((container as any).__SIMP_ELEMENT__.children).toBe(null);
     });
   });
 });
