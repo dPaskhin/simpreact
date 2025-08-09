@@ -5,6 +5,9 @@ export function rerender(element: SimpElement) {
   if (element.flag !== 'FC') {
     throw new TypeError('Re-rendering is only supported for FC elements.');
   }
+  if (element.unmounted) {
+    console.warn('The component unmounted.');
+  }
 
   if (syncRerenderLocker.isLocked) {
     syncRerenderLocker.track(element);

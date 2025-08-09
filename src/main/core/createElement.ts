@@ -26,7 +26,6 @@ export interface SimpElementStore {
   [key: string]: unknown;
 }
 
-// TODO: Add unmounted as in Inferno Component
 export interface SimpElement {
   flag: SimpElementFlag;
 
@@ -49,6 +48,8 @@ export interface SimpElement {
   contextMap?: Maybe<SimpContextMap>;
 
   ref?: any;
+
+  unmounted?: boolean;
 }
 
 export function createElement(type: string | FunctionComponent, props?: any, ...children: SimpNode[]): SimpElement {

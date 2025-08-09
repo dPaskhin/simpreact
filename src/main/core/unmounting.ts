@@ -19,6 +19,7 @@ export function unmount(element: Many<SimpElement>): void {
     if (element.children) {
       unmount(element.children as SimpElement);
     }
+    element.unmounted = true;
     lifecycleEventBus.publish({ type: 'unmounted', element });
     return;
   }

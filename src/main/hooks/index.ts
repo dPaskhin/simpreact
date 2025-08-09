@@ -85,10 +85,7 @@ lifecycleEventBus.subscribe(event => {
     const element = event.element as HooksSimpElement;
 
     if (element.store?.hookStates) {
-      const unmountedElementStates = element.store.hookStates;
-      element.store.hookStates = undefined;
-
-      for (const state of unmountedElementStates) {
+      for (const state of element.store.hookStates) {
         if (state && 'cleanup' in state && typeof state.cleanup === 'function') {
           state.cleanup();
         }
