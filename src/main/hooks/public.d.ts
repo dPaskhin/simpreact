@@ -18,6 +18,6 @@ declare function useUnmounted(cleanup: Cleanup): void;
 
 declare function useContext<T>(context: SimpContext<T>): T;
 
-declare function useDidCatchError(effect: (error: any) => void): void;
+declare function useCatch(cb: (error: any) => void): void;
 
 declare function areDepsEqual(nextDeps: DependencyList | undefined, prevDeps: DependencyList | undefined): boolean;

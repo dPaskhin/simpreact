@@ -29,69 +29,60 @@ export function rerender(element: SimpElement) {
   }
 }
 
-class RerenderLocker {
-  #isLocked = false;
+interface IRendererLocker {
+  _isLocked: boolean;
+  _elements: Set<SimpElement>;
 
-  #elements = new Set<SimpElement>();
+  isLocked: boolean;
 
-  get isLocked() {
-    return this.#isLocked;
-  }
+  lock(): void;
 
-  track(element: SimpElement) {
-    if (element.flag !== 'FC') {
-      throw new TypeError('Re-rendering is only supported for FC elements.');
-    }
+  track(element: SimpElement): void;
 
-    this.#elements.add(element);
-  }
-
-  lock() {
-    this.#isLocked = true;
-  }
-
-  flush() {
-    this.#isLocked = false;
-
-    for (const element of this.#elements) {
-      this.#elements.delete(element);
-      rerender(element.store!.latestElement!);
-    }
-  }
+  flush(): void;
 }
 
-class AsyncRerenderLocker {
-  #isLocked = false;
-
-  #elements = new Set<SimpElement>();
-
+export const syncRerenderLocker: IRendererLocker = {
+  _isLocked: false,
+  _elements: new Set<SimpElement>(),
   get isLocked() {
-    return this.#isLocked;
-  }
-
-  track(element: SimpElement) {
-    if (element.flag !== 'FC') {
-      throw new TypeError('Re-rendering is only supported for FC elements.');
-    }
-
-    this.#elements.add(element);
-  }
-
+    return this._isLocked;
+  },
   lock() {
-    this.#isLocked = true;
-  }
-
+    this._isLocked = true;
+  },
+  track(element) {
+    this._elements.add(element);
+  },
   flush() {
-    this.#isLocked = false;
+    this._isLocked = false;
+
+    for (const element of this._elements) {
+      this._elements.delete(element);
+      rerender(element.store!.latestElement!);
+    }
+  },
+};
+export const asyncRerenderLocker: IRendererLocker = {
+  _isLocked: false,
+  _elements: new Set<SimpElement>(),
+  get isLocked() {
+    return this._isLocked;
+  },
+  lock() {
+    this._isLocked = true;
+  },
+  track(element) {
+    this._elements.add(element);
+  },
+  flush() {
+    this._isLocked = false;
 
     queueMicrotask(() => {
-      for (const element of this.#elements) {
-        this.#elements.delete(element);
+      for (const element of this._elements) {
+        this._elements.delete(element);
         rerender(element.store!.latestElement!);
       }
     });
-  }
-}
-
-export const syncRerenderLocker = new RerenderLocker();
-export const asyncRerenderLocker = new AsyncRerenderLocker();
+  },
+};

@@ -226,8 +226,8 @@ describe('patching', () => {
       // Regardless of the same type (Component) identity.
       expect(listener).toHaveBeenCalledWith({ type: 'unmounted', element: prev });
       expect(listener).toHaveBeenCalledWith({ type: 'mounted', element: next });
-      expect(listener).toHaveBeenCalledWith({ type: 'beforeRender', element: next });
-      expect(listener).toHaveBeenCalledWith({ type: 'afterRender' });
+      expect(listener).toHaveBeenCalledWith({ type: 'beforeRender', element: next, phase: 'mounting' });
+      expect(listener).toHaveBeenCalledWith({ type: 'afterRender', phase: 'mounting' });
       expect(listener).toHaveBeenCalledTimes(4);
     });
   });

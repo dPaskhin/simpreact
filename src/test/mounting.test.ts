@@ -115,8 +115,8 @@ describe('mounting', () => {
 
       mountFunctionalElement(element, parentRef as HostReference, nextRef as HostReference, contextMap, '');
 
-      expect(listener).toHaveBeenCalledWith({ type: 'beforeRender', element });
-      expect(listener).toHaveBeenCalledWith({ type: 'afterRender' });
+      expect(listener).toHaveBeenCalledWith({ type: 'beforeRender', element, phase: 'mounting' });
+      expect(listener).toHaveBeenCalledWith({ type: 'afterRender', phase: 'mounting' });
       expect(listener).toHaveBeenCalledWith({ type: 'mounted', element });
       expect(listener).toHaveBeenCalledTimes(3);
       expect(testHostAdapter.insertOrAppend).toHaveBeenCalledWith(

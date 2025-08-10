@@ -114,11 +114,11 @@ function patchFunctionalComponent(
   let nextChildren: Maybe<SimpElement>;
 
   try {
-    lifecycleEventBus.publish({ type: 'beforeRender', element: nextElement });
+    lifecycleEventBus.publish({ type: 'beforeRender', element: nextElement, phase: 'updating' });
     nextChildren = normalizeRoot((nextElement.type as FC)(nextElement.props || emptyObject), false);
-    lifecycleEventBus.publish({ type: 'afterRender' });
+    lifecycleEventBus.publish({ type: 'afterRender', phase: 'updating' });
   } catch (error) {
-    lifecycleEventBus.publish({ type: 'errored', element: nextElement, error });
+    lifecycleEventBus.publish({ type: 'errored', element: nextElement, error, phase: 'updating' });
     return;
   }
 

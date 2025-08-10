@@ -25,7 +25,7 @@ interface HooksSimpElement extends SimpElement {
   store?: SimpElement['store'] & {
     hookStates?: HookState[];
     effectsHookStates?: EffectHookState[];
-    erroredHookStates?: Array<(error: any) => void>;
+    catchHandlers?: Array<(error: any) => void>;
   };
 }
 
@@ -37,15 +37,14 @@ lifecycleEventBus.subscribe(event => {
   if (event.type === 'beforeRender') {
     currentElement = event.element as HooksSimpElement;
 
-    if (currentElement.store?.erroredHookStates) {
-      currentElement.store.erroredHookStates = undefined;
+    if (currentElement.store?.catchHandlers) {
+      currentElement.store.catchHandlers = undefined;
     }
   }
   if (event.type === 'afterRender' || event.type === 'errored') {
     currentElement = null!;
     currentIndex = 0;
   }
-
   if (event.type === 'mounted') {
     const element = event.element as HooksSimpElement;
 
@@ -93,16 +92,16 @@ lifecycleEventBus.subscribe(event => {
     }
   }
   if (event.type === 'errored') {
-    const erroredHookStatesElement = findElementWithErroredHookStates(event.element as HooksSimpElement);
+    const element = findElementWithCatchHandlers(event.element as HooksSimpElement);
 
-    if (!erroredHookStatesElement) {
+    if (!element) {
       throw new Error('Error occurred during rendering a component', { cause: event.error });
     }
 
-    if (erroredHookStatesElement.store!.erroredHookStates) {
+    if (element.store!.catchHandlers) {
       syncRerenderLocker.lock();
 
-      for (const state of erroredHookStatesElement.store!.erroredHookStates) {
+      for (const state of element.store!.catchHandlers) {
         state(event.error);
       }
 
@@ -111,11 +110,11 @@ lifecycleEventBus.subscribe(event => {
   }
 });
 
-function findElementWithErroredHookStates(element: HooksSimpElement): Nullable<HooksSimpElement> {
+function findElementWithCatchHandlers(element: HooksSimpElement): Nullable<HooksSimpElement> {
   let temp: Nullable<HooksSimpElement> = element;
 
   while (temp != null) {
-    if (temp.store?.erroredHookStates) {
+    if (temp.store?.catchHandlers) {
       return temp;
     }
 
@@ -192,16 +191,16 @@ export function useContext<T>(context: SimpContext<T>): T {
   return currentElement.contextMap?.get(context) ?? context.defaultValue;
 }
 
-export function useDidCatchError(effect: (error: any) => void): void {
+export function useCatch(cb: (error: any) => void): void {
   if (!currentElement.store) {
     currentElement.store = {};
   }
 
-  if (!currentElement.store.erroredHookStates) {
-    currentElement.store.erroredHookStates = [];
+  if (!currentElement.store.catchHandlers) {
+    currentElement.store.catchHandlers = [];
   }
 
-  currentElement.store.erroredHookStates.push(effect);
+  currentElement.store.catchHandlers.push(cb);
 }
 
 export function areDepsEqual(nextDeps: DependencyList | undefined, prevDeps: DependencyList | undefined): boolean {
@@ -240,6 +239,6 @@ function getOrCreateEffectHookStates(element: HooksSimpElement) {
   return element.store.effectsHookStates;
 }
 
-export default { useRef, useRerender, useEffect, useMounted, useUnmounted, useContext, areDepsEqual };
+export default { useRef, useRerender, useEffect, useMounted, useUnmounted, useContext, useCatch, areDepsEqual };
 
 export type * from './public';

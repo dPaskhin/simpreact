@@ -95,20 +95,25 @@ export function mountFunctionalElement(
     element.contextMap = contextMap;
   }
 
-  (element.store ||= {}).latestElement = element;
+  if (element.unmounted) {
+    element.unmounted = false;
+  }
+
+  element.store = { latestElement: element };
 
   if (hostNamespace) {
     element.store.hostNamespace = hostNamespace;
   }
 
+  // FC element always has Maybe<SimpElement> children due to normalization process.
   let children: Maybe<SimpElement>;
 
   try {
-    lifecycleEventBus.publish({ type: 'beforeRender', element });
+    lifecycleEventBus.publish({ type: 'beforeRender', element, phase: 'mounting' });
     children = normalizeRoot((element.type as FC)(element.props || emptyObject), false);
-    lifecycleEventBus.publish({ type: 'afterRender' });
+    lifecycleEventBus.publish({ type: 'afterRender', phase: 'mounting' });
   } catch (error) {
-    lifecycleEventBus.publish({ type: 'errored', element, error });
+    lifecycleEventBus.publish({ type: 'errored', element, error, phase: 'mounting' });
     return;
   }
 
