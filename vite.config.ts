@@ -5,12 +5,12 @@ import path from 'node:path';
 export default defineConfig({
   resolve: {
     alias: {
-      '@simpreact/core': path.resolve(process.cwd(), './src/main/core'),
-      '@simpreact/internal': path.resolve(process.cwd(), './src/main/core/internal.ts'),
-      '@simpreact/dom': path.resolve(process.cwd(), './src/main/dom'),
-      '@simpreact/hooks': path.resolve(process.cwd(), './src/main/hooks'),
-      '@simpreact/jsx-runtime': path.resolve(process.cwd(), './src/main/hooks'),
-      '@simpreact/shared': path.resolve(process.cwd(), './src/main/shared'),
+      '@simpreact/core': path.resolve(process.cwd(), './src/main/core/index.js'),
+      '@simpreact/internal': path.resolve(process.cwd(), './src/main/core/internal.js'),
+      '@simpreact/dom': path.resolve(process.cwd(), './src/main/dom/index.js'),
+      '@simpreact/hooks': path.resolve(process.cwd(), './src/main/hooks/index.js'),
+      '@simpreact/jsx-runtime': path.resolve(process.cwd(), './src/main/hooks/index.js'),
+      '@simpreact/shared': path.resolve(process.cwd(), './src/main/shared/index.js'),
     },
   },
   test: {

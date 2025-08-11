@@ -1,10 +1,10 @@
 import type { Many, Maybe, Nullable, SimpText } from '@simpreact/shared';
 import { isSimpText } from '@simpreact/shared';
 
-import { Fragment } from './fragment';
-import type { HostReference } from './hostAdapter';
-import type { SimpContextMap } from './context';
-import { isConsumer, isProvider } from './context';
+import { Fragment } from './fragment.js';
+import type { HostReference } from './hostAdapter.js';
+import type { SimpContextMap } from './context.js';
+import { isConsumer, isProvider } from './context.js';
 
 export type SimpNode = SimpElement | SimpText | Array<SimpNode> | boolean | null | undefined;
 

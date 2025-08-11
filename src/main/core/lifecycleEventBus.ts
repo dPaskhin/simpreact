@@ -1,6 +1,6 @@
 import { EventBus } from '@simpreact/shared';
 
-import type { SimpElement } from './createElement';
+import type { SimpElement } from './createElement.js';
 
 export type LifecycleEvent =
   | { type: 'beforeRender'; element: SimpElement; phase: 'mounting' | 'updating' }

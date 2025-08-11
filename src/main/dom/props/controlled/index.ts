@@ -6,19 +6,19 @@ import {
   isEventNameIgnored as isEventNameIgnoredInput,
   removeControlledInputEventHandlers,
   syncControlledInputProps,
-} from './input';
+} from './input.js';
 import {
   addControlledSelectEventHandlers,
   isEventNameIgnored as isEventNameIgnoredSelect,
   removeControlledSelectEventHandlers,
   syncControlledSelectProps,
-} from './select';
+} from './select.js';
 import {
   addControlledTextareaEventHandlers,
   isEventNameIgnored as isEventNameIgnoredTextarea,
   removeControlledTextareaEventHandlers,
   syncControlledTextareaProps,
-} from './textarea';
+} from './textarea.js';
 
 export function isEventNameIgnored(element: SimpElement, eventName: string): boolean {
   if (element.type === 'input') {

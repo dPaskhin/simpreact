@@ -241,4 +241,4 @@ function getOrCreateEffectHookStates(element: HooksSimpElement) {
 
 export default { useRef, useRerender, useEffect, useMounted, useUnmounted, useContext, useCatch, areDepsEqual };
 
-export type * from './public';
+export type * from './public.js';

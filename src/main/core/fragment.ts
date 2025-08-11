@@ -1,4 +1,4 @@
-import type { SimpNode } from './createElement';
+import type { SimpNode } from './createElement.js';
 
 export type Fragment = (props: { children?: SimpNode }) => SimpNode;
 

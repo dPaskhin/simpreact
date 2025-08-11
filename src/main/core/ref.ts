@@ -1,4 +1,4 @@
-import type { SimpElement } from './createElement';
+import type { SimpElement } from './createElement.js';
 
 interface RefSimpElement extends SimpElement {
   ref?: {

@@ -1,5 +1,5 @@
-import type { SimpElement } from './createElement';
-import { findParentReferenceFromElement, updateFunctionalComponent } from './patching';
+import type { SimpElement } from './createElement.js';
+import { findParentReferenceFromElement, updateFunctionalComponent } from './patching.js';
 
 export function rerender(element: SimpElement) {
   if (element.flag !== 'FC') {

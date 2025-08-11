@@ -1,6 +1,6 @@
 import type { Maybe, Nullable } from '@simpreact/shared';
 
-import type { SimpElement } from './createElement';
+import type { SimpElement } from './createElement.js';
 
 export type HostReference = any;
 

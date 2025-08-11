@@ -1,13 +1,13 @@
 import type { Many, Maybe, Nullable } from '@simpreact/shared';
 import { emptyMap, emptyObject } from '@simpreact/shared';
 
-import type { HostReference } from './hostAdapter';
-import { hostAdapter } from './hostAdapter';
-import type { FC, SimpElement } from './createElement';
-import { createTextElement, normalizeRoot } from './createElement';
-import type { SimpContext, SimpContextMap } from './context';
-import { applyRef } from './ref';
-import { lifecycleEventBus } from './lifecycleEventBus';
+import type { HostReference } from './hostAdapter.js';
+import { hostAdapter } from './hostAdapter.js';
+import type { FC, SimpElement } from './createElement.js';
+import { createTextElement, normalizeRoot } from './createElement.js';
+import type { SimpContext, SimpContextMap } from './context.js';
+import { applyRef } from './ref.js';
+import { lifecycleEventBus } from './lifecycleEventBus.js';
 
 export function mount(
   element: SimpElement,

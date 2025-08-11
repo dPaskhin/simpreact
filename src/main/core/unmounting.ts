@@ -1,10 +1,10 @@
 import type { Many, Maybe } from '@simpreact/shared';
 
-import type { SimpElement } from './createElement';
-import type { HostReference } from './hostAdapter';
-import { hostAdapter } from './hostAdapter';
-import { unmountRef } from './ref';
-import { lifecycleEventBus } from './lifecycleEventBus';
+import type { SimpElement } from './createElement.js';
+import type { HostReference } from './hostAdapter.js';
+import { hostAdapter } from './hostAdapter.js';
+import { unmountRef } from './ref.js';
+import { lifecycleEventBus } from './lifecycleEventBus.js';
 
 export function unmount(element: Many<SimpElement>): void {
   if (Array.isArray(element)) {

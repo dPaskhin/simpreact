@@ -1,9 +1,9 @@
 import type { HostAdapter } from '@simpreact/internal';
 
-import { attachElementToDom } from './attach-element-to-dom';
-import { mountProps, patchProps, unmountProps } from './props';
-import type { Namespace } from './namespace';
-import { defaultNamespace } from './namespace';
+import { attachElementToDom } from './attach-element-to-dom.js';
+import { mountProps, patchProps, unmountProps } from './props/index.js';
+import type { Namespace } from './namespace.js';
+import { defaultNamespace } from './namespace.js';
 
 export const domAdapter: HostAdapter<HTMLElement | SVGElement, Text, Namespace> = {
   createReference(type, namespace) {

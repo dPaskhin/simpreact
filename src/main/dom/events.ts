@@ -2,7 +2,7 @@ import type { Nullable } from '@simpreact/shared';
 import type { SimpElement } from '@simpreact/internal';
 import { syncRerenderLocker } from '@simpreact/internal';
 
-import { getElementFromDom } from './attach-element-to-dom';
+import { getElementFromDom } from './attach-element-to-dom.js';
 
 type DelegatedEventType =
   | 'click'

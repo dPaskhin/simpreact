@@ -1,15 +1,15 @@
 import type { Maybe, Nullable } from '@simpreact/shared';
 import { emptyMap, emptyObject } from '@simpreact/shared';
 
-import type { FC, Key, SimpElement, SimpElementFlag, SimpNode } from './createElement';
-import { normalizeRoot } from './createElement';
-import type { HostReference } from './hostAdapter';
-import { hostAdapter } from './hostAdapter';
-import { clearElementHostReference, remove, unmount } from './unmounting';
-import { mount, mountArrayChildren } from './mounting';
-import type { SimpContext, SimpContextMap } from './context';
-import { applyRef } from './ref';
-import { lifecycleEventBus } from './lifecycleEventBus';
+import type { FC, Key, SimpElement, SimpElementFlag, SimpNode } from './createElement.js';
+import { normalizeRoot } from './createElement.js';
+import type { HostReference } from './hostAdapter.js';
+import { hostAdapter } from './hostAdapter.js';
+import { clearElementHostReference, remove, unmount } from './unmounting.js';
+import { mount, mountArrayChildren } from './mounting.js';
+import type { SimpContext, SimpContextMap } from './context.js';
+import { applyRef } from './ref.js';
+import { lifecycleEventBus } from './lifecycleEventBus.js';
 
 export function patch(
   prevElement: SimpElement,

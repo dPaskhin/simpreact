@@ -1,4 +1,4 @@
-import type { SimpNode } from './createElement';
+import type { SimpNode } from './createElement.js';
 
 type Provider<T = any> = (props: { value: T; children: SimpNode }) => SimpNode;
 type Consumer<T = any> = (props: { children: (value: T) => SimpNode }, contextMap: SimpContextMap) => SimpNode;

@@ -48,7 +48,7 @@
   "license": "MIT",
   "author": "Dmitrii Paskhin <d.pasxin@gmail.com>",
   "scripts": {
-    "build": "npm run clean && tsc --project tsconfig.build.json && node move-types.mjs && tsc-alias && cp package.json README.md LICENSE.txt lib/ && cd lib && npm pkg delete scripts devDependencies type",
+    "build": "npm run clean && tsc --project tsconfig.build.json && node move-types.mjs && tsc-alias && cp package.json README.md LICENSE.txt lib/ && cd lib && npm pkg delete scripts devDependencies",
     "test": "vitest --coverage",
     "lint": "eslint . --ext .ts,.js,.jsx,.tsx",
     "format": "prettier --write .",

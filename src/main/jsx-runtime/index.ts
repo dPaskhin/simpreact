@@ -19,4 +19,4 @@ export function jsx(type: string | FunctionComponent, props?: any, key?: Maybe<K
 export { jsx as jsxs, jsx as jsxDEV };
 export { Fragment };
 
-export type * from './public';
+export type * from './public.js';

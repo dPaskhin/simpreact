@@ -2,7 +2,7 @@ import type { SimpElement } from '@simpreact/internal';
 import { syncRerenderLocker } from '@simpreact/internal';
 import type { Dict } from '@simpreact/shared';
 
-import { getElementFromDom } from '../../attach-element-to-dom';
+import { getElementFromDom } from '../../attach-element-to-dom.js';
 
 export function isEventNameIgnored(eventName: string): boolean {
   return eventName === 'onChange' || eventName === 'onInput';

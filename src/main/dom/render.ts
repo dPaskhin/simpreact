@@ -9,8 +9,8 @@ import {
 } from '@simpreact/internal';
 import type { Nullable } from '@simpreact/shared';
 
-import { domAdapter } from './domAdapter';
-import { attachElementToDom, getElementFromDom } from './attach-element-to-dom';
+import { domAdapter } from './domAdapter.js';
+import { attachElementToDom, getElementFromDom } from './attach-element-to-dom.js';
 
 provideHostAdapter(domAdapter);
 

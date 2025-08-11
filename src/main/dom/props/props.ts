@@ -1,18 +1,18 @@
 import type { SimpElement } from '@simpreact/internal';
 import { emptyObject, type Maybe } from '@simpreact/shared';
 
-import type { Namespace } from '../namespace';
-import { defaultNamespace } from '../namespace';
+import type { Namespace } from '../namespace.js';
+import { defaultNamespace } from '../namespace.js';
 import {
   addControlledFormElementEventHandlers,
   isEventNameIgnored,
   isFormElementControlled,
   removeControlledFormElementEventHandlers,
   syncControlledFormElementPropsWithAttrs,
-} from './controlled';
-import { isPropNameEventName, patchEvent } from '../events';
-import { patchStyle } from './style';
-import { patchDangerInnerHTML } from './dangerInnerHTML';
+} from './controlled/index.js';
+import { isPropNameEventName, patchEvent } from '../events.js';
+import { patchStyle } from './style.js';
+import { patchDangerInnerHTML } from './dangerInnerHTML.js';
 
 export function mountProps(dom: HTMLElement | SVGElement, element: SimpElement, namespace: Namespace): void {
   if (!isFormElement(element)) {

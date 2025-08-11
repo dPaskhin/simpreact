@@ -1,7 +1,6 @@
 {
   "compilerOptions": {
     "declaration": true,
-    "moduleResolution": "Node",
     "esModuleInterop": true,
     "isolatedModules": true,
     "noUnusedLocals": true,
@@ -9,16 +8,16 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "target": "ESNext",
-    "module": "ESNext",
+    "module": "NodeNext",
     "outDir": "./lib",
     "erasableSyntaxOnly": true,
     "paths": {
-      "@simpreact/core": ["./src/main/core"],
-      "@simpreact/internal": ["./src/main/core/internal.ts"],
-      "@simpreact/dom": ["./src/main/dom"],
-      "@simpreact/hooks": ["./src/main/hooks"],
-      "@simpreact/jsx-runtime": ["./src/main/hooks"],
-      "@simpreact/shared": ["./src/main/shared"]
+      "@simpreact/core": ["./src/main/core/index.js"],
+      "@simpreact/internal": ["./src/main/core/internal.js"],
+      "@simpreact/dom": ["./src/main/dom/index.js"],
+      "@simpreact/hooks": ["./src/main/hooks/index.js"],
+      "@simpreact/jsx-runtime": ["./src/main/hooks/index.js"],
+      "@simpreact/shared": ["./src/main/shared/index.js"]
     }
   },
   "include": ["./src/**/*"]
