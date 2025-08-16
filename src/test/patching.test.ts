@@ -11,7 +11,7 @@ import {
   patch,
   provideHostAdapter,
 } from '@simpreact/internal';
-import { testHostAdapter } from './test-host-adapter';
+import { testHostAdapter } from './test-host-adapter.js';
 
 provideHostAdapter(testHostAdapter);
 

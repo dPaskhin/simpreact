@@ -1,12 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createElement, SimpElement } from '@simpreact/internal';
+import type { SimpElement } from '@simpreact/internal';
+import { createElement } from '@simpreact/internal';
 
 import {
   addControlledSelectEventHandlers,
   isEventNameIgnored,
   removeControlledSelectEventHandlers,
   syncControlledSelectProps,
-} from '../../main/dom/props/controlled/select';
+} from '../../main/dom/props/controlled/select.js';
 
 const createSelect = (props: any = {}) => {
   const select = document.createElement('select');

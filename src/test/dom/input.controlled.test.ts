@@ -7,7 +7,7 @@ import {
   isEventNameIgnored,
   removeControlledInputEventHandlers,
   syncControlledInputProps,
-} from '../../main/dom/props/controlled/input';
+} from '../../main/dom/props/controlled/input.js';
 
 const createInput = (type = 'text') => {
   const input = document.createElement('input');

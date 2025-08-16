@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createElement } from '@simpreact/core';
 import { unmount } from '@simpreact/internal';
 
-import { patchDangerInnerHTML } from '../../main/dom/props/dangerInnerHTML';
+import { patchDangerInnerHTML } from '../../main/dom/props/dangerInnerHTML.js';
 
 vi.mock('@simpreact/internal', () => ({
   unmount: vi.fn(),

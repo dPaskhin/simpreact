@@ -1,11 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Element } from 'flyweight-dom';
 
-import { dispatchDelegatedEvent, isPropNameEventName, patchDelegatedEvent, patchNormalEvent } from '../main/dom/events';
+import {
+  dispatchDelegatedEvent,
+  isPropNameEventName,
+  patchDelegatedEvent,
+  patchNormalEvent,
+} from '../main/dom/events.js';
 import { createElement, provideHostAdapter } from '@simpreact/internal';
 import { createRoot } from '@simpreact/dom';
 import { useEffect, useRef, useRerender } from '@simpreact/hooks';
-import { testHostAdapter } from './test-host-adapter';
+import { testHostAdapter } from './test-host-adapter.js';
 
 provideHostAdapter(testHostAdapter);
 

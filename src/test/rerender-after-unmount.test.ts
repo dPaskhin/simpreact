@@ -5,8 +5,8 @@ import { createElement, provideHostAdapter } from '@simpreact/internal';
 import { createRoot } from '@simpreact/dom';
 import { useEffect } from '@simpreact/hooks';
 
-import { useState } from './useState';
-import { testHostAdapter } from './test-host-adapter';
+import { useState } from './useState.js';
+import { testHostAdapter } from './test-host-adapter.js';
 
 provideHostAdapter(testHostAdapter);
 

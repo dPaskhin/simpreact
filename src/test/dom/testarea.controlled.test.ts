@@ -4,7 +4,7 @@ import {
   isEventNameIgnored,
   removeControlledTextareaEventHandlers,
   syncControlledTextareaProps,
-} from '../../main/dom/props/controlled/textarea';
+} from '../../main/dom/props/controlled/textarea.js';
 
 describe('textarea controlled', () => {
   describe('isEventNameIgnored', () => {

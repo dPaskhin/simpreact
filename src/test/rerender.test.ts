@@ -4,8 +4,8 @@ import { useEffect, useRef, useRerender } from '@simpreact/hooks';
 import { createRoot } from '@simpreact/dom';
 import { Element } from 'flyweight-dom';
 
-import { testHostAdapter } from './test-host-adapter';
-import { dispatchDelegatedEvent } from '../main/dom/events';
+import { testHostAdapter } from './test-host-adapter.js';
+import { dispatchDelegatedEvent } from '../main/dom/events.js';
 
 provideHostAdapter(testHostAdapter);
 

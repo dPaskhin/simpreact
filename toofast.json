@@ -1,0 +1,4 @@
+{
+  "include": ["./src/test/perf/**/*.perf.{ts,js}"],
+  "setup": ["./src/test/perf/**/setup.{ts,js}"]
+}

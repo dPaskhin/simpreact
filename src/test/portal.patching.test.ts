@@ -9,9 +9,9 @@ import {
   patchPortal,
   provideHostAdapter,
 } from '@simpreact/internal';
-import { testHostAdapter } from './test-host-adapter';
+import { testHostAdapter } from './test-host-adapter.js';
 import { useEffect, useRef, useRerender } from '@simpreact/hooks';
-import { dispatchDelegatedEvent } from '../main/dom/events';
+import { dispatchDelegatedEvent } from '../main/dom/events.js';
 import { render } from '@simpreact/dom';
 
 provideHostAdapter(testHostAdapter);

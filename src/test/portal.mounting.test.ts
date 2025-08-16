@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { Element } from 'flyweight-dom';
 import { createElement, createPortal, mountPortal, provideHostAdapter } from '@simpreact/internal';
-import { testHostAdapter } from './test-host-adapter';
+import { testHostAdapter } from './test-host-adapter.js';
 
 provideHostAdapter(testHostAdapter);
 

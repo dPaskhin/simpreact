@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createElement, mount, provideHostAdapter } from '@simpreact/internal';
 import { Element } from 'flyweight-dom';
-import { testHostAdapter } from '../test-host-adapter';
-import { domAdapter } from '../../main/dom/domAdapter';
+import { testHostAdapter } from '../test-host-adapter.js';
+import { domAdapter } from '../../main/dom/domAdapter.js';
 
 provideHostAdapter(
   Object.defineProperty(testHostAdapter, 'getHostNamespaces', {

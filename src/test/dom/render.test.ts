@@ -3,7 +3,7 @@ import { createElement, provideHostAdapter } from '@simpreact/internal';
 import { createRoot, render } from '@simpreact/dom';
 import { Element } from 'flyweight-dom';
 
-import { testHostAdapter } from '../test-host-adapter';
+import { testHostAdapter } from '../test-host-adapter.js';
 
 provideHostAdapter(testHostAdapter);
 
