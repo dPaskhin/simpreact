@@ -106,7 +106,11 @@ export function createElement(type: string | FunctionComponent, props?: any, ...
       element.key = key;
     }
 
-    if ((definedChildren = normalizeChildren(definedChildren, false))) {
+    if (isSimpText(definedChildren)) {
+      if (definedChildren !== '') {
+        (newProps ||= {}).children = definedChildren.toString();
+      }
+    } else if ((definedChildren = normalizeChildren(definedChildren, false))) {
       element.children = definedChildren;
     }
 
@@ -201,7 +205,7 @@ export function createElement(type: string | FunctionComponent, props?: any, ...
 export function createTextElement(text: SimpText): SimpElement {
   return {
     flag: 'TEXT',
-    children: text,
+    children: text.toString(),
     parent: null,
   };
 }

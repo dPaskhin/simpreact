@@ -57,6 +57,10 @@ export const syncRerenderLocker: IRendererLocker = {
   flush() {
     this._isLocked = false;
 
+    if (this._elements.size === 0) {
+      return;
+    }
+
     for (const element of this._elements) {
       this._elements.delete(element);
       rerender(element.store!.latestElement!);
@@ -77,6 +81,10 @@ export const asyncRerenderLocker: IRendererLocker = {
   },
   flush() {
     this._isLocked = false;
+
+    if (this._elements.size === 0) {
+      return;
+    }
 
     queueMicrotask(() => {
       for (const element of this._elements) {

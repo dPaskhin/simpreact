@@ -39,8 +39,12 @@ export const domAdapter: HostAdapter<HTMLElement | SVGElement, Text, Namespace> 
     }
   },
 
-  setTextContent(reference, text) {
-    reference.textContent = text;
+  setTextContent(reference, text, referenceHasOnlyTextElement) {
+    if (referenceHasOnlyTextElement) {
+      reference.firstChild!.nodeValue = text;
+    } else {
+      reference.textContent = text;
+    }
   },
 
   appendChild(parent, child) {

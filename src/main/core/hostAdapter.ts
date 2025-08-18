@@ -17,7 +17,7 @@ export interface HostAdapter<HostRef = any, HostTextRef = any, NS = string> {
 
   setClassname(reference: HostRef, className: Maybe<string>, namespace?: Maybe<NS>): void;
 
-  setTextContent(reference: HostRef, text: string): void;
+  setTextContent(reference: HostRef, text: string, referenceHasOnlyTextElement?: boolean): void;
 
   appendChild(parent: HostRef, child: HostRef | HostTextRef): void;
 

@@ -58,13 +58,13 @@ describe('createElement and utils', () => {
       });
       expect(normalizeChildren(42, true)).toEqual({
         flag: 'TEXT',
-        children: 42,
+        children: '42',
         parent: null,
         key: '.0',
       });
       expect(normalizeChildren(42n, true)).toEqual({
         flag: 'TEXT',
-        children: 42n,
+        children: '42',
         parent: null,
         key: '.0',
       });
@@ -172,7 +172,7 @@ describe('createElement and utils', () => {
         { ...el, key: '.1' },
         {
           flag: 'TEXT',
-          children: 2,
+          children: '2',
           parent: null,
           key: '.2',
         },
@@ -194,10 +194,10 @@ describe('createElement and utils', () => {
 
   describe('createTextElement', () => {
     it('makes text element from different children types', () => {
-      expect(createTextElement(1)).toEqual({ flag: 'TEXT', children: 1, parent: null });
-      expect(createTextElement(0)).toEqual({ flag: 'TEXT', children: 0, parent: null });
-      expect(createTextElement(-1)).toEqual({ flag: 'TEXT', children: -1, parent: null });
-      expect(createTextElement(42n)).toEqual({ flag: 'TEXT', children: 42n, parent: null });
+      expect(createTextElement(1)).toEqual({ flag: 'TEXT', children: '1', parent: null });
+      expect(createTextElement(0)).toEqual({ flag: 'TEXT', children: '0', parent: null });
+      expect(createTextElement(-1)).toEqual({ flag: 'TEXT', children: '-1', parent: null });
+      expect(createTextElement(42n)).toEqual({ flag: 'TEXT', children: '42', parent: null });
       expect(createTextElement('')).toEqual({ flag: 'TEXT', children: '', parent: null });
     });
   });
@@ -213,11 +213,62 @@ describe('createElement and utils', () => {
     });
 
     it('creates an element with a string type and with text children', () => {
-      const element = createElement('div', null, 'child');
-      expect(element).toEqual({
+      expect(createElement('div', null, 'child')).toEqual({
+        flag: 'HOST',
+        type: 'div',
+        props: { children: 'child' },
+        parent: null,
+      });
+      expect(createElement('div', null, '')).toEqual({
+        flag: 'HOST',
+        type: 'div',
+        parent: null,
+      });
+      expect(createElement('div', null, 0)).toEqual({
+        flag: 'HOST',
+        type: 'div',
+        props: { children: '0' },
+        parent: null,
+      });
+    });
+
+    it('creates an element with a string type and with combined children', () => {
+      expect(createElement('div', null, ['child'])).toEqual({
         flag: 'HOST',
         type: 'div',
         children: { flag: 'TEXT', children: 'child', parent: null, key: '.0' },
+        parent: null,
+      });
+      expect(createElement('div', null, 'child', createMockHostElement(), 'tail')).toEqual({
+        flag: 'HOST',
+        type: 'div',
+        children: [
+          { flag: 'TEXT', children: 'child', parent: null, key: '.0' },
+          {
+            flag: 'HOST',
+            type: 'div',
+            props: { children: '123' },
+            parent: null,
+            key: '.1',
+          },
+          { flag: 'TEXT', children: 'tail', parent: null, key: '.2' },
+        ],
+        parent: null,
+      });
+      expect(createElement('div', null, ['child', createMockHostElement(), 'tail'])).toEqual({
+        flag: 'HOST',
+        type: 'div',
+        children: [
+          { flag: 'TEXT', children: 'child', parent: null, key: '.0' },
+          {
+            flag: 'HOST',
+            type: 'div',
+            props: { children: '123' },
+            parent: null,
+            key: '.1',
+          },
+          { flag: 'TEXT', children: 'tail', parent: null, key: '.2' },
+        ],
         parent: null,
       });
     });
@@ -348,7 +399,7 @@ describe('createElement and utils', () => {
           {
             flag: 'HOST',
             type: 'div',
-            children: { flag: 'TEXT', children: '123', parent: null, key: '.0' },
+            props: { children: '123' },
             parent: null,
             key: '.2',
           },
@@ -361,7 +412,7 @@ describe('createElement and utils', () => {
         children: {
           flag: 'HOST',
           type: 'div',
-          children: { flag: 'TEXT', children: '123', parent: null, key: '.0' },
+          props: { children: '123' },
           parent: null,
           key: '.0',
         },
@@ -373,7 +424,7 @@ describe('createElement and utils', () => {
       expect(createElement(TestContext.Provider, { value: 'PROVIDED_VALUE' }, 12)).toEqual({
         flag: 'PROVIDER',
         type: TestContext.Provider,
-        children: { flag: 'TEXT', children: 12, parent: null, key: '.0' },
+        children: { flag: 'TEXT', children: '12', parent: null, key: '.0' },
         props: { value: 'PROVIDED_VALUE' },
         parent: null,
       });
@@ -457,8 +508,8 @@ describe('createElement and utils', () => {
   describe('normalizeRoot', () => {
     it('should wrap null in a text element or return nothing', () => {
       expect(normalizeRoot('hello', false)).toEqual({ flag: 'TEXT', children: 'hello', parent: null });
-      expect(normalizeRoot(42, false)).toEqual({ flag: 'TEXT', children: 42, parent: null });
-      expect(normalizeRoot(123n, false)).toEqual({ flag: 'TEXT', children: 123n, parent: null });
+      expect(normalizeRoot(42, false)).toEqual({ flag: 'TEXT', children: '42', parent: null });
+      expect(normalizeRoot(123n, false)).toEqual({ flag: 'TEXT', children: '123', parent: null });
       expect(normalizeRoot('', false)).toBeUndefined();
       expect(normalizeRoot(true, false)).toBeUndefined();
       expect(normalizeRoot(false, false)).toBeUndefined();

@@ -71,6 +71,11 @@ export function mountHostElement(
 
   if (element.props) {
     hostAdapter.mountProps(hostReference, element, hostNamespace);
+
+    // HOST elements can have either children elements or string children in the props due to normalization.
+    if (typeof element.props.children === 'string') {
+      hostAdapter.setTextContent(hostReference, element.props.children);
+    }
   }
 
   if (element.className) {

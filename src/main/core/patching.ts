@@ -75,8 +75,8 @@ function patchHostElement(
   hostAdapter.attachElementToReference(nextElement, nextElement.reference);
 
   patchChildren(
-    prevElement.children,
-    nextElement.children,
+    prevElement.children || prevElement.props?.children,
+    nextElement.children || nextElement.props?.children,
     nextElement.reference,
     null,
     nextElement,
@@ -283,6 +283,9 @@ function patchChildren(
         contextMap,
         hostNamespace
       );
+    } else if (typeof nextChildren === 'string') {
+      unmount(prevChildren as SimpElement[]);
+      hostAdapter.setTextContent(parentReference, nextChildren);
     } else if (nextChildren) {
       patchKeyedChildren(
         prevChildren as SimpElement[],
@@ -296,6 +299,28 @@ function patchChildren(
       unmount(prevChildren as SimpElement[]);
       hostAdapter.clearNode(parentReference);
     }
+  } else if (typeof prevChildren === 'string') {
+    if (Array.isArray(nextChildren)) {
+      hostAdapter.clearNode(parentReference);
+      mountArrayChildren(
+        nextChildren as SimpElement[],
+        parentReference,
+        nextReference,
+        contextMap,
+        nextElement,
+        hostNamespace
+      );
+    } else if (typeof nextChildren === 'string') {
+      if (prevChildren !== nextChildren) {
+        hostAdapter.setTextContent(nextElement.reference, nextChildren as string, true);
+      }
+    } else if (nextChildren) {
+      hostAdapter.clearNode(parentReference);
+      (nextChildren as SimpElement).parent = nextElement;
+      mount(nextChildren as SimpElement, parentReference, nextReference, contextMap, hostNamespace);
+    } else {
+      hostAdapter.clearNode(parentReference);
+    }
   } else if (prevChildren) {
     if (Array.isArray(nextChildren)) {
       patchKeyedChildren(
@@ -306,6 +331,9 @@ function patchChildren(
         contextMap,
         hostNamespace
       );
+    } else if (typeof nextChildren === 'string') {
+      unmount(prevChildren as SimpElement);
+      hostAdapter.setTextContent(parentReference, nextChildren);
     } else if (nextChildren) {
       (nextChildren as SimpElement).parent = nextElement;
       patch(
@@ -330,6 +358,8 @@ function patchChildren(
         nextElement,
         hostNamespace
       );
+    } else if (typeof nextChildren === 'string') {
+      hostAdapter.setTextContent(parentReference, nextChildren);
     } else if (nextChildren) {
       (nextChildren as SimpElement).parent = nextElement;
       mount(nextChildren as SimpElement, parentReference, nextReference, contextMap, hostNamespace);
