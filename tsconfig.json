@@ -11,6 +11,7 @@
     "module": "NodeNext",
     "outDir": "./lib",
     "erasableSyntaxOnly": true,
+    "skipLibCheck": true,
     "paths": {
       "@simpreact/core": ["./src/main/core/index.js"],
       "@simpreact/internal": ["./src/main/core/internal.js"],

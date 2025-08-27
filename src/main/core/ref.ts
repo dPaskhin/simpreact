@@ -7,15 +7,11 @@ interface RefSimpElement extends SimpElement {
   };
 }
 
-export interface RefObject<T> {
-  current: T;
-}
-
+export type RefObject<T> = { current: T };
 export type RefCallback<T> = {
-  bivarianceHack(instance: T | null): (() => void) | void;
+  bivarianceHack(instance: T): (() => void | undefined) | void;
 }['bivarianceHack'];
-
-export type Ref<T> = RefCallback<T> | RefObject<T> | null;
+export type Ref<T> = RefCallback<T> | RefObject<T | null> | null;
 
 export function unmountRef(element: RefSimpElement): void {
   if (element.ref == null) {

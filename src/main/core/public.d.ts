@@ -4,9 +4,9 @@ export type ComponentType<P = {}> = FunctionComponent<P>;
 
 export type RefObject<T> = { current: T };
 export type RefCallback<T> = {
-  bivarianceHack(instance: T | null): (() => void | undefined) | void;
+  bivarianceHack(instance: T): (() => void | undefined) | void;
 }['bivarianceHack'];
-export type Ref<T> = RefCallback<T> | RefObject<T> | null;
+export type Ref<T> = RefCallback<T> | RefObject<T | null> | null;
 
 export type Key = string | number | bigint;
 

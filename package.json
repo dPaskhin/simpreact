@@ -50,7 +50,7 @@
   "scripts": {
     "build": "npm run clean && tsc --project tsconfig.build.json && node move-types.mjs && tsc-alias && cp package.json README.md LICENSE.txt lib/ && cd lib && npm pkg delete scripts devDependencies",
     "test": "vitest --coverage",
-    "lint": "eslint . --ext .ts,.js,.jsx,.tsx",
+    "lint": "eslint ./src --ext .ts,.js,.jsx,.tsx && tsc --noEmit --project tsconfig.json",
     "format": "prettier --write .",
     "clean": "rimraf lib",
     "perf": "npx toofast"
