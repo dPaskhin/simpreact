@@ -8,6 +8,7 @@ import { createTextElement, normalizeRoot } from './createElement.js';
 import type { SimpContext, SimpContextMap } from './context.js';
 import { applyRef } from './ref.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
+import { syncBatchingRerenderLocker } from './rerender.js';
 
 export function mount(
   element: SimpElement,
@@ -111,15 +112,43 @@ export function mountFunctionalElement(
   }
 
   // FC element always has Maybe<SimpElement> children due to normalization process.
-  let children: Maybe<SimpElement>;
+  let children;
+
+  let triedToRerenderUnsubscribe;
 
   try {
-    lifecycleEventBus.publish({ type: 'beforeRender', element, phase: 'mounting' });
-    children = normalizeRoot((element.type as FC)(element.props || emptyObject), false);
-    lifecycleEventBus.publish({ type: 'afterRender', phase: 'mounting' });
+    let triedToRerender = false;
+    let rerenderCounter = 0;
+    triedToRerenderUnsubscribe = lifecycleEventBus.subscribe(event => {
+      if (event.type === 'triedToRerender' && event.element === element) {
+        triedToRerender = true;
+      }
+    });
+
+    do {
+      triedToRerender = false;
+      if (++rerenderCounter >= 25) {
+        lifecycleEventBus.publish({
+          type: 'errored',
+          element,
+          error: new Error('Too many re-renders. SimpReact limits the number of renders to prevent an infinite loop.'),
+          phase: 'mounting',
+        });
+        return;
+      }
+      lifecycleEventBus.publish({ type: 'beforeRender', element, phase: 'mounting' });
+      syncBatchingRerenderLocker.lock();
+      children = (element.type as FC)(element.props || emptyObject);
+      syncBatchingRerenderLocker.flush();
+      lifecycleEventBus.publish({ type: 'afterRender', element, phase: 'mounting' });
+    } while (triedToRerender);
+
+    children = normalizeRoot(children, false);
   } catch (error) {
     lifecycleEventBus.publish({ type: 'errored', element, error, phase: 'mounting' });
     return;
+  } finally {
+    triedToRerenderUnsubscribe!();
   }
 
   if (children) {

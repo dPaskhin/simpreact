@@ -11,6 +11,12 @@
       "import": "./core/index.js",
       "types": "./core/index.d.ts"
     },
+    "./compat": {
+      "import": "./compat/index.js"
+    },
+    "./compat/*": {
+      "import": "./compat/index.js"
+    },
     "./internal": {
       "import": "./core/internal.js",
       "types": "./core/internal.d.ts"

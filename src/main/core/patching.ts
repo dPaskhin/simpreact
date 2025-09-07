@@ -10,6 +10,7 @@ import { mount, mountArrayChildren } from './mounting.js';
 import type { SimpContext, SimpContextMap } from './context.js';
 import { applyRef } from './ref.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
+import { syncBatchingRerenderLocker } from './rerender.js';
 
 export function patch(
   prevElement: SimpElement,
@@ -101,7 +102,8 @@ function patchFunctionalComponent(
   contextMap: Nullable<SimpContextMap>,
   hostNamespace: Maybe<string>
 ): void {
-  (nextElement.store = prevElement.store ||= {}).latestElement = nextElement;
+  (nextElement.store = !prevElement.store || prevElement.unmounted ? {} : prevElement.store).latestElement =
+    nextElement;
 
   if (hostNamespace) {
     nextElement.store.hostNamespace = hostNamespace;
@@ -111,15 +113,44 @@ function patchFunctionalComponent(
     nextElement.contextMap = contextMap;
   }
 
-  let nextChildren: Maybe<SimpElement>;
+  // FC element always has Maybe<SimpElement> children due to normalization process.
+  let nextChildren;
+
+  let triedToRerenderUnsubscribe;
 
   try {
-    lifecycleEventBus.publish({ type: 'beforeRender', element: nextElement, phase: 'updating' });
-    nextChildren = normalizeRoot((nextElement.type as FC)(nextElement.props || emptyObject), false);
-    lifecycleEventBus.publish({ type: 'afterRender', phase: 'updating' });
+    let triedToRerender = false;
+    let rerenderCounter = 0;
+    triedToRerenderUnsubscribe = lifecycleEventBus.subscribe(event => {
+      if (event.type === 'triedToRerender' && event.element === nextElement) {
+        triedToRerender = true;
+      }
+    });
+
+    do {
+      triedToRerender = false;
+      if (++rerenderCounter >= 25) {
+        lifecycleEventBus.publish({
+          type: 'errored',
+          element: nextElement,
+          error: new Error('Too many re-renders. SimpReact limits the number of renders to prevent an infinite loop.'),
+          phase: 'updating',
+        });
+        return;
+      }
+      lifecycleEventBus.publish({ type: 'beforeRender', element: nextElement, phase: 'updating' });
+      syncBatchingRerenderLocker.lock();
+      nextChildren = (nextElement.type as FC)(nextElement.props || emptyObject);
+      syncBatchingRerenderLocker.flush();
+      lifecycleEventBus.publish({ type: 'afterRender', element: nextElement, phase: 'updating' });
+    } while (triedToRerender);
+
+    nextChildren = normalizeRoot(nextChildren, false);
   } catch (error) {
     lifecycleEventBus.publish({ type: 'errored', element: nextElement, error, phase: 'updating' });
     return;
+  } finally {
+    triedToRerenderUnsubscribe!();
   }
 
   const prevChildren = prevElement.children;
@@ -128,9 +159,20 @@ function patchFunctionalComponent(
     nextElement.children = nextChildren;
   }
 
-  patchChildren(prevChildren, nextChildren, parentReference, nextReference, nextElement, contextMap, hostNamespace);
+  if (!prevElement.unmounted) {
+    patchChildren(prevChildren, nextChildren, parentReference, nextReference, nextElement, contextMap, hostNamespace);
+    lifecycleEventBus.publish({ type: 'updated', element: nextElement });
+    return;
+  }
 
-  lifecycleEventBus.publish({ type: 'updated', element: nextElement });
+  prevElement.unmounted = false;
+
+  if (nextChildren) {
+    nextChildren.parent = nextElement;
+    mount(nextChildren, parentReference, nextReference, contextMap, hostNamespace);
+  }
+
+  lifecycleEventBus.publish({ type: 'mounted', element: nextElement });
 }
 
 function patchTextElement(prevElement: SimpElement, nextElement: SimpElement): void {
@@ -345,8 +387,7 @@ function patchChildren(
         hostNamespace
       );
     } else {
-      unmount(prevChildren as SimpElement);
-      hostAdapter.clearNode(parentReference);
+      remove(prevChildren as SimpElement, parentReference);
     }
   } else {
     if (Array.isArray(nextChildren)) {
@@ -400,7 +441,7 @@ export function patchKeyedChildren(
 
   // Step 3: Mount new nodes if prev list is exhausted
   if (prevStart > prevEnd) {
-    const before = nextChildren[nextEnd + 1]?.reference || nextReference;
+    const before = findHostReferenceFromElement(nextChildren[nextEnd + 1]!) || nextReference;
     for (let i = nextStart; i <= nextEnd; i++) {
       mount(nextChildren[i]!, parentReference, before, contextMap, hostNamespace);
     }
@@ -436,7 +477,13 @@ export function patchKeyedChildren(
         toMove[i - nextStart] = prevIndex;
         usedIndices.add(prevIndex);
       } else {
-        mount(nextChild!, parentReference, nextChildren[i + 1]?.reference || nextReference, contextMap, hostNamespace);
+        mount(
+          nextChild!,
+          parentReference,
+          findHostReferenceFromElement(nextChildren[i + 1]!) || nextReference,
+          contextMap,
+          hostNamespace
+        );
         toMove[i - nextStart] = -1;
       }
     }
@@ -451,7 +498,7 @@ export function patchKeyedChildren(
     // Insert in correct order
     for (let i = nextEnd; i >= nextStart; i--) {
       const currentChild = nextChildren[i]!;
-      const reference = nextChildren[i + 1]?.reference || nextReference;
+      const reference = findHostReferenceFromElement(nextChildren[i + 1]!) || nextReference;
       if (toMove[i - nextStart] !== -1) {
         hostAdapter.insertBefore(parentReference, currentChild.reference!, reference!);
       }

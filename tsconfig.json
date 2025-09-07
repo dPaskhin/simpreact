@@ -17,7 +17,7 @@
       "@simpreact/internal": ["./src/main/core/internal.js"],
       "@simpreact/dom": ["./src/main/dom/index.js"],
       "@simpreact/hooks": ["./src/main/hooks/index.js"],
-      "@simpreact/jsx-runtime": ["./src/main/hooks/index.js"],
+      "@simpreact/jsx-runtime": ["./src/main/jsx-runtime/index.js"],
       "@simpreact/shared": ["./src/main/shared/index.js"]
     }
   },

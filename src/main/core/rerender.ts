@@ -1,32 +1,43 @@
 import type { SimpElement } from './createElement.js';
 import { findParentReferenceFromElement, updateFunctionalComponent } from './patching.js';
+import { lifecycleEventBus } from './lifecycleEventBus.js';
+
+lifecycleEventBus.subscribe(event => {
+  if (event.type === 'afterRender') {
+    syncBatchingRerenderLocker.untrack(event.element);
+    renderingRerenderLocker.untrack(event.element);
+  }
+});
 
 export function rerender(element: SimpElement) {
   if (element.flag !== 'FC') {
     throw new TypeError('Re-rendering is only supported for FC elements.');
   }
   if (element.unmounted) {
-    console.warn('The component unmounted.');
+    console.warn('The component is unmounted.');
   }
 
-  if (syncRerenderLocker.isLocked) {
-    syncRerenderLocker.track(element);
+  lifecycleEventBus.publish({ type: 'triedToRerender', element });
+
+  if (syncBatchingRerenderLocker.isLocked) {
+    syncBatchingRerenderLocker.track(element);
     return;
-  } else if (asyncRerenderLocker.isLocked) {
-    asyncRerenderLocker.track(element);
-  } else {
-    asyncRerenderLocker.lock();
-
-    updateFunctionalComponent(
-      element,
-      findParentReferenceFromElement(element),
-      null,
-      element.contextMap || null,
-      element.store!.hostNamespace
-    );
-
-    asyncRerenderLocker.flush();
   }
+
+  if (renderingRerenderLocker.isLocked) {
+    renderingRerenderLocker.track(element);
+    return;
+  }
+
+  renderingRerenderLocker.lock();
+  updateFunctionalComponent(
+    element,
+    findParentReferenceFromElement(element),
+    null,
+    element.contextMap || null,
+    element.store!.hostNamespace
+  );
+  renderingRerenderLocker.flush();
 }
 
 interface IRendererLocker {
@@ -40,9 +51,13 @@ interface IRendererLocker {
   track(element: SimpElement): void;
 
   flush(): void;
+
+  hasElement(element: SimpElement): boolean;
+
+  untrack(element: SimpElement): void;
 }
 
-export const syncRerenderLocker: IRendererLocker = {
+export const syncBatchingRerenderLocker: IRendererLocker = {
   _isLocked: false,
   _elements: new Set<SimpElement>(),
   get isLocked() {
@@ -62,12 +77,18 @@ export const syncRerenderLocker: IRendererLocker = {
     }
 
     for (const element of this._elements) {
-      this._elements.delete(element);
+      this.untrack(element);
       rerender(element.store!.latestElement!);
     }
   },
+  hasElement(element) {
+    return this._elements.has(element);
+  },
+  untrack(element) {
+    this._elements.delete(element);
+  },
 };
-export const asyncRerenderLocker: IRendererLocker = {
+export const renderingRerenderLocker: IRendererLocker = {
   _isLocked: false,
   _elements: new Set<SimpElement>(),
   get isLocked() {
@@ -88,9 +109,15 @@ export const asyncRerenderLocker: IRendererLocker = {
 
     queueMicrotask(() => {
       for (const element of this._elements) {
-        this._elements.delete(element);
+        this.untrack(element);
         rerender(element.store!.latestElement!);
       }
     });
+  },
+  hasElement(element) {
+    return this._elements.has(element);
+  },
+  untrack(element) {
+    this._elements.delete(element);
   },
 };

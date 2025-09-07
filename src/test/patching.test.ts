@@ -227,7 +227,7 @@ describe('patching', () => {
       expect(listener).toHaveBeenCalledWith({ type: 'unmounted', element: prev });
       expect(listener).toHaveBeenCalledWith({ type: 'mounted', element: next });
       expect(listener).toHaveBeenCalledWith({ type: 'beforeRender', element: next, phase: 'mounting' });
-      expect(listener).toHaveBeenCalledWith({ type: 'afterRender', phase: 'mounting' });
+      expect(listener).toHaveBeenCalledWith({ type: 'afterRender', element: next, phase: 'mounting' });
       expect(listener).toHaveBeenCalledTimes(4);
     });
   });

@@ -1,5 +1,5 @@
 import {
-  asyncRerenderLocker,
+  renderingRerenderLocker,
   hostAdapter,
   mount,
   patch,
@@ -21,7 +21,7 @@ export function render(element: Nullable<SimpElement>, container: Nullable<Eleme
 
   const currentRootElement = getElementFromDom(container as Element);
 
-  asyncRerenderLocker.lock();
+  renderingRerenderLocker.lock();
 
   if (!currentRootElement) {
     if (element) {
@@ -44,7 +44,7 @@ export function render(element: Nullable<SimpElement>, container: Nullable<Eleme
     }
   }
 
-  asyncRerenderLocker.flush();
+  renderingRerenderLocker.flush();
 }
 
 interface SimpRoot {

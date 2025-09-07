@@ -15,6 +15,11 @@ export function unmount(element: Many<SimpElement>): void {
   }
 
   if (element.flag === 'FC') {
+    // Skip — element is already unmounted.
+    if (element.unmounted) {
+      return;
+    }
+
     // FC element always has Maybe<SimpElement> due to normalization.
     if (element.children) {
       unmount(element.children as SimpElement);

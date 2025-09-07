@@ -1,6 +1,6 @@
 import type { Nullable } from '@simpreact/shared';
 import type { SimpElement } from '@simpreact/internal';
-import { syncRerenderLocker } from '@simpreact/internal';
+import { syncBatchingRerenderLocker } from '@simpreact/internal';
 
 import { getElementFromDom } from './attach-element-to-dom.js';
 
@@ -65,8 +65,15 @@ export class SyntheticEvent {
   isPropagationStopped = false;
   isDefaultPrevented = false;
 
+  button?: number;
+  buttons?: number;
+  pointerId?: number;
+
   constructor(event: Event) {
     this.nativeEvent = event;
+    this.button = (event as PointerEvent).button;
+    this.buttons = (event as PointerEvent).buttons;
+    this.pointerId = (event as PointerEvent).pointerId;
   }
 
   get target() {
@@ -89,7 +96,7 @@ export class SyntheticEvent {
 }
 
 export function dispatchDelegatedEvent(event: Event): void {
-  syncRerenderLocker.lock();
+  syncBatchingRerenderLocker.lock();
 
   const syntheticEvent = new SyntheticEvent(event);
 
@@ -127,7 +134,7 @@ export function dispatchDelegatedEvent(event: Event): void {
     }
   }
 
-  syncRerenderLocker.flush();
+  syncBatchingRerenderLocker.flush();
 }
 
 const captureRegex = /Capture/;

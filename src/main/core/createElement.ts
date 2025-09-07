@@ -33,7 +33,7 @@ export interface SimpElement {
 
   key?: Maybe<Key>;
 
-  type?: Maybe<string | FunctionComponent>;
+  type?: string | FunctionComponent;
 
   props?: any;
 
@@ -82,7 +82,11 @@ export function createElement(type: string | FunctionComponent, props?: any, ...
           if (definedChildren === undefined) {
             definedChildren = props[propName] as any;
           }
-        } else if (propName === 'ref') {
+        } else if (
+          propName === 'ref' &&
+          // Handle only a callback ref or an object ref with `current`.
+          props[propName]
+        ) {
           ref = {
             value: props[propName],
           };

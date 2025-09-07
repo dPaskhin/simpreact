@@ -1,5 +1,5 @@
 import type { SimpElement } from '@simpreact/internal';
-import { syncRerenderLocker } from '@simpreact/internal';
+import { syncBatchingRerenderLocker } from '@simpreact/internal';
 import type { Dict, Many, Maybe } from '@simpreact/shared';
 import { emptyObject } from '@simpreact/shared';
 
@@ -17,9 +17,9 @@ function onControlledInputChange(event: Event): void {
   }
 
   if (element.props['onChange']) {
-    syncRerenderLocker.lock();
+    syncBatchingRerenderLocker.lock();
     element.props['onChange'](event);
-    syncRerenderLocker.flush();
+    syncBatchingRerenderLocker.flush();
 
     element = getElementFromDom(event.target);
   }

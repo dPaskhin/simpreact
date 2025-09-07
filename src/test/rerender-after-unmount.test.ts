@@ -35,7 +35,7 @@ describe('BadComponent', () => {
     // wait for timer to trigger
     await new Promise(resolve => setTimeout(resolve, 1));
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('The component unmounted.'));
+    expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('The component is unmounted.'));
 
     consoleErrorSpy.mockRestore();
   });

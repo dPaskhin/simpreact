@@ -5,8 +5,8 @@ export function patchStyle(prevAttrValue: any, nextAttrValue: any, dom: HTMLElem
   }
 
   const domStyle = dom.style;
-  let style;
-  let value;
+  let style: string;
+  let value: string;
 
   if (typeof nextAttrValue === 'string') {
     domStyle.cssText = nextAttrValue;
@@ -17,19 +17,23 @@ export function patchStyle(prevAttrValue: any, nextAttrValue: any, dom: HTMLElem
     for (style in nextAttrValue) {
       value = nextAttrValue[style];
       if (value !== prevAttrValue[style]) {
-        domStyle.setProperty(style, value);
+        domStyle.setProperty(camelToKebab(style), value);
       }
     }
 
     for (style in prevAttrValue) {
       if (nextAttrValue[style] == null) {
-        domStyle.removeProperty(style);
+        domStyle.removeProperty(camelToKebab(style));
       }
     }
   } else {
     for (style in nextAttrValue) {
       value = nextAttrValue[style];
-      domStyle.setProperty(style, value);
+      domStyle.setProperty(camelToKebab(style), value);
     }
   }
+}
+
+function camelToKebab(name: string): string {
+  return name.replace(/[A-Z]/g, match => '-' + match.toLowerCase());
 }
