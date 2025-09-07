@@ -1,6 +1,6 @@
 import type { Nullable } from '@simpreact/shared';
 import type { SimpElement } from '@simpreact/internal';
-import { syncBatchingRerenderLocker } from '@simpreact/internal';
+import { batchingRerenderLocker } from '@simpreact/internal';
 
 import { getElementFromDom } from './attach-element-to-dom.js';
 
@@ -96,7 +96,7 @@ export class SyntheticEvent {
 }
 
 export function dispatchDelegatedEvent(event: Event): void {
-  syncBatchingRerenderLocker.lock();
+  batchingRerenderLocker.lock();
 
   const syntheticEvent = new SyntheticEvent(event);
 
@@ -134,7 +134,7 @@ export function dispatchDelegatedEvent(event: Event): void {
     }
   }
 
-  syncBatchingRerenderLocker.flush();
+  batchingRerenderLocker.flush();
 }
 
 const captureRegex = /Capture/;

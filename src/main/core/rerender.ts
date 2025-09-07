@@ -4,8 +4,8 @@ import { lifecycleEventBus } from './lifecycleEventBus.js';
 
 lifecycleEventBus.subscribe(event => {
   if (event.type === 'afterRender') {
-    syncBatchingRerenderLocker.untrack(event.element);
-    renderingRerenderLocker.untrack(event.element);
+    batchingRerenderLocker._untrack(event.element);
+    renderingRerenderLocker._untrack(event.element);
   }
 });
 
@@ -19,13 +19,13 @@ export function rerender(element: SimpElement) {
 
   lifecycleEventBus.publish({ type: 'triedToRerender', element });
 
-  if (syncBatchingRerenderLocker.isLocked) {
-    syncBatchingRerenderLocker.track(element);
+  if (batchingRerenderLocker._isLocked) {
+    batchingRerenderLocker._track(element);
     return;
   }
 
-  if (renderingRerenderLocker.isLocked) {
-    renderingRerenderLocker.track(element);
+  if (renderingRerenderLocker._isLocked) {
+    renderingRerenderLocker._track(element);
     return;
   }
 
@@ -44,30 +44,27 @@ interface IRendererLocker {
   _isLocked: boolean;
   _elements: Set<SimpElement>;
 
-  isLocked: boolean;
+  _track(element: SimpElement): void;
+
+  _untrack(element: SimpElement): void;
 
   lock(): void;
 
-  track(element: SimpElement): void;
-
   flush(): void;
-
-  hasElement(element: SimpElement): boolean;
-
-  untrack(element: SimpElement): void;
 }
 
-export const syncBatchingRerenderLocker: IRendererLocker = {
+export const batchingRerenderLocker: IRendererLocker = {
   _isLocked: false,
   _elements: new Set<SimpElement>(),
-  get isLocked() {
-    return this._isLocked;
+  _track(element) {
+    this._elements.add(element);
   },
+  _untrack(element) {
+    this._elements.delete(element);
+  },
+
   lock() {
     this._isLocked = true;
-  },
-  track(element) {
-    this._elements.add(element);
   },
   flush() {
     this._isLocked = false;
@@ -77,28 +74,23 @@ export const syncBatchingRerenderLocker: IRendererLocker = {
     }
 
     for (const element of this._elements) {
-      this.untrack(element);
+      this._untrack(element);
       rerender(element.store!.latestElement!);
     }
-  },
-  hasElement(element) {
-    return this._elements.has(element);
-  },
-  untrack(element) {
-    this._elements.delete(element);
   },
 };
 export const renderingRerenderLocker: IRendererLocker = {
   _isLocked: false,
   _elements: new Set<SimpElement>(),
-  get isLocked() {
-    return this._isLocked;
+  _track(element) {
+    this._elements.add(element);
   },
+  _untrack(element) {
+    this._elements.delete(element);
+  },
+
   lock() {
     this._isLocked = true;
-  },
-  track(element) {
-    this._elements.add(element);
   },
   flush() {
     this._isLocked = false;
@@ -109,15 +101,9 @@ export const renderingRerenderLocker: IRendererLocker = {
 
     queueMicrotask(() => {
       for (const element of this._elements) {
-        this.untrack(element);
+        this._untrack(element);
         rerender(element.store!.latestElement!);
       }
     });
-  },
-  hasElement(element) {
-    return this._elements.has(element);
-  },
-  untrack(element) {
-    this._elements.delete(element);
   },
 };

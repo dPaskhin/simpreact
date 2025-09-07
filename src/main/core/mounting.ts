@@ -8,7 +8,7 @@ import { createTextElement, normalizeRoot } from './createElement.js';
 import type { SimpContext, SimpContextMap } from './context.js';
 import { applyRef } from './ref.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
-import { syncBatchingRerenderLocker } from './rerender.js';
+import { batchingRerenderLocker } from './rerender.js';
 
 export function mount(
   element: SimpElement,
@@ -137,9 +137,9 @@ export function mountFunctionalElement(
         return;
       }
       lifecycleEventBus.publish({ type: 'beforeRender', element, phase: 'mounting' });
-      syncBatchingRerenderLocker.lock();
+      batchingRerenderLocker.lock();
       children = (element.type as FC)(element.props || emptyObject);
-      syncBatchingRerenderLocker.flush();
+      batchingRerenderLocker.flush();
       lifecycleEventBus.publish({ type: 'afterRender', element, phase: 'mounting' });
     } while (triedToRerender);
 

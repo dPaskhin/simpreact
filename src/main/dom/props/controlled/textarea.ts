@@ -1,5 +1,5 @@
 import type { SimpElement } from '@simpreact/internal';
-import { syncBatchingRerenderLocker } from '@simpreact/internal';
+import { batchingRerenderLocker } from '@simpreact/internal';
 import type { Dict } from '@simpreact/shared';
 
 import { getElementFromDom } from '../../attach-element-to-dom.js';
@@ -16,9 +16,9 @@ function onControlledTextareaChange(event: Event): void {
   }
 
   if (element.props['onChange']) {
-    syncBatchingRerenderLocker.lock();
+    batchingRerenderLocker.lock();
     element.props['onChange'](event);
-    syncBatchingRerenderLocker.flush();
+    batchingRerenderLocker.flush();
     element = getElementFromDom(event.target);
   }
 
@@ -35,9 +35,9 @@ function onControlledTextareaInput(event: Event): void {
   }
 
   if (element.props['onInput']) {
-    syncBatchingRerenderLocker.lock();
+    batchingRerenderLocker.lock();
     element.props['onInput'](event);
-    syncBatchingRerenderLocker.flush();
+    batchingRerenderLocker.flush();
     element = getElementFromDom(event.target);
   }
 

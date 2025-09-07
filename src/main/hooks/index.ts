@@ -1,5 +1,5 @@
 import type { RefObject, SimpContext, SimpElement } from '@simpreact/internal';
-import { lifecycleEventBus, rerender as _rerender, syncBatchingRerenderLocker } from '@simpreact/internal';
+import { batchingRerenderLocker, lifecycleEventBus, rerender as _rerender } from '@simpreact/internal';
 import type { Maybe, Nullable } from '@simpreact/shared';
 import { noop } from '@simpreact/shared';
 import { callOrGet } from '../shared/utils.js';
@@ -58,7 +58,7 @@ lifecycleEventBus.subscribe(event => {
     const element = event.element as HooksSimpElement;
 
     if (element.store?.effectsHookStates) {
-      syncBatchingRerenderLocker.lock();
+      batchingRerenderLocker.lock();
 
       const effects = element.store.effectsHookStates;
       element.store.effectsHookStates = undefined;
@@ -67,14 +67,14 @@ lifecycleEventBus.subscribe(event => {
         state.cleanup = state.effect() || undefined;
       }
 
-      syncBatchingRerenderLocker.flush();
+      batchingRerenderLocker.flush();
     }
   }
   if (event.type === 'updated') {
     const element = event.element as HooksSimpElement;
 
     if (element.store?.effectsHookStates) {
-      syncBatchingRerenderLocker.lock();
+      batchingRerenderLocker.lock();
 
       const effects = element.store.effectsHookStates;
       element.store.effectsHookStates = undefined;
@@ -86,7 +86,7 @@ lifecycleEventBus.subscribe(event => {
         state.cleanup = state.effect() || undefined;
       }
 
-      syncBatchingRerenderLocker.flush();
+      batchingRerenderLocker.flush();
     }
   }
   if (event.type === 'unmounted') {
@@ -108,13 +108,13 @@ lifecycleEventBus.subscribe(event => {
     }
 
     if (element.store!.catchHandlers) {
-      syncBatchingRerenderLocker.lock();
+      batchingRerenderLocker.lock();
 
       for (const state of element.store!.catchHandlers) {
         state(event.error);
       }
 
-      syncBatchingRerenderLocker.flush();
+      batchingRerenderLocker.flush();
     }
   }
 });

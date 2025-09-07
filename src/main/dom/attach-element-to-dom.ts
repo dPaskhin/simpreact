@@ -4,7 +4,7 @@ import type { SimpElement } from '@simpreact/internal';
 const elementPropertyName = '__SIMP_ELEMENT__';
 
 export function attachElementToDom(element: SimpElement, dom: Node): void {
-  if (dom.nodeType !== Node.TEXT_NODE) {
+  if (element.flag !== 'TEXT') {
     Object.defineProperty(dom, elementPropertyName, { value: element, writable: true });
   }
 }

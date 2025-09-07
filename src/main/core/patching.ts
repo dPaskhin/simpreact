@@ -10,7 +10,7 @@ import { mount, mountArrayChildren } from './mounting.js';
 import type { SimpContext, SimpContextMap } from './context.js';
 import { applyRef } from './ref.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
-import { syncBatchingRerenderLocker } from './rerender.js';
+import { batchingRerenderLocker } from './rerender.js';
 
 export function patch(
   prevElement: SimpElement,
@@ -102,8 +102,13 @@ function patchFunctionalComponent(
   contextMap: Nullable<SimpContextMap>,
   hostNamespace: Maybe<string>
 ): void {
-  (nextElement.store = !prevElement.store || prevElement.unmounted ? {} : prevElement.store).latestElement =
-    nextElement;
+  const prevStore =
+    !prevElement.store || prevElement.unmounted
+      ? { hostNamespace: prevElement.store?.hostNamespace }
+      : prevElement.store;
+
+  prevStore.latestElement = nextElement;
+  nextElement.store = prevStore;
 
   if (hostNamespace) {
     nextElement.store.hostNamespace = hostNamespace;
@@ -139,9 +144,9 @@ function patchFunctionalComponent(
         return;
       }
       lifecycleEventBus.publish({ type: 'beforeRender', element: nextElement, phase: 'updating' });
-      syncBatchingRerenderLocker.lock();
+      batchingRerenderLocker.lock();
       nextChildren = (nextElement.type as FC)(nextElement.props || emptyObject);
-      syncBatchingRerenderLocker.flush();
+      batchingRerenderLocker.flush();
       lifecycleEventBus.publish({ type: 'afterRender', element: nextElement, phase: 'updating' });
     } while (triedToRerender);
 
