@@ -17,3 +17,9 @@ declare class EventBus<Event = void> {
 }
 
 declare function isSimpText(value: unknown): value is SimpText;
+
+declare function noop(): void;
+
+declare function callOrGet<T, A extends any[]>(value: T | ((...args: A) => T), ...args: A): T;
+
+declare function shallowEqual(objA: any, objB: any): boolean;

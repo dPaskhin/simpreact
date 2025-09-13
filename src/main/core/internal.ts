@@ -3,6 +3,7 @@ export * from './createElement.js';
 export * from './fragment.js';
 export * from './hostAdapter.js';
 export * from './lifecycleEventBus.js';
+export * from './memo.js';
 export * from './mounting.js';
 export * from './patching.js';
 export * from './portal.js';

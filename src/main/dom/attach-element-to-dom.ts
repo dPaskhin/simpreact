@@ -10,5 +10,17 @@ export function attachElementToDom(element: SimpElement, dom: Node): void {
 }
 
 export function getElementFromDom(target: Nullable<EventTarget>): Nullable<SimpElement> {
-  return (target as any)?.[elementPropertyName] ?? null;
+  if (!target) {
+    return null;
+  }
+
+  while (target && !(elementPropertyName in target)) {
+    target = (target as Element).parentElement;
+  }
+
+  if (!target) {
+    return null;
+  }
+
+  return target[elementPropertyName] as SimpElement;
 }

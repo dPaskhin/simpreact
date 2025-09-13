@@ -63,17 +63,25 @@ export class SyntheticEvent {
   nativeEvent: Event;
   currentTarget: Nullable<EventTarget> = null;
   isPropagationStopped = false;
-  isDefaultPrevented = false;
+  _isDefaultPrevented = false;
 
   button?: number;
   buttons?: number;
   pointerId?: number;
+
+  altKey?: boolean;
+  ctrlKey?: boolean;
+  shiftKey?: boolean;
+  metaKey?: boolean;
 
   constructor(event: Event) {
     this.nativeEvent = event;
     this.button = (event as PointerEvent).button;
     this.buttons = (event as PointerEvent).buttons;
     this.pointerId = (event as PointerEvent).pointerId;
+    this.altKey = (event as PointerEvent).altKey;
+    this.ctrlKey = (event as PointerEvent).ctrlKey;
+    this.metaKey = (event as PointerEvent).metaKey;
   }
 
   get target() {
@@ -90,8 +98,12 @@ export class SyntheticEvent {
   }
 
   preventDefault() {
-    this.isDefaultPrevented = true;
+    this._isDefaultPrevented = true;
     this.nativeEvent.preventDefault();
+  }
+
+  isDefaultPrevented(): boolean {
+    return this._isDefaultPrevented;
   }
 }
 

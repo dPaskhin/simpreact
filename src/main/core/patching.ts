@@ -11,6 +11,7 @@ import type { SimpContext, SimpContextMap } from './context.js';
 import { applyRef } from './ref.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
 import { batchingRerenderLocker } from './rerender.js';
+import { isMemo } from './memo.js';
 
 export function patch(
   prevElement: SimpElement,
@@ -102,6 +103,35 @@ function patchFunctionalComponent(
   contextMap: Nullable<SimpContextMap>,
   hostNamespace: Maybe<string>
 ): void {
+  if (
+    !prevElement.unmounted &&
+    isMemo(nextElement.type) &&
+    nextElement.type._compare(prevElement.props, nextElement.props)
+  ) {
+    nextElement.children = prevElement.children;
+
+    nextElement.store = prevElement.store;
+    if (nextElement.store) {
+      nextElement.store.latestElement = nextElement;
+    }
+
+    nextElement.contextMap = prevElement.contextMap;
+
+    if (prevElement.ref) {
+      nextElement.ref = prevElement.ref;
+    }
+
+    if (Array.isArray(nextElement.children)) {
+      for (const child of nextElement.children) {
+        (child as SimpElement).parent = nextElement;
+      }
+    } else if (nextElement.children) {
+      (nextElement.children as SimpElement).parent = nextElement;
+    }
+
+    return;
+  }
+
   const prevStore =
     !prevElement.store || prevElement.unmounted
       ? { hostNamespace: prevElement.store?.hostNamespace }
@@ -153,6 +183,7 @@ function patchFunctionalComponent(
     nextChildren = normalizeRoot(nextChildren, false);
   } catch (error) {
     lifecycleEventBus.publish({ type: 'errored', element: nextElement, error, phase: 'updating' });
+    remove(prevElement, parentReference);
     return;
   } finally {
     triedToRerenderUnsubscribe!();

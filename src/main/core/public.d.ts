@@ -66,3 +66,5 @@ export type FunctionComponent<P = {}> = (props: P) => SimpNode;
 export type FC<P = {}> = FunctionComponent<P>;
 
 export type PropsWithChildren<P = {}> = P & { children?: SimpNode | undefined };
+
+declare function memo<P = {}>(Component: FC<P>, compare?: (objA: Readonly<P>, objB: Readonly<P>) => boolean): FC<P>;
