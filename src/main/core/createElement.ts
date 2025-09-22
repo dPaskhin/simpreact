@@ -3,25 +3,23 @@ import { isSimpText } from '@simpreact/shared';
 
 import { Fragment } from './fragment.js';
 import type { HostReference } from './hostAdapter.js';
-import type { SimpContextMap } from './context.js';
-import { isConsumer, isProvider } from './context.js';
 
 export type SimpNode = SimpElement | SimpText | Array<SimpNode> | boolean | null | undefined;
 
 export type Key = string | number | bigint;
 
-export interface FunctionComponent {
-  (props: any): SimpNode;
-}
+export type FC = (props: any) => SimpNode;
 
-export type FC = FunctionComponent;
+export type SimpElementFlag = 'FC' | 'HOST' | 'TEXT' | 'FRAGMENT' | 'PORTAL';
 
-export type SimpElementFlag = 'FC' | 'HOST' | 'TEXT' | 'FRAGMENT' | 'PROVIDER' | 'CONSUMER' | 'PORTAL';
-
+// This object also serves as a persistent identity for elements, making it useful
+// for tracking them consistently across rerenders.
 export interface SimpElementStore {
   latestElement?: Maybe<SimpElement>;
 
   hostNamespace?: Maybe<string>;
+
+  forceRender?: boolean;
 
   [key: string]: unknown;
 }
@@ -33,7 +31,7 @@ export interface SimpElement {
 
   key?: Maybe<Key>;
 
-  type?: string | FunctionComponent;
+  type?: string | FC;
 
   props?: any;
 
@@ -45,14 +43,14 @@ export interface SimpElement {
 
   store?: SimpElementStore;
 
-  contextMap?: Maybe<SimpContextMap>;
+  context?: any;
 
   ref?: any;
 
   unmounted?: boolean;
 }
 
-export function createElement(type: string | FunctionComponent, props?: any, ...children: SimpNode[]): SimpElement {
+export function createElement(type: string | FC, props?: any, ...children: SimpNode[]): SimpElement {
   let newProps: any;
   let className: Maybe<string>;
   let key: Maybe<Key>;
@@ -138,31 +136,6 @@ export function createElement(type: string | FunctionComponent, props?: any, ...
     ) {
       element.children = definedChildren;
     }
-
-    if (props != null && (props as any).key) {
-      element.key = (props as any)?.key;
-    }
-
-    return element;
-  } else if (isProvider(type)) {
-    const element: SimpElement = { flag: 'PROVIDER', type, props: { value: (props as any).value }, parent: null };
-
-    if ((definedChildren = normalizeChildren(definedChildren || (props as any).children, false))) {
-      element.children = definedChildren;
-    }
-
-    if (props != null && (props as any).key) {
-      element.key = (props as any)?.key;
-    }
-
-    return element;
-  } else if (isConsumer(type)) {
-    const element: SimpElement = {
-      flag: 'CONSUMER',
-      type,
-      props: { children: definedChildren || (props != null ? (props as any).children : null) },
-      parent: null,
-    };
 
     if (props != null && (props as any).key) {
       element.key = (props as any)?.key;
@@ -292,7 +265,7 @@ function isIgnoredNode(node: SimpNode): node is Extract<SimpNode, '' | null | un
   if (isSimpText(node)) {
     return false;
   }
-  if (node.flag === 'FRAGMENT' || node.flag === 'PROVIDER' || node.flag === 'PORTAL') {
+  if (node.flag === 'FRAGMENT' || node.flag === 'PORTAL') {
     return node.children == null;
   }
   return false;

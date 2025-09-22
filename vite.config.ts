@@ -5,6 +5,7 @@ import path from 'node:path';
 export default defineConfig({
   resolve: {
     alias: {
+      '@simpreact/context': path.resolve(process.cwd(), './src/main/context/index.js'),
       '@simpreact/core': path.resolve(process.cwd(), './src/main/core/index.js'),
       '@simpreact/internal': path.resolve(process.cwd(), './src/main/core/internal.js'),
       '@simpreact/dom': path.resolve(process.cwd(), './src/main/dom/index.js'),

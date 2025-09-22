@@ -86,7 +86,6 @@ export const useEffect = SimpReactHooks.useEffect;
 export const useLayoutEffect = SimpReactHooks.useEffect;
 export const useInsertionEffect = SimpReactHooks.useEffect;
 export const useRef = SimpReactHooks.useRef;
-export const useContext = SimpReactHooks.useContext;
 
 export default {
   useSyncExternalStore,
@@ -99,5 +98,4 @@ export default {
   useLayoutEffect,
   useInsertionEffect,
   useRef,
-  useContext,
 };

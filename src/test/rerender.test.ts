@@ -121,10 +121,9 @@ describe('rerender (integration tests)', () => {
 
     await Promise.resolve();
 
-    expect(innerElementRerenderFn).toHaveBeenCalledTimes(3);
+    expect(innerElementRerenderFn).toHaveBeenCalledTimes(2);
     expect(innerElementRerenderFn).toHaveBeenNthCalledWith(1, 0);
     expect(innerElementRerenderFn).toHaveBeenNthCalledWith(2, 1);
-    expect(innerElementRerenderFn).toHaveBeenNthCalledWith(3, 1);
     expect(rootElementRerenderFn).toHaveBeenCalledTimes(2);
   });
 });

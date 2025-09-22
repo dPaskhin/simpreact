@@ -99,7 +99,6 @@ export function forwardRef<P, T>(Component: (props: P, ref: SimpReactInternal.Re
 
 export const Fragment = SimpReactInternal.Fragment;
 export const createElement = SimpReactInternal.createElement;
-export const createContext = SimpReactInternal.createContext;
 export const createPortal = SimpReactInternal.createPortal;
 export const memo = SimpReactInternal.memo;
 export const flushSync = (value: any) => value;
@@ -118,7 +117,6 @@ export default {
   forwardRef,
   Fragment,
   createElement,
-  createContext,
   createPortal,
   memo,
   flushSync,

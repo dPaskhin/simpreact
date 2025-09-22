@@ -1,16 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Element, Text } from 'flyweight-dom';
 
-import type { HostReference, SimpContextMap, SimpElement } from '@simpreact/internal';
+import { createContext } from '@simpreact/context';
+import type { HostReference, SimpElement } from '@simpreact/internal';
 import {
-  createContext,
   createElement,
   createTextElement,
   lifecycleEventBus,
-  mountConsumer,
+  mount,
   mountFunctionalElement,
   mountHostElement,
-  mountProvider,
   mountTextElement,
   provideHostAdapter,
 } from '@simpreact/internal';
@@ -153,12 +152,12 @@ describe('mounting', () => {
 
     it('should assign context map to the element', () => {
       const testFn = vi.fn(() => createElement('div'));
-      const contextMap: SimpContextMap = new Map();
+      const context = {};
       const element = createElement(testFn);
 
-      mountFunctionalElement(element, null, null, contextMap, '');
+      mountFunctionalElement(element, null, null, context, '');
 
-      expect(element.contextMap).toBe(contextMap);
+      expect(element.context).toBe(context);
     });
 
     it('should support nested functional elements', () => {
@@ -216,26 +215,25 @@ describe('mounting', () => {
 
   describe('mountProvider', () => {
     it('should provide context to children FCs', () => {
-      const context = {};
-      // ContextMap is provided only to FC type elements.
+      const context = createContext(0);
       const child = createElement(() => null);
-      const element = createElement({ context } as any, { value: 123 }, child);
+      const element = createElement(context.Provider, { value: 123 }, child);
 
-      mountProvider(element, null, null, null, '');
+      mount(element, null, null, null, null);
 
-      expect(child.contextMap?.get(context as any)).toBe(123);
+      expect(child.context?.get(context as any).value).toBe(123);
     });
 
     it('should provide context to many children FCs', () => {
-      const context = {};
+      const context = createContext('');
       const child1 = createElement(() => null);
       const child2 = createElement(() => null);
-      const element = createElement({ context } as any, { value: 'dark' }, child1, child2);
+      const element = createElement(context.Provider, { value: 'dark' }, child1, child2);
 
-      mountProvider(element, null, null, new Map(), '');
+      mount(element, null, null, null, null);
 
-      expect(child1.contextMap?.get(context as any)).toBe('dark');
-      expect(child2.contextMap?.get(context as any)).toBe('dark');
+      expect(child1.context?.get(context as any).value).toBe('dark');
+      expect(child2.context?.get(context as any).value).toBe('dark');
     });
   });
 
@@ -244,20 +242,18 @@ describe('mounting', () => {
       const context = createContext('DEFAULT_VALUE');
 
       const spyOnConsumer = vi.spyOn(context, 'Consumer');
+      const consumerRenderer = vi.fn(value => createElement('div', { fromContext: value }));
 
-      const consumerProps = {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error
-        children: value => createElement('div', { fromContext: value }),
-      };
+      const consumerProps = { children: consumerRenderer };
       const element = createElement(context.Consumer as any, consumerProps);
 
       const contextMap = new Map();
-      contextMap.set(context, 'PROVIDED_VALUE');
+      contextMap.set(context, { value: 'PROVIDED_VALUE' });
 
-      mountConsumer(element, null, null, contextMap, '');
+      mount(element, null, null, contextMap, null);
 
-      expect(spyOnConsumer).toHaveBeenCalledWith(consumerProps, contextMap);
+      expect(spyOnConsumer).toHaveBeenCalledWith(consumerProps);
+      expect(consumerRenderer).toHaveBeenCalledWith('PROVIDED_VALUE');
       expect(testHostAdapter.createReference).toHaveBeenCalledWith('div', '');
       expect(testHostAdapter.mountProps).toHaveBeenCalledWith(
         expect.objectContaining({ nodeName: 'div' }),
@@ -271,7 +267,7 @@ describe('mounting', () => {
 
       const element = createElement(context.Consumer as any, { children: () => null });
 
-      mountConsumer(element, null, null, null, '');
+      mount(element, null, null, null, '');
 
       expect(element.children).not.toBeDefined();
       expect(testHostAdapter.createReference).not.toHaveBeenCalled();
@@ -284,7 +280,7 @@ describe('mounting', () => {
         children: () => [createElement('span', { key: 'a' }), createElement('p', { key: 'b' })],
       });
 
-      mountConsumer(element, null, null, null, '');
+      mount(element, null, null, null, '');
 
       expect(Array.isArray((element.children as SimpElement).children)).toBe(true);
       expect(testHostAdapter.createReference).toHaveBeenCalledWith('span', '');

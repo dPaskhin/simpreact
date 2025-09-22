@@ -38,7 +38,7 @@ export function unmount(element: Many<SimpElement>): void {
     return;
   }
 
-  // Only FRAGMENT, PROVIDER, CONSUMER, and HOST elements remain,
+  // Only FRAGMENT and HOST elements remain,
   // with Maybe<Many<SimpElement>> children due to normalization.
   if (element.children) {
     unmount(element.children as Many<SimpElement>);
@@ -58,11 +58,11 @@ export function clearElementHostReference(element: Maybe<SimpElement>, parentHos
     }
     const children = element.children;
 
-    if (element.flag === 'FC' || element.flag === 'CONSUMER') {
+    if (element.flag === 'FC') {
       element = children as SimpElement;
       continue;
     }
-    if (element.flag === 'FRAGMENT' || element.flag === 'PROVIDER') {
+    if (element.flag === 'FRAGMENT') {
       if (Array.isArray(children)) {
         for (let i = 0, len = children.length; i < len; ++i) {
           clearElementHostReference(children[i] as SimpElement, parentHostReference);

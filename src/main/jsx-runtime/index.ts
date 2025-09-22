@@ -1,8 +1,8 @@
-import type { FunctionComponent, Key, SimpElement } from '@simpreact/internal';
+import type { FC, Key, SimpElement } from '@simpreact/internal';
 import { createElement, Fragment } from '@simpreact/internal';
 import type { Maybe } from '@simpreact/shared';
 
-export function jsx(type: string | FunctionComponent, props?: any, key?: Maybe<Key>): SimpElement {
+export function jsx(type: string | FC, props?: any, key?: Maybe<Key>): SimpElement {
   let _key = key;
 
   if (props && props.key != null) {

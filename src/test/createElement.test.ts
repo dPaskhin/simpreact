@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import type { FC, SimpElement } from '@simpreact/internal';
 import {
-  createContext,
   createElement,
   createPortal,
   createTextElement,
@@ -10,6 +9,7 @@ import {
   normalizeChildren,
   normalizeRoot,
 } from '@simpreact/internal';
+import { createContext } from '@simpreact/context';
 
 function createMockHostElement(): SimpElement {
   return createElement('div', null, '123');
@@ -33,20 +33,7 @@ describe('createElement and utils', () => {
       expect(normalizeChildren([undefined, null, false, true], false)).toBeUndefined();
       expect(normalizeChildren('', false)).toBeUndefined();
       expect(normalizeChildren(createElement(Fragment), false)).toBeUndefined();
-      expect(normalizeChildren(createElement(TestContext.Provider, { value: '1' }), false)).toBeUndefined();
       expect(normalizeChildren(createPortal(undefined, {}), false)).toBeUndefined();
-      expect(
-        normalizeChildren(
-          [
-            undefined,
-            [
-              createElement(TestContext.Provider, { value: '1' }),
-              [[[createElement(Fragment)]], [createPortal(undefined, {})]],
-            ],
-          ],
-          false
-        )
-      ).toBeUndefined();
     });
 
     it('wraps string and number into text elements', () => {
@@ -422,10 +409,9 @@ describe('createElement and utils', () => {
 
     it('creates a Provider element', () => {
       expect(createElement(TestContext.Provider, { value: 'PROVIDED_VALUE' }, 12)).toEqual({
-        flag: 'PROVIDER',
+        flag: 'FC',
         type: TestContext.Provider,
-        children: { flag: 'TEXT', children: '12', parent: null, key: '.0' },
-        props: { value: 'PROVIDED_VALUE' },
+        props: { value: 'PROVIDED_VALUE', children: 12 },
         parent: null,
       });
       expect(
@@ -434,31 +420,36 @@ describe('createElement and utils', () => {
           children: createMockHostElement(),
         })
       ).toEqual({
-        flag: 'PROVIDER',
+        flag: 'FC',
         type: TestContext.Provider,
-        children: { ...createMockHostElement(), key: '.0' },
-        props: { value: 'PROVIDED_VALUE' },
+        props: {
+          value: 'PROVIDED_VALUE',
+          children: {
+            flag: 'HOST',
+            parent: null,
+            props: { children: '123' },
+            type: 'div',
+          },
+        },
         parent: null,
       });
       expect(
         createElement(TestContext.Provider, { value: 'PROVIDED_VALUE', children: 'ignored children' }, '123')
       ).toEqual({
-        flag: 'PROVIDER',
+        flag: 'FC',
         type: TestContext.Provider,
-        children: { flag: 'TEXT', children: '123', parent: null, key: '.0' },
-        props: { value: 'PROVIDED_VALUE' },
+        props: { value: 'PROVIDED_VALUE', children: '123' },
         parent: null,
       });
       expect(createElement(TestContext.Provider, { key: '123', value: 'PROVIDED_VALUE' }, '123')).toEqual({
-        flag: 'PROVIDER',
+        flag: 'FC',
         type: TestContext.Provider,
-        children: { flag: 'TEXT', children: '123', parent: null, key: '.0' },
-        props: { value: 'PROVIDED_VALUE' },
+        props: { value: 'PROVIDED_VALUE', children: '123' },
         key: '123',
         parent: null,
       });
       expect(createElement(TestContext.Provider, { value: 'PROVIDED_VALUE' })).toEqual({
-        flag: 'PROVIDER',
+        flag: 'FC',
         type: TestContext.Provider,
         props: { value: 'PROVIDED_VALUE' },
         children: undefined,
@@ -472,7 +463,7 @@ describe('createElement and utils', () => {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
       expect(createElement(TestContext.Consumer, null, MockComponent)).toEqual({
-        flag: 'CONSUMER',
+        flag: 'FC',
         type: TestContext.Consumer,
         props: { children: MockComponent },
         parent: null,
@@ -480,7 +471,7 @@ describe('createElement and utils', () => {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
       expect(createElement(TestContext.Consumer, { children: MockComponent })).toEqual({
-        flag: 'CONSUMER',
+        flag: 'FC',
         type: TestContext.Consumer,
         props: { children: MockComponent },
         parent: null,
@@ -488,7 +479,7 @@ describe('createElement and utils', () => {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
       expect(createElement(TestContext.Consumer, { key: '123', children: MockComponent })).toEqual({
-        flag: 'CONSUMER',
+        flag: 'FC',
         type: TestContext.Consumer,
         props: { children: MockComponent },
         key: '123',
@@ -497,9 +488,8 @@ describe('createElement and utils', () => {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
       expect(createElement(TestContext.Consumer)).toEqual({
-        flag: 'CONSUMER',
+        flag: 'FC',
         type: TestContext.Consumer,
-        props: { children: null },
         parent: null,
       });
     });
@@ -520,20 +510,7 @@ describe('createElement and utils', () => {
       expect(normalizeRoot([], false)).toBeUndefined();
       expect(normalizeRoot([undefined, ['', [[], ['']]]], false)).toBeUndefined();
       expect(normalizeRoot(createElement(Fragment), false)).toBeUndefined();
-      expect(normalizeRoot(createElement(TestContext.Provider, { value: '1' }), false)).toBeUndefined();
       expect(normalizeRoot(createPortal(undefined, {}), false)).toBeUndefined();
-      expect(
-        normalizeRoot(
-          [
-            undefined,
-            [
-              createElement(TestContext.Provider, { value: '1' }),
-              [[[createElement(Fragment)]], [createPortal(undefined, {})]],
-            ],
-          ],
-          false
-        )
-      ).toBeUndefined();
     });
 
     it('should wrap an array in a fragment element', () => {

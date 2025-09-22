@@ -13,6 +13,7 @@
     "erasableSyntaxOnly": true,
     "skipLibCheck": true,
     "paths": {
+      "@simpreact/context": ["./src/main/context/index.js"],
       "@simpreact/core": ["./src/main/core/index.js"],
       "@simpreact/internal": ["./src/main/core/internal.js"],
       "@simpreact/dom": ["./src/main/dom/index.js"],

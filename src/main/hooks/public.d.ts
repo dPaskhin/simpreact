@@ -1,4 +1,4 @@
-import type { RefObject, SimpContext } from '@simpreact/core';
+import type { RefObject } from '@simpreact/core';
 
 export type Cleanup = () => void;
 export type Effect = () => void | Cleanup;
@@ -21,8 +21,6 @@ declare function useEffect(effect: Effect, deps?: DependencyList): void;
 declare function useMounted(effect: Effect): void;
 
 declare function useUnmounted(cleanup: Cleanup): void;
-
-declare function useContext<T>(context: SimpContext<T>): T;
 
 declare function useCatch(cb: (error: any) => void): void;
 

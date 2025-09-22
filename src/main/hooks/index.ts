@@ -1,8 +1,7 @@
-import type { RefObject, SimpContext, SimpElement } from '@simpreact/internal';
+import type { RefObject, SimpElement } from '@simpreact/internal';
 import { batchingRerenderLocker, lifecycleEventBus, rerender as _rerender } from '@simpreact/internal';
 import type { Maybe, Nullable } from '@simpreact/shared';
-import { noop } from '@simpreact/shared';
-import { callOrGet } from '../shared/utils.js';
+import { callOrGet, noop } from '@simpreact/shared';
 
 export type Cleanup = () => void;
 export type Effect = () => void | Cleanup;
@@ -91,9 +90,11 @@ lifecycleEventBus.subscribe(event => {
   }
   if (event.type === 'unmounted') {
     const element = event.element as HooksSimpElement;
-
     if (element.store?.hookStates) {
-      for (const state of element.store.hookStates) {
+      const hookStates = element.store.hookStates;
+      element.store.hookStates = undefined;
+
+      for (const state of hookStates) {
         if (state && 'cleanup' in state && typeof state.cleanup === 'function') {
           state.cleanup();
         }
@@ -152,6 +153,7 @@ export function useRerender(): () => void {
   if (!hookStates[currentIndex]) {
     const elementStore = currentElement.store;
     hookStates[currentIndex] = function rerender() {
+      elementStore!.forceRender = true;
       _rerender(elementStore!.latestElement!);
     };
   }
@@ -177,6 +179,7 @@ export function useState<S>(initialState?: S | (() => S)) {
       }
 
       state[0] = nextValue;
+      elementStore!.forceRender = true;
       _rerender(elementStore!.latestElement!);
     };
   }
@@ -221,10 +224,6 @@ export function useUnmounted(cleanup: Cleanup): void {
   }
 
   currentIndex++;
-}
-
-export function useContext<T>(context: SimpContext<T>): T {
-  return currentElement.contextMap?.get(context) ?? context.defaultValue;
 }
 
 export function useCatch(cb: (error: any) => void): void {
@@ -282,7 +281,6 @@ export default {
   useEffect,
   useMounted,
   useUnmounted,
-  useContext,
   useCatch,
   areDepsEqual,
 };

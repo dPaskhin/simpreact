@@ -1,13 +1,12 @@
 import type { Maybe, Nullable } from '@simpreact/shared';
-import { emptyMap, emptyObject } from '@simpreact/shared';
+import { emptyObject } from '@simpreact/shared';
 
 import type { FC, Key, SimpElement, SimpElementFlag, SimpNode } from './createElement.js';
 import { normalizeRoot } from './createElement.js';
 import type { HostReference } from './hostAdapter.js';
 import { hostAdapter } from './hostAdapter.js';
 import { clearElementHostReference, remove, unmount } from './unmounting.js';
-import { mount, mountArrayChildren } from './mounting.js';
-import type { SimpContext, SimpContextMap } from './context.js';
+import { mount, mountArrayChildren, mountFunctionalElement } from './mounting.js';
 import { applyRef } from './ref.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
 import { batchingRerenderLocker } from './rerender.js';
@@ -18,25 +17,21 @@ export function patch(
   nextElement: SimpElement,
   parentReference: HostReference,
   nextReference: Nullable<HostReference>,
-  contextMap: Nullable<SimpContextMap>,
+  context: unknown,
   hostNamespace: Maybe<string>
 ): void {
   if (prevElement.type !== nextElement.type || prevElement.key !== nextElement.key) {
-    replaceWithNewElement(prevElement, nextElement, parentReference, contextMap, hostNamespace);
+    replaceWithNewElement(prevElement, nextElement, parentReference, context, hostNamespace);
   } else if (nextElement.flag === 'HOST') {
-    patchHostElement(prevElement, nextElement, contextMap, hostNamespace);
+    patchHostElement(prevElement, nextElement, context, hostNamespace);
   } else if (nextElement.flag === 'FC') {
-    patchFunctionalComponent(prevElement, nextElement, parentReference, nextReference, contextMap, hostNamespace);
+    patchFunctionalComponent(prevElement, nextElement, parentReference, nextReference, context, hostNamespace);
   } else if (nextElement.flag === 'TEXT') {
     patchTextElement(prevElement, nextElement);
   } else if (nextElement.flag === 'FRAGMENT') {
-    patchFragment(prevElement, nextElement, parentReference, contextMap, hostNamespace);
-  } else if (nextElement.flag === 'PROVIDER') {
-    patchProvider(prevElement, nextElement, parentReference, contextMap, hostNamespace);
-  } else if (nextElement.flag === 'PORTAL') {
-    patchPortal(prevElement, nextElement, contextMap);
+    patchFragment(prevElement, nextElement, parentReference, context, hostNamespace);
   } else {
-    patchConsumer(prevElement, nextElement, parentReference, nextReference, contextMap, hostNamespace);
+    patchPortal(prevElement, nextElement, context);
   }
 }
 
@@ -44,17 +39,17 @@ function replaceWithNewElement(
   prevElement: SimpElement,
   nextElement: SimpElement,
   parentReference: HostReference,
-  contextMap: Nullable<SimpContextMap>,
+  context: unknown,
   hostNamespace: Maybe<string>
 ): void {
   unmount(prevElement);
 
   nextElement.parent = prevElement.parent;
   if (nextElement.flag === 'HOST' && prevElement.flag === 'HOST') {
-    mount(nextElement, null, null, contextMap, hostNamespace);
+    mount(nextElement, null, null, context, hostNamespace);
     hostAdapter.replaceChild(parentReference, nextElement.reference, prevElement.reference);
   } else {
-    mount(nextElement, parentReference, findHostReferenceFromElement(prevElement), contextMap, hostNamespace);
+    mount(nextElement, parentReference, findHostReferenceFromElement(prevElement), context, hostNamespace);
     clearElementHostReference(prevElement, parentReference);
   }
 }
@@ -62,7 +57,7 @@ function replaceWithNewElement(
 function patchHostElement(
   prevElement: SimpElement,
   nextElement: SimpElement,
-  contextMap: Nullable<SimpContextMap>,
+  context: unknown,
   hostNamespace: Maybe<string>
 ): void {
   if (prevElement.ref) {
@@ -82,7 +77,7 @@ function patchHostElement(
     nextElement.reference,
     null,
     nextElement,
-    contextMap,
+    context,
     hostNamespaces?.children
   );
 
@@ -100,57 +95,36 @@ function patchFunctionalComponent(
   nextElement: SimpElement,
   parentReference: HostReference,
   nextReference: Nullable<HostReference>,
-  contextMap: Nullable<SimpContextMap>,
+  context: unknown,
   hostNamespace: Maybe<string>
 ): void {
-  if (
-    !prevElement.unmounted &&
-    isMemo(nextElement.type) &&
-    nextElement.type._compare(prevElement.props, nextElement.props)
-  ) {
-    nextElement.children = prevElement.children;
-
-    nextElement.store = prevElement.store;
-    if (nextElement.store) {
-      nextElement.store.latestElement = nextElement;
-    }
-
-    nextElement.contextMap = prevElement.contextMap;
-
-    if (prevElement.ref) {
-      nextElement.ref = prevElement.ref;
-    }
-
-    if (Array.isArray(nextElement.children)) {
-      for (const child of nextElement.children) {
-        (child as SimpElement).parent = nextElement;
-      }
-    } else if (nextElement.children) {
-      (nextElement.children as SimpElement).parent = nextElement;
-    }
-
-    return;
-  }
-
-  const prevStore =
-    !prevElement.store || prevElement.unmounted
-      ? { hostNamespace: prevElement.store?.hostNamespace }
-      : prevElement.store;
-
-  prevStore.latestElement = nextElement;
-  nextElement.store = prevStore;
+  nextElement.store = prevElement.store || {};
+  nextElement.store.latestElement = nextElement;
 
   if (hostNamespace) {
     nextElement.store.hostNamespace = hostNamespace;
   }
 
-  if (contextMap) {
-    nextElement.contextMap = contextMap;
+  let forceRender = false;
+
+  if (prevElement.store?.forceRender) {
+    forceRender = true;
+    prevElement.store.forceRender = false;
   }
+
+  if (prevElement.unmounted) {
+    mountFunctionalElement(nextElement, parentReference, nextReference, context, hostNamespace);
+    return;
+  }
+
+  if (!forceRender && isMemo(nextElement.type) && nextElement.type._compare(prevElement.props, nextElement.props)) {
+    return;
+  }
+
+  nextElement.context = prevElement.context || context;
 
   // FC element always has Maybe<SimpElement> children due to normalization process.
   let nextChildren;
-
   let triedToRerenderUnsubscribe;
 
   try {
@@ -165,13 +139,7 @@ function patchFunctionalComponent(
     do {
       triedToRerender = false;
       if (++rerenderCounter >= 25) {
-        lifecycleEventBus.publish({
-          type: 'errored',
-          element: nextElement,
-          error: new Error('Too many re-renders. SimpReact limits the number of renders to prevent an infinite loop.'),
-          phase: 'updating',
-        });
-        return;
+        throw new Error('Too many re-renders.');
       }
       lifecycleEventBus.publish({ type: 'beforeRender', element: nextElement, phase: 'updating' });
       batchingRerenderLocker.lock();
@@ -189,26 +157,23 @@ function patchFunctionalComponent(
     triedToRerenderUnsubscribe!();
   }
 
+  // Keep prevElement's children reference when prev and next elements are identical to avoid reassignment.
   const prevChildren = prevElement.children;
 
   if (nextChildren) {
     nextElement.children = nextChildren;
   }
 
-  if (!prevElement.unmounted) {
-    patchChildren(prevChildren, nextChildren, parentReference, nextReference, nextElement, contextMap, hostNamespace);
-    lifecycleEventBus.publish({ type: 'updated', element: nextElement });
-    return;
-  }
-
-  prevElement.unmounted = false;
-
-  if (nextChildren) {
-    nextChildren.parent = nextElement;
-    mount(nextChildren, parentReference, nextReference, contextMap, hostNamespace);
-  }
-
-  lifecycleEventBus.publish({ type: 'mounted', element: nextElement });
+  patchChildren(
+    prevChildren,
+    nextChildren,
+    parentReference,
+    nextReference,
+    nextElement,
+    nextElement.context,
+    hostNamespace
+  );
+  lifecycleEventBus.publish({ type: 'updated', element: nextElement });
 }
 
 function patchTextElement(prevElement: SimpElement, nextElement: SimpElement): void {
@@ -223,7 +188,7 @@ function patchFragment(
   prevElement: SimpElement,
   nextElement: SimpElement,
   parentReference: HostReference,
-  contextMap: Nullable<SimpContextMap>,
+  context: unknown,
   hostNamespace: Maybe<string>
 ): void {
   let nextReference: Nullable<HostReference> = null;
@@ -240,73 +205,12 @@ function patchFragment(
     parentReference,
     nextReference,
     nextElement,
-    contextMap,
+    context,
     hostNamespace
   );
 }
 
-function patchProvider(
-  prevElement: SimpElement,
-  nextElement: SimpElement,
-  parentReference: HostReference,
-  contextMap: Nullable<SimpContextMap>,
-  hostNamespace: Maybe<string>
-): void {
-  let nextReference: Nullable<HostReference> = null;
-
-  if (Array.isArray(prevElement.children) && !Array.isArray(nextElement.children) && nextElement.children) {
-    nextReference = hostAdapter.findNextSiblingReference(
-      findHostReferenceFromElement(prevElement.children[prevElement.children.length - 1] as SimpElement)
-    );
-  }
-
-  contextMap = new Map(contextMap);
-  contextMap.set((nextElement.type as any).context, nextElement.props.value);
-
-  patchChildren(
-    prevElement.children,
-    nextElement.children,
-    parentReference,
-    nextReference,
-    nextElement,
-    contextMap,
-    hostNamespace
-  );
-}
-
-function patchConsumer(
-  prevElement: SimpElement,
-  nextElement: SimpElement,
-  parentReference: HostReference,
-  nextReference: Nullable<HostReference>,
-  contextMap: Nullable<SimpContextMap>,
-  hostNamespace: Maybe<string>
-): void {
-  const children = normalizeRoot(
-    (nextElement.type as SimpContext<any>['Consumer'])(nextElement.props || emptyObject, contextMap || emptyMap),
-    false
-  );
-
-  if (children) {
-    nextElement.children = children;
-  }
-
-  patchChildren(
-    prevElement.children,
-    nextElement.children,
-    parentReference,
-    nextReference,
-    nextElement,
-    contextMap,
-    hostNamespace
-  );
-}
-
-export function patchPortal(
-  prevElement: SimpElement,
-  nextElement: SimpElement,
-  contextMap: Nullable<SimpContextMap>
-): void {
+export function patchPortal(prevElement: SimpElement, nextElement: SimpElement, context: unknown): void {
   const prevContainer = prevElement.ref;
   const nextContainer = nextElement.ref;
   const nextChildren = nextElement.children as SimpElement;
@@ -317,7 +221,7 @@ export function patchPortal(
     prevContainer as HostReference,
     null,
     nextElement,
-    contextMap,
+    context,
     hostAdapter.getHostNamespaces(nextChildren, undefined)?.self
   );
 
@@ -333,10 +237,10 @@ export function updateFunctionalComponent(
   element: SimpElement,
   parentReference: HostReference,
   nextReference: Nullable<HostReference>,
-  contextMap: Nullable<SimpContextMap>,
+  context: unknown,
   hostNamespace: Maybe<string>
 ): void {
-  patchFunctionalComponent(element, element, parentReference, nextReference, contextMap, hostNamespace);
+  patchFunctionalComponent(element, element, parentReference, nextReference, context, hostNamespace);
 }
 
 function patchChildren(
@@ -345,7 +249,7 @@ function patchChildren(
   parentReference: HostReference,
   nextReference: Nullable<HostReference>,
   nextElement: SimpElement,
-  contextMap: Nullable<SimpContextMap>,
+  context: unknown,
   hostNamespace: Maybe<string>
 ): void {
   if (Array.isArray(prevChildren)) {
@@ -358,7 +262,7 @@ function patchChildren(
         nextChildren as SimpElement[],
         parentReference,
         nextReference,
-        contextMap,
+        context,
         hostNamespace
       );
     } else if (typeof nextChildren === 'string') {
@@ -370,7 +274,7 @@ function patchChildren(
         [nextChildren] as SimpElement[],
         parentReference,
         nextReference,
-        contextMap,
+        context,
         hostNamespace
       );
     } else {
@@ -384,7 +288,7 @@ function patchChildren(
         nextChildren as SimpElement[],
         parentReference,
         nextReference,
-        contextMap,
+        context,
         nextElement,
         hostNamespace
       );
@@ -395,7 +299,7 @@ function patchChildren(
     } else if (nextChildren) {
       hostAdapter.clearNode(parentReference);
       (nextChildren as SimpElement).parent = nextElement;
-      mount(nextChildren as SimpElement, parentReference, nextReference, contextMap, hostNamespace);
+      mount(nextChildren as SimpElement, parentReference, nextReference, context, hostNamespace);
     } else {
       hostAdapter.clearNode(parentReference);
     }
@@ -406,7 +310,7 @@ function patchChildren(
         nextChildren as SimpElement[],
         parentReference,
         nextReference,
-        contextMap,
+        context,
         hostNamespace
       );
     } else if (typeof nextChildren === 'string') {
@@ -419,7 +323,7 @@ function patchChildren(
         nextChildren as SimpElement,
         parentReference,
         nextReference,
-        contextMap,
+        context,
         hostNamespace
       );
     } else {
@@ -431,7 +335,7 @@ function patchChildren(
         nextChildren as SimpElement[],
         parentReference,
         nextReference,
-        contextMap,
+        context,
         nextElement,
         hostNamespace
       );
@@ -439,7 +343,7 @@ function patchChildren(
       hostAdapter.setTextContent(parentReference, nextChildren);
     } else if (nextChildren) {
       (nextChildren as SimpElement).parent = nextElement;
-      mount(nextChildren as SimpElement, parentReference, nextReference, contextMap, hostNamespace);
+      mount(nextChildren as SimpElement, parentReference, nextReference, context, hostNamespace);
     }
   }
 }
@@ -449,7 +353,7 @@ export function patchKeyedChildren(
   nextChildren: SimpElement[],
   parentReference: HostReference,
   nextReference: Nullable<HostReference>,
-  contextMap: Nullable<SimpContextMap>,
+  context: unknown,
   hostNamespace: Maybe<string>
 ): void {
   let prevStart = 0;
@@ -463,14 +367,14 @@ export function patchKeyedChildren(
     nextStart <= nextEnd &&
     prevChildren[prevStart]!.key === nextChildren[nextStart]!.key
   ) {
-    patch(prevChildren[prevStart]!, nextChildren[nextStart]!, parentReference, null, contextMap, hostNamespace);
+    patch(prevChildren[prevStart]!, nextChildren[nextStart]!, parentReference, null, context, hostNamespace);
     prevStart++;
     nextStart++;
   }
 
   // Step 2: Sync from end
   while (prevStart <= prevEnd && nextStart <= nextEnd && prevChildren[prevEnd]!.key === nextChildren[nextEnd]!.key) {
-    patch(prevChildren[prevEnd]!, nextChildren[nextEnd]!, parentReference, null, contextMap, hostNamespace);
+    patch(prevChildren[prevEnd]!, nextChildren[nextEnd]!, parentReference, null, context, hostNamespace);
     prevEnd--;
     nextEnd--;
   }
@@ -479,7 +383,7 @@ export function patchKeyedChildren(
   if (prevStart > prevEnd) {
     const before = findHostReferenceFromElement(nextChildren[nextEnd + 1]!) || nextReference;
     for (let i = nextStart; i <= nextEnd; i++) {
-      mount(nextChildren[i]!, parentReference, before, contextMap, hostNamespace);
+      mount(nextChildren[i]!, parentReference, before, context, hostNamespace);
     }
     // Step 4: Remove prev nodes if next list is exhausted
   } else if (nextStart > nextEnd) {
@@ -509,7 +413,7 @@ export function patchKeyedChildren(
       const prevIndex = keyToPrevIndexMap.get(nextChild!.key!);
       if (prevIndex != null) {
         const prevElement = prevChildren[prevIndex];
-        patch(prevElement!, nextChild!, parentReference, null, contextMap, hostNamespace);
+        patch(prevElement!, nextChild!, parentReference, null, context, hostNamespace);
         toMove[i - nextStart] = prevIndex;
         usedIndices.add(prevIndex);
       } else {
@@ -517,7 +421,7 @@ export function patchKeyedChildren(
           nextChild!,
           parentReference,
           findHostReferenceFromElement(nextChildren[i + 1]!) || nextReference,
-          contextMap,
+          context,
           hostNamespace
         );
         toMove[i - nextStart] = -1;

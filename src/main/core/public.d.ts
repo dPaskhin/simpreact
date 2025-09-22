@@ -26,25 +26,6 @@ export interface SimpElement<P = unknown, T extends string | FunctionComponent<P
 
 export type SimpNode = SimpElement | SimpText | Array<SimpNode> | boolean | null | undefined;
 
-export interface ProviderProps<T> {
-  value: T;
-  children?: SimpNode | undefined;
-}
-
-export interface ConsumerProps<T> {
-  children: (value: T) => SimpNode;
-}
-
-export type SimpContext<T> = {
-  Provider: Provider<T>;
-  Consumer: Consumer<T>;
-};
-
-export type ContextType<C extends SimpContext<any>> = C extends SimpContext<infer T> ? T : never;
-
-export type Provider<T> = FunctionComponent<ProviderProps<T>>;
-export type Consumer<T> = FunctionComponent<ConsumerProps<T>>;
-
 declare function createElement<P extends {}, T>(
   type: string,
   props?: (RefAttributes<T> & P) | null,
@@ -57,8 +38,6 @@ declare function createElement<P extends {}>(
 ): SimpElement<P>;
 
 declare function createPortal<HostRef = {}>(children: SimpNode, container: HostRef): SimpElement;
-
-declare function createContext<T>(defaultValue: T): SimpContext<T>;
 
 declare function Fragment(props: PropsWithChildren): SimpElement;
 
