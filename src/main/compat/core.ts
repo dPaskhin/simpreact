@@ -78,14 +78,16 @@ export function Suspense(props: {
   const [isSuspended, setIsSuspended] = SimpReactHooks.useState(false);
 
   SimpReactHooks.useCatch(error => {
+    if (!(error instanceof Promise)) {
+      throw error;
+    }
+
     if (isSuspended) {
       return;
     }
 
-    if (error instanceof Promise) {
-      setIsSuspended(true);
-      error.then(() => setIsSuspended(false));
-    }
+    setIsSuspended(true);
+    error.then(() => setIsSuspended(false));
   });
 
   return isSuspended ? props.fallback : props.children;

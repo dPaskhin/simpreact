@@ -9,7 +9,6 @@ import { clearElementHostReference, remove, unmount } from './unmounting.js';
 import { mount, mountArrayChildren, mountFunctionalElement } from './mounting.js';
 import { applyRef } from './ref.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
-import { batchingRerenderLocker } from './rerender.js';
 import { isMemo } from './memo.js';
 
 export function patch(
@@ -142,9 +141,7 @@ function patchFunctionalComponent(
         throw new Error('Too many re-renders.');
       }
       lifecycleEventBus.publish({ type: 'beforeRender', element: nextElement, phase: 'updating' });
-      batchingRerenderLocker.lock();
       nextChildren = (nextElement.type as FC)(nextElement.props || emptyObject);
-      batchingRerenderLocker.flush();
       lifecycleEventBus.publish({ type: 'afterRender', element: nextElement, phase: 'updating' });
     } while (triedToRerender);
 

@@ -1,5 +1,5 @@
 import type { RefObject, SimpElement } from '@simpreact/internal';
-import { batchingRerenderLocker, lifecycleEventBus, rerender as _rerender } from '@simpreact/internal';
+import { lifecycleEventBus, rerender as _rerender } from '@simpreact/internal';
 import type { Maybe, Nullable } from '@simpreact/shared';
 import { callOrGet, noop } from '@simpreact/shared';
 
@@ -57,24 +57,18 @@ lifecycleEventBus.subscribe(event => {
     const element = event.element as HooksSimpElement;
 
     if (element.store?.effectsHookStates) {
-      batchingRerenderLocker.lock();
-
       const effects = element.store.effectsHookStates;
       element.store.effectsHookStates = undefined;
 
       for (const state of effects) {
         state.cleanup = state.effect() || undefined;
       }
-
-      batchingRerenderLocker.flush();
     }
   }
   if (event.type === 'updated') {
     const element = event.element as HooksSimpElement;
 
     if (element.store?.effectsHookStates) {
-      batchingRerenderLocker.lock();
-
       const effects = element.store.effectsHookStates;
       element.store.effectsHookStates = undefined;
 
@@ -84,8 +78,6 @@ lifecycleEventBus.subscribe(event => {
         }
         state.cleanup = state.effect() || undefined;
       }
-
-      batchingRerenderLocker.flush();
     }
   }
   if (event.type === 'unmounted') {
@@ -102,25 +94,27 @@ lifecycleEventBus.subscribe(event => {
     }
   }
   if (event.type === 'errored') {
-    const element = findElementWithCatchHandlers(event.element as HooksSimpElement);
+    function handleError(element: Nullable<HooksSimpElement>, error: any) {
+      element = findElementWithCatchHandlers(element);
 
-    if (!element) {
-      throw new Error('Error occurred during rendering a component', { cause: event.error });
-    }
-
-    if (element.store!.catchHandlers) {
-      batchingRerenderLocker.lock();
-
-      for (const state of element.store!.catchHandlers) {
-        state(event.error);
+      if (!element) {
+        throw new Error('Error occurred during rendering a component', { cause: error });
       }
 
-      batchingRerenderLocker.flush();
+      try {
+        for (const state of element.store!.catchHandlers!) {
+          state(error);
+        }
+      } catch (error) {
+        handleError(element.parent, error);
+      }
     }
+
+    handleError(event.element, event.error);
   }
 });
 
-function findElementWithCatchHandlers(element: HooksSimpElement): Nullable<HooksSimpElement> {
+function findElementWithCatchHandlers(element: Nullable<HooksSimpElement>): Nullable<HooksSimpElement> {
   let temp: Nullable<HooksSimpElement> = element;
 
   while (temp != null) {

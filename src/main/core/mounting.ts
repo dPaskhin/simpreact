@@ -7,7 +7,6 @@ import type { FC, SimpElement } from './createElement.js';
 import { createTextElement, normalizeRoot } from './createElement.js';
 import { applyRef } from './ref.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
-import { batchingRerenderLocker } from './rerender.js';
 
 export function mount(
   element: SimpElement,
@@ -126,9 +125,7 @@ export function mountFunctionalElement(
         throw new Error('Too many re-renders.');
       }
       lifecycleEventBus.publish({ type: 'beforeRender', element, phase: 'mounting' });
-      batchingRerenderLocker.lock();
       children = (element.type as FC)(element.props || emptyObject);
-      batchingRerenderLocker.flush();
       lifecycleEventBus.publish({ type: 'afterRender', element, phase: 'mounting' });
     } while (triedToRerender);
 
