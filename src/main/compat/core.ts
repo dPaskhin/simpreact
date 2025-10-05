@@ -93,6 +93,10 @@ export function Suspense(props: {
   return isSuspended ? props.fallback : props.children;
 }
 
+export function StrictMode(props: { children: SimpReactInternal.SimpNode }): SimpReactInternal.SimpNode {
+  return props.children;
+}
+
 export function forwardRef<P, T>(Component: (props: P, ref: SimpReactInternal.Ref<T>) => any) {
   return function Forwarded(props: P) {
     return Component(props, (props as { ref: SimpReactInternal.Ref<T> })?.ref || null);
@@ -116,6 +120,7 @@ export default {
   cloneElement,
   isValidElement,
   Suspense,
+  StrictMode,
   forwardRef,
   Fragment,
   createElement,
