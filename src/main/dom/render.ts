@@ -1,12 +1,4 @@
-import {
-  renderingRerenderLocker,
-  hostAdapter,
-  mount,
-  patch,
-  provideHostAdapter,
-  remove,
-  type SimpElement,
-} from '@simpreact/internal';
+import { hostAdapter, mount, patch, provideHostAdapter, remove, type SimpElement } from '@simpreact/internal';
 import type { Nullable } from '@simpreact/shared';
 
 import { domAdapter } from './domAdapter.js';
@@ -20,8 +12,6 @@ export function render(element: Nullable<SimpElement>, container: Nullable<Eleme
   }
 
   const currentRootElement = getElementFromDom(container as Element);
-
-  renderingRerenderLocker.lock();
 
   if (!currentRootElement) {
     if (element) {
@@ -43,8 +33,6 @@ export function render(element: Nullable<SimpElement>, container: Nullable<Eleme
       patch(prevChildren, element, container, null, null, hostAdapter.getHostNamespaces(element, undefined)?.self);
     }
   }
-
-  renderingRerenderLocker.flush();
 }
 
 interface SimpRoot {

@@ -4,10 +4,38 @@ import { lifecycleEventBus } from './lifecycleEventBus.js';
 
 lifecycleEventBus.subscribe(event => {
   if (event.type === 'afterRender' || event.type === 'errored' || event.type === 'unmounted') {
-    batchingRerenderLocker._untrack(event.element.store!);
-    renderingRerenderLocker._untrack(event.element.store!);
+    elementStoresToRerender.delete(event.element.store!);
+    syncRerenderLocker._untrack(event.element.store!);
   }
 });
+
+let loopRunning = false;
+
+const elementStoresToRerender = new Set<SimpElementStore>();
+
+function startScheduler() {
+  if (loopRunning) {
+    return;
+  }
+
+  loopRunning = true;
+
+  const process = () => {
+    if (elementStoresToRerender.size === 0) {
+      loopRunning = false;
+      return;
+    }
+
+    for (const store of elementStoresToRerender) {
+      elementStoresToRerender.delete(store);
+      _rerender(store.latestElement!);
+    }
+
+    queueMicrotask(process);
+  };
+
+  queueMicrotask(process);
+}
 
 export function rerender(element: SimpElement) {
   if (element.flag !== 'FC') {
@@ -19,79 +47,25 @@ export function rerender(element: SimpElement) {
 
   lifecycleEventBus.publish({ type: 'triedToRerender', element });
 
-  if (batchingRerenderLocker._isLocked) {
-    batchingRerenderLocker._track(element.store!);
+  if (syncRerenderLocker._isLocked) {
+    syncRerenderLocker._track(element.store!);
     return;
   }
 
-  if (renderingRerenderLocker._isLocked) {
-    renderingRerenderLocker._track(element.store!);
-    return;
-  }
-
-  renderingRerenderLocker.lock();
-  updateFunctionalComponent(
-    element,
-    findParentReferenceFromElement(element),
-    null,
-    element.context || null,
-    element.store!.hostNamespace
-  );
-  renderingRerenderLocker.flush();
+  elementStoresToRerender.add(element.store!);
+  startScheduler();
 }
 
-interface IRendererLocker {
-  _isLocked: boolean;
-  _elementStores: Set<SimpElementStore>;
-  _last: SimpElementStore | undefined;
-
-  _track(element: SimpElementStore): void;
-
-  _untrack(element: SimpElementStore): void;
-
-  lock(): void;
-
-  flush(): void;
-}
-
-export const batchingRerenderLocker: IRendererLocker = {
-  _isLocked: false,
+export const syncRerenderLocker = {
   _elementStores: new Set<SimpElementStore>(),
-  _last: undefined,
-  _track(store) {
-    if (this._elementStores.has(store)) {
-      return;
-    }
-
-    if (this._elementStores.size === 0 || store.forceRender) {
-      this._elementStores.add(store);
-      this._last = store;
-      return;
-    }
-
-    if (isParentOf(store.latestElement!, this._last!.latestElement!)) {
-      return;
-    }
-
-    if (isParentOf(this._last!.latestElement!, store.latestElement!)) {
-      this._elementStores.clear();
-      this._elementStores.add(store);
-      this._last = store;
-    }
+  _isLocked: false,
+  _track(store: SimpElementStore): void {
+    this._elementStores.add(store);
   },
-  _untrack(store) {
-    if (this._elementStores.delete(store) && store === this._last) {
-      this._last = undefined;
-      for (const val of this._elementStores) {
-        this._last = val;
-      }
-    }
+  _untrack(store: SimpElementStore): void {
+    this._elementStores.delete(store);
   },
-
-  lock() {
-    this._isLocked = true;
-  },
-  flush() {
+  flush(): void {
     this._isLocked = false;
 
     if (this._elementStores.size === 0) {
@@ -100,70 +74,20 @@ export const batchingRerenderLocker: IRendererLocker = {
 
     for (const store of this._elementStores) {
       this._untrack(store);
-      rerender(store.latestElement!);
+      _rerender(store.latestElement!);
     }
   },
-};
-export const renderingRerenderLocker: IRendererLocker = {
-  _isLocked: false,
-  _elementStores: new Set<SimpElementStore>(),
-  _last: undefined,
-  _track(store) {
-    if (this._elementStores.has(store)) {
-      return;
-    }
-
-    if (this._elementStores.size === 0 || store.forceRender) {
-      this._elementStores.add(store);
-      this._last = store;
-      return;
-    }
-
-    if (isParentOf(store.latestElement!, this._last!.latestElement!)) {
-      return;
-    }
-
-    if (isParentOf(this._last!.latestElement!, store.latestElement!)) {
-      this._elementStores.clear();
-      this._elementStores.add(store);
-      this._last = store;
-    }
-  },
-  _untrack(store) {
-    if (this._elementStores.delete(store) && store === this._last) {
-      this._last = undefined;
-      for (const val of this._elementStores) {
-        this._last = val;
-      }
-    }
-  },
-
-  lock() {
+  lock(): void {
     this._isLocked = true;
   },
-  flush() {
-    this._isLocked = false;
-
-    if (this._elementStores.size === 0) {
-      return;
-    }
-
-    queueMicrotask(() => {
-      for (const store of this._elementStores) {
-        this._untrack(store);
-        rerender(store!.latestElement!);
-      }
-    });
-  },
 };
 
-function isParentOf(element: SimpElement, parent: SimpElement): boolean {
-  let current: SimpElement | null = element.parent;
-  while (current) {
-    if (current.store === parent.store) {
-      return true;
-    }
-    current = current.parent;
-  }
-  return false;
+function _rerender(element: SimpElement) {
+  updateFunctionalComponent(
+    element,
+    findParentReferenceFromElement(element),
+    null,
+    element.context || null,
+    element.store!.hostNamespace
+  );
 }
