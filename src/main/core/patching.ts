@@ -104,19 +104,18 @@ function patchFunctionalComponent(
     nextElement.store.hostNamespace = hostNamespace;
   }
 
-  let forceRender = false;
-
-  if (prevElement.store?.forceRender) {
-    forceRender = true;
-    prevElement.store.forceRender = false;
-  }
-
   if (prevElement.unmounted) {
     mountFunctionalElement(nextElement, parentReference, nextReference, context, hostNamespace);
     return;
   }
 
-  if (!forceRender && isMemo(nextElement.type) && nextElement.type._compare(prevElement.props, nextElement.props)) {
+  if (
+    isMemo(nextElement.type) &&
+    !nextElement.type._forceRender &&
+    nextElement.type._compare(prevElement.props, nextElement.props)
+  ) {
+    nextElement.children = prevElement.children;
+    nextElement.context = prevElement.context;
     return;
   }
 

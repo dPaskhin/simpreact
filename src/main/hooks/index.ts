@@ -147,7 +147,6 @@ export function useRerender(): () => void {
   if (!hookStates[currentIndex]) {
     const elementStore = currentElement.store;
     hookStates[currentIndex] = function rerender() {
-      elementStore!.forceRender = true;
       _rerender(elementStore!.latestElement!);
     };
   }
@@ -173,7 +172,6 @@ export function useState<S>(initialState?: S | (() => S)) {
       }
 
       state[0] = nextValue;
-      elementStore!.forceRender = true;
       _rerender(elementStore!.latestElement!);
     };
   }

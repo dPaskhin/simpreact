@@ -69,7 +69,6 @@ export function createContext<T>(defaultValue: T): SimpContext<T> {
       contextEntry.value = props.value;
 
       for (let sub of contextEntry.subs) {
-        sub.forceRender = true;
         rerender(sub.latestElement!);
       }
 

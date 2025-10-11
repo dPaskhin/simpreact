@@ -1,6 +1,7 @@
 import type { SimpElement, SimpElementStore } from './createElement.js';
 import { findParentReferenceFromElement, updateFunctionalComponent } from './patching.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
+import { isMemo } from './memo.js';
 
 lifecycleEventBus.subscribe(event => {
   if (event.type === 'afterRender' || event.type === 'errored' || event.type === 'unmounted') {
@@ -83,6 +84,10 @@ export const syncRerenderLocker = {
 };
 
 function _rerender(element: SimpElement) {
+  if (isMemo(element.type)) {
+    element.type._forceRender = true;
+  }
+
   updateFunctionalComponent(
     element,
     findParentReferenceFromElement(element),

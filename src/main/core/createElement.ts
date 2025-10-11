@@ -19,9 +19,6 @@ export interface SimpElementStore {
 
   hostNamespace?: Maybe<string>;
 
-  // TODO: remove
-  forceRender?: boolean;
-
   [key: string]: unknown;
 }
 
