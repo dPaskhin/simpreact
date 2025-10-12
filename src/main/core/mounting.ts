@@ -4,7 +4,7 @@ import { emptyObject } from '@simpreact/shared';
 import type { HostReference } from './hostAdapter.js';
 import { hostAdapter } from './hostAdapter.js';
 import type { FC, SimpElement } from './createElement.js';
-import { createTextElement, normalizeRoot } from './createElement.js';
+import { createTextElement, normalizeRoot, SimpElementFlag } from './createElement.js';
 import { applyRef } from './ref.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
 
@@ -15,13 +15,13 @@ export function mount(
   context: unknown,
   hostNamespace: Maybe<string>
 ): void {
-  if (element.flag === 'TEXT') {
+  if (element.flag === SimpElementFlag.TEXT) {
     mountTextElement(element, parentReference, nextReference);
-  } else if (element.flag === 'HOST') {
+  } else if (element.flag === SimpElementFlag.HOST) {
     mountHostElement(element, parentReference, nextReference, context, hostNamespace);
-  } else if (element.flag === 'FC') {
+  } else if (element.flag === SimpElementFlag.FC) {
     mountFunctionalElement(element, parentReference, nextReference, context, hostNamespace);
-  } else if (element.flag === 'FRAGMENT') {
+  } else if (element.flag === SimpElementFlag.FRAGMENT) {
     mountFragment(element, parentReference, nextReference, context, hostNamespace);
   } else {
     mountPortal(element, parentReference, nextReference, context);
@@ -68,7 +68,7 @@ export function mountHostElement(
     hostAdapter.mountProps(hostReference, element, hostNamespace);
 
     // HOST elements can have either children elements or string children in the props due to normalization.
-    if (typeof element.props.children === 'string') {
+    if (!element.children && typeof element.props.children === 'string') {
       hostAdapter.setTextContent(hostReference, element.props.children);
     }
   }

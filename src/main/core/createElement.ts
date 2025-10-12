@@ -10,7 +10,13 @@ export type Key = string | number | bigint;
 
 export type FC = (props: any) => SimpNode;
 
-export type SimpElementFlag = 'FC' | 'HOST' | 'TEXT' | 'FRAGMENT' | 'PORTAL';
+export const SimpElementFlag = Object.freeze({
+  HOST: 1,
+  FC: 1 << 2,
+  TEXT: 1 << 3,
+  FRAGMENT: 1 << 4,
+  PORTAL: 1 << 5,
+});
 
 // This object also serves as a persistent identity for elements, making it useful
 // for tracking them consistently across rerenders.
@@ -23,171 +29,149 @@ export interface SimpElementStore {
 }
 
 export interface SimpElement {
-  flag: SimpElementFlag;
+  flag: number;
 
   parent: Nullable<SimpElement>;
 
-  key?: Maybe<Key>;
+  key: Nullable<Key>;
 
-  type?: string | FC;
+  type: Nullable<string | FC>;
 
-  props?: any;
+  props: any;
 
-  children?: Maybe<SimpNode>;
+  children: SimpNode;
 
-  className?: Maybe<string>;
+  className: Nullable<string>;
 
-  reference?: Maybe<HostReference>;
+  reference: Nullable<HostReference>;
 
-  store?: SimpElementStore;
+  store: Nullable<SimpElementStore>;
 
-  context?: any;
+  context: any;
 
-  ref?: any;
+  ref: any;
 
-  unmounted?: boolean;
+  unmounted: Nullable<boolean>;
 }
 
-export function createElement(type: string | FC, props?: any, ...children: SimpNode[]): SimpElement {
-  let newProps: any;
-  let className: Maybe<string>;
-  let key: Maybe<Key>;
+export function createElement(type: string | FC, props?: any, ...children: SimpNode[]): SimpElement;
+export function createElement(type: string | FC, props?: any): SimpElement {
   let definedChildren: SimpNode;
-  const childLength = children.length;
 
-  if (childLength === 1) {
-    definedChildren = children[0];
-  } else if (childLength > 1) {
-    definedChildren = [];
-
-    for (let i = 0; i < childLength; i++) {
-      definedChildren.push(children[i]);
+  const argLength = arguments.length;
+  if (argLength > 2) {
+    if (argLength === 3) {
+      definedChildren = arguments[2];
+    } else {
+      const arr = new Array(argLength - 2);
+      for (let i = 2; i < argLength; i++) {
+        arr[i - 2] = arguments[i];
+      }
+      definedChildren = arr;
     }
   }
 
-  if (typeof type === 'string') {
-    let ref;
+  definedChildren = definedChildren === undefined ? props?.children : definedChildren;
 
-    if (props != null) {
-      for (const propName in props) {
-        if (propName === 'className') {
-          className = props[propName] as any;
-        } else if (propName === 'key') {
-          key = props[propName] as Key;
-        } else if (propName === 'children') {
-          if (definedChildren === undefined) {
-            definedChildren = props[propName] as any;
-          }
-        } else if (
-          propName === 'ref' &&
-          // Handle only a callback ref or an object ref with `current`.
-          props[propName]
-        ) {
-          ref = {
-            value: props[propName],
-          };
-        } else {
-          (newProps ||= {})[propName] = props[propName];
-        }
+  switch (typeof type) {
+    case 'string': {
+      if (!isSimpText(definedChildren)) {
+        return {
+          flag: SimpElementFlag.HOST,
+          parent: null,
+          key: props?.key || null,
+          type,
+          props: props || null,
+          children: normalizeChildren(definedChildren, false),
+          className: props?.className || null,
+          reference: null,
+          store: null,
+          context: null,
+          ref: props?.ref ? { value: props.ref } : null,
+          unmounted: null,
+        };
       }
-    }
 
-    const element: SimpElement = {
-      flag: 'HOST',
-      type,
-      parent: null,
-    };
+      definedChildren = definedChildren.toString();
 
-    if (className) {
-      element.className = className;
-    }
-
-    if (key) {
-      element.key = key;
-    }
-
-    if (isSimpText(definedChildren)) {
       if (definedChildren !== '') {
-        (newProps ||= {}).children = definedChildren.toString();
+        (props ||= {}).children = definedChildren;
       }
-    } else if ((definedChildren = normalizeChildren(definedChildren, false))) {
-      element.children = definedChildren;
+
+      return {
+        flag: SimpElementFlag.HOST,
+        parent: null,
+        key: props?.key || null,
+        type,
+        props: props || null,
+        children: null,
+        className: props?.className || null,
+        reference: null,
+        store: null,
+        context: null,
+        ref: props?.ref ? { value: props.ref } : null,
+        unmounted: null,
+      };
     }
-
-    if (newProps) {
-      element.props = newProps;
-    }
-
-    if (ref) {
-      element.ref = ref;
-    }
-
-    return element;
-  } else if (type === Fragment) {
-    const element: SimpElement = {
-      flag: 'FRAGMENT',
-      parent: null,
-    };
-
-    if (
-      (definedChildren = normalizeChildren(definedChildren || (props != null ? (props as any).children : null), false))
-    ) {
-      element.children = definedChildren;
-    }
-
-    if (props != null && (props as any).key) {
-      element.key = (props as any)?.key;
-    }
-
-    return element;
-  } else {
-    if (props != null) {
-      for (const propName in props) {
-        if (propName === 'key') {
-          key = props[propName] as Key;
-        } else if (propName === 'children') {
-          if (definedChildren === undefined) {
-            definedChildren = props[propName] as any;
-          }
-        } else {
-          (newProps ||= {})[propName] = props[propName];
-        }
+    case 'function': {
+      if (definedChildren !== undefined) {
+        (props ||= {}).children = definedChildren;
       }
+
+      return {
+        flag: SimpElementFlag.FC,
+        parent: null,
+        key: props?.key || null,
+        type,
+        props: props || null,
+        children: null,
+        className: null,
+        reference: null,
+        store: null,
+        context: null,
+        ref: null,
+        unmounted: null,
+      };
     }
-
-    if (definedChildren !== undefined) {
-      (newProps ||= {})['children'] = definedChildren;
+    default: {
+      return {
+        flag: SimpElementFlag.FRAGMENT,
+        parent: null,
+        key: props?.key || null,
+        type: null,
+        props: null,
+        children: normalizeChildren(definedChildren, false),
+        className: null,
+        reference: null,
+        store: null,
+        context: null,
+        ref: null,
+        unmounted: null,
+      };
     }
-
-    const element: SimpElement = {
-      flag: 'FC',
-      type,
-      parent: null,
-    };
-
-    if (key) {
-      element.key = key;
-    }
-
-    if (newProps != null) {
-      element.props = newProps;
-    }
-
-    return element;
   }
 }
 
 export function createTextElement(text: SimpText): SimpElement {
   return {
-    flag: 'TEXT',
-    children: text.toString(),
+    flag: SimpElementFlag.TEXT,
     parent: null,
+    key: null,
+    type: null,
+    props: null,
+    children: text.toString(),
+    className: null,
+    reference: null,
+    store: null,
+    context: null,
+    ref: null,
+    unmounted: null,
   };
 }
 
-export function normalizeChildren(children: SimpNode, skipIgnoredCheck: boolean): Maybe<Many<SimpElement>> {
+export function normalizeChildren(children: SimpNode, skipIgnoredCheck: boolean): Nullable<Many<SimpElement>> {
   if (!skipIgnoredCheck && isIgnoredNode(children)) {
-    return;
+    return null;
   }
 
   const result: SimpElement[] = [];
@@ -195,10 +179,10 @@ export function normalizeChildren(children: SimpNode, skipIgnoredCheck: boolean)
   normalizeNode(children, result, undefined, true);
 
   if (result.length === 0) {
-    return;
+    return null;
   }
 
-  return result.length === 1 ? result[0] : result;
+  return result.length === 1 ? result[0] || null : result;
 }
 
 function normalizeNode(child: SimpNode, result: SimpElement[], currentKey = '', skipIgnoredCheck: boolean): void {
@@ -233,9 +217,9 @@ function normalizeNode(child: SimpNode, result: SimpElement[], currentKey = '', 
   result.push(child as SimpElement);
 }
 
-export function normalizeRoot(node: SimpNode, skipIgnoredCheck: boolean): Maybe<SimpElement> {
+export function normalizeRoot(node: SimpNode, skipIgnoredCheck: boolean): Nullable<SimpElement> {
   if (!skipIgnoredCheck && isIgnoredNode(node)) {
-    return;
+    return null;
   }
 
   if (isSimpText(node)) {
@@ -263,7 +247,7 @@ function isIgnoredNode(node: SimpNode): node is Extract<SimpNode, '' | null | un
   if (isSimpText(node)) {
     return false;
   }
-  if (node.flag === 'FRAGMENT' || node.flag === 'PORTAL') {
+  if (node.flag === SimpElementFlag.FRAGMENT || node.flag === SimpElementFlag.PORTAL) {
     return node.children == null;
   }
   return false;

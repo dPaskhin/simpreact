@@ -1,7 +1,8 @@
 import type { Maybe, Nullable } from '@simpreact/shared';
 import { emptyObject } from '@simpreact/shared';
 
-import type { FC, Key, SimpElement, SimpElementFlag, SimpNode } from './createElement.js';
+import type { FC, Key, SimpElement, SimpNode } from './createElement.js';
+import { SimpElementFlag } from './createElement.js';
 import { normalizeRoot } from './createElement.js';
 import type { HostReference } from './hostAdapter.js';
 import { hostAdapter } from './hostAdapter.js';
@@ -21,13 +22,13 @@ export function patch(
 ): void {
   if (prevElement.type !== nextElement.type || prevElement.key !== nextElement.key) {
     replaceWithNewElement(prevElement, nextElement, parentReference, context, hostNamespace);
-  } else if (nextElement.flag === 'HOST') {
+  } else if (nextElement.flag === SimpElementFlag.HOST) {
     patchHostElement(prevElement, nextElement, context, hostNamespace);
-  } else if (nextElement.flag === 'FC') {
+  } else if (nextElement.flag === SimpElementFlag.FC) {
     patchFunctionalComponent(prevElement, nextElement, parentReference, nextReference, context, hostNamespace);
-  } else if (nextElement.flag === 'TEXT') {
+  } else if (nextElement.flag === SimpElementFlag.TEXT) {
     patchTextElement(prevElement, nextElement);
-  } else if (nextElement.flag === 'FRAGMENT') {
+  } else if (nextElement.flag === SimpElementFlag.FRAGMENT) {
     patchFragment(prevElement, nextElement, parentReference, context, hostNamespace);
   } else {
     patchPortal(prevElement, nextElement, context);
@@ -44,7 +45,7 @@ function replaceWithNewElement(
   unmount(prevElement);
 
   nextElement.parent = prevElement.parent;
-  if (nextElement.flag === 'HOST' && prevElement.flag === 'HOST') {
+  if (nextElement.flag === SimpElementFlag.HOST && prevElement.flag === SimpElementFlag.HOST) {
     mount(nextElement, null, null, context, hostNamespace);
     hostAdapter.replaceChild(parentReference, nextElement.reference, prevElement.reference);
   } else {
@@ -117,6 +118,10 @@ function patchFunctionalComponent(
     nextElement.children = prevElement.children;
     nextElement.context = prevElement.context;
     return;
+  }
+
+  if (isMemo(nextElement.type)) {
+    nextElement.type._forceRender = false;
   }
 
   nextElement.context = prevElement.context || context;
@@ -443,13 +448,13 @@ export function patchKeyedChildren(
 }
 
 export function findParentReferenceFromElement(element: SimpElement): Nullable<HostReference> {
-  let flag: SimpElementFlag;
+  let flag: number;
   let temp: Nullable<SimpElement> = element;
 
   while (temp != null) {
     flag = temp.flag;
 
-    if (flag === 'HOST') {
+    if (flag === SimpElementFlag.HOST) {
       return temp.reference as HostReference;
     }
 
@@ -460,13 +465,13 @@ export function findParentReferenceFromElement(element: SimpElement): Nullable<H
 }
 
 export function findHostReferenceFromElement(element: SimpElement): Nullable<HostReference> {
-  let flag: SimpElementFlag;
+  let flag: number;
   let temp: Nullable<SimpElement> = element;
 
   while (temp != null) {
     flag = temp.flag;
 
-    if (flag === 'HOST' || flag === 'TEXT' || flag === 'PORTAL') {
+    if (flag === SimpElementFlag.HOST || flag === SimpElementFlag.TEXT || flag === SimpElementFlag.PORTAL) {
       return temp.reference as HostReference;
     }
 

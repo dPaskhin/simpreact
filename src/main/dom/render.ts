@@ -1,4 +1,12 @@
-import { hostAdapter, mount, patch, provideHostAdapter, remove, type SimpElement } from '@simpreact/internal';
+import {
+  hostAdapter,
+  mount,
+  patch,
+  provideHostAdapter,
+  remove,
+  type SimpElement,
+  SimpElementFlag,
+} from '@simpreact/internal';
 import type { Nullable } from '@simpreact/shared';
 
 import { domAdapter } from './domAdapter.js';
@@ -17,7 +25,20 @@ export function render(element: Nullable<SimpElement>, container: Nullable<Eleme
     if (element) {
       hostAdapter.clearNode(container);
       attachElementToDom(
-        (element.parent = { flag: 'HOST', reference: container, children: element, parent: null }),
+        (element.parent = {
+          flag: SimpElementFlag.HOST,
+          reference: container,
+          children: element,
+          parent: null,
+          key: null,
+          type: null,
+          props: null,
+          className: null,
+          store: null,
+          context: null,
+          ref: null,
+          unmounted: null,
+        }),
         container as Element
       );
       mount(element, container, null, null, hostAdapter.getHostNamespaces(element, undefined)?.self);

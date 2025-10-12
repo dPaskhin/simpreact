@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createElement, provideHostAdapter } from '@simpreact/internal';
+import { createElement, provideHostAdapter, SimpElementFlag } from '@simpreact/internal';
 import { createRoot, render } from '@simpreact/dom';
 import { Element } from 'flyweight-dom';
 
@@ -21,7 +21,7 @@ describe('render', () => {
       render(element, container as any);
 
       expect(testHostAdapter.clearNode).toHaveBeenCalledWith(container);
-      expect((container as any).__SIMP_ELEMENT__.flag).toBe('HOST');
+      expect((container as any).__SIMP_ELEMENT__.flag).toBe(SimpElementFlag.HOST);
       expect((container as any).__SIMP_ELEMENT__.children).toBe(element);
     });
 
@@ -32,7 +32,7 @@ describe('render', () => {
       render(initial, container as any);
       render(next, container as any);
 
-      expect((container as any).__SIMP_ELEMENT__.flag).toBe('HOST');
+      expect((container as any).__SIMP_ELEMENT__.flag).toBe(SimpElementFlag.HOST);
       expect((container as any).__SIMP_ELEMENT__.children).toBe(next);
     });
 
@@ -63,7 +63,7 @@ describe('render', () => {
 
       root.render(element);
 
-      expect((container as any).__SIMP_ELEMENT__.flag).toBe('HOST');
+      expect((container as any).__SIMP_ELEMENT__.flag).toBe(SimpElementFlag.HOST);
       expect((container as any).__SIMP_ELEMENT__.children).toBe(element);
     });
 
@@ -75,7 +75,7 @@ describe('render', () => {
       root.render(first);
       root.render(second);
 
-      expect((container as any).__SIMP_ELEMENT__.flag).toBe('HOST');
+      expect((container as any).__SIMP_ELEMENT__.flag).toBe(SimpElementFlag.HOST);
       expect((container as any).__SIMP_ELEMENT__.children).toBe(second);
     });
 
@@ -86,7 +86,7 @@ describe('render', () => {
       root.render(element);
       root.unmount();
 
-      expect((container as any).__SIMP_ELEMENT__.flag).toBe('HOST');
+      expect((container as any).__SIMP_ELEMENT__.flag).toBe(SimpElementFlag.HOST);
       expect((container as any).__SIMP_ELEMENT__.children).toBe(null);
     });
   });

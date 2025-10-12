@@ -12,8 +12,8 @@ export type SetStateAction<S> = S | ((prevState: S) => S);
 
 type EffectHookState = {
   effect: Effect;
-  cleanup?: Cleanup | undefined;
-  deps?: DependencyList | undefined;
+  cleanup: Nullable<Cleanup>;
+  deps: Nullable<DependencyList>;
 };
 
 type RerenderHookState = () => void;
@@ -27,11 +27,12 @@ type StateHookState<S = any> = [S, Dispatch<SetStateAction<S>>];
 type HookState = EffectHookState | RerenderHookState | RefHookState | StateHookState;
 
 interface HooksSimpElement extends SimpElement {
-  store?: SimpElement['store'] & {
-    hookStates?: HookState[];
-    effectsHookStates?: EffectHookState[];
-    catchHandlers?: Array<(error: any) => void>;
-  };
+  store: SimpElement['store'] &
+    Nullable<{
+      hookStates: Nullable<HookState[]>;
+      effectsHookStates: Nullable<EffectHookState[]>;
+      catchHandlers: Nullable<Array<(error: any) => void>>;
+    }>;
 }
 
 let currentIndex = 0;
@@ -43,10 +44,10 @@ lifecycleEventBus.subscribe(event => {
     currentElement = event.element as HooksSimpElement;
 
     if (currentElement.store?.catchHandlers) {
-      currentElement.store.catchHandlers = undefined;
+      currentElement.store.catchHandlers = null;
     }
     if (currentElement.store?.effectsHookStates) {
-      currentElement.store.effectsHookStates = undefined;
+      currentElement.store.effectsHookStates = null;
     }
   }
   if (event.type === 'afterRender' || event.type === 'errored') {
@@ -58,10 +59,10 @@ lifecycleEventBus.subscribe(event => {
 
     if (element.store?.effectsHookStates) {
       const effects = element.store.effectsHookStates;
-      element.store.effectsHookStates = undefined;
+      element.store.effectsHookStates = null;
 
       for (const state of effects) {
-        state.cleanup = state.effect() || undefined;
+        state.cleanup = state.effect() || null;
       }
     }
   }
@@ -70,13 +71,13 @@ lifecycleEventBus.subscribe(event => {
 
     if (element.store?.effectsHookStates) {
       const effects = element.store.effectsHookStates;
-      element.store.effectsHookStates = undefined;
+      element.store.effectsHookStates = null;
 
       for (const state of effects) {
         if (typeof state.cleanup === 'function') {
           state.cleanup();
         }
-        state.cleanup = state.effect() || undefined;
+        state.cleanup = state.effect() || null;
       }
     }
   }
@@ -84,7 +85,7 @@ lifecycleEventBus.subscribe(event => {
     const element = event.element as HooksSimpElement;
     if (element.store?.hookStates) {
       const hookStates = element.store.hookStates;
-      element.store.hookStates = undefined;
+      element.store.hookStates = null;
 
       for (const state of hookStates) {
         if (state && 'cleanup' in state && typeof state.cleanup === 'function') {
@@ -106,11 +107,11 @@ lifecycleEventBus.subscribe(event => {
           state(error);
         }
       } catch (error) {
-        handleError(element.parent, error);
+        handleError(element.parent as HooksSimpElement, error);
       }
     }
 
-    handleError(event.element, event.error);
+    handleError(event.element as HooksSimpElement, event.error);
   }
 });
 
@@ -122,7 +123,7 @@ function findElementWithCatchHandlers(element: Nullable<HooksSimpElement>): Null
       return temp;
     }
 
-    temp = temp.parent;
+    temp = temp.parent as HooksSimpElement;
   }
 
   return null;
@@ -185,12 +186,12 @@ export function useEffect(effect: Effect, deps?: DependencyList): void {
   let state = hookStates[currentIndex] as EffectHookState | undefined;
 
   if (!state) {
-    state = hookStates[currentIndex] = { effect };
+    state = hookStates[currentIndex] = { effect, deps: null, cleanup: null };
   }
 
   if (!areDepsEqual(deps, state.deps)) {
     state.effect = effect;
-    state.deps = deps;
+    state.deps = deps || null;
     getOrCreateEffectHookStates(currentElement).push(state);
   }
 
@@ -201,7 +202,7 @@ export function useMounted(effect: Effect): void {
   const hookStates = getOrCreateHookStates(currentElement);
 
   if (!hookStates[currentIndex]) {
-    hookStates[currentIndex] = { effect };
+    hookStates[currentIndex] = { effect, deps: null, cleanup: null };
     getOrCreateEffectHookStates(currentElement).push(hookStates[currentIndex] as EffectHookState);
   }
 
@@ -212,7 +213,7 @@ export function useUnmounted(cleanup: Cleanup): void {
   const hookStates = getOrCreateHookStates(currentElement);
 
   if (!hookStates[currentIndex]) {
-    hookStates[currentIndex] = { cleanup, effect: noop };
+    hookStates[currentIndex] = { effect: noop, deps: null, cleanup };
   }
 
   currentIndex++;
@@ -220,7 +221,7 @@ export function useUnmounted(cleanup: Cleanup): void {
 
 export function useCatch(cb: (error: any) => void): void {
   if (!currentElement.store) {
-    currentElement.store = {};
+    currentElement.store = createHookSimpElementStore();
   }
 
   if (!currentElement.store.catchHandlers) {
@@ -230,7 +231,7 @@ export function useCatch(cb: (error: any) => void): void {
   currentElement.store.catchHandlers.push(cb);
 }
 
-export function areDepsEqual(nextDeps: DependencyList | undefined, prevDeps: DependencyList | undefined): boolean {
+export function areDepsEqual(nextDeps: Maybe<DependencyList>, prevDeps: Maybe<DependencyList>): boolean {
   if (nextDeps == null || prevDeps == null || nextDeps.length !== prevDeps.length) {
     return false;
   }
@@ -244,7 +245,7 @@ export function areDepsEqual(nextDeps: DependencyList | undefined, prevDeps: Dep
 
 function getOrCreateHookStates(element: HooksSimpElement) {
   if (!element.store) {
-    element.store = {};
+    element.store = createHookSimpElementStore();
   }
 
   if (!element.store.hookStates) {
@@ -256,7 +257,7 @@ function getOrCreateHookStates(element: HooksSimpElement) {
 
 function getOrCreateEffectHookStates(element: HooksSimpElement) {
   if (!element.store) {
-    element.store = {};
+    element.store = createHookSimpElementStore();
   }
 
   if (!element.store.effectsHookStates) {
@@ -264,6 +265,10 @@ function getOrCreateEffectHookStates(element: HooksSimpElement) {
   }
 
   return element.store.effectsHookStates;
+}
+
+function createHookSimpElementStore() {
+  return { hookStates: null, effectsHookStates: null, catchHandlers: null };
 }
 
 export default {

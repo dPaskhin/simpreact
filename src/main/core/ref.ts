@@ -1,10 +1,11 @@
+import type { Nullable } from '@simpreact/shared';
 import type { SimpElement } from './createElement.js';
 
 interface RefSimpElement extends SimpElement {
-  ref?: {
+  ref: Nullable<{
     value: NonNullable<Ref<unknown>>;
-    cleanup?: () => void;
-  };
+    cleanup: Nullable<() => void>;
+  }>;
 }
 
 export type RefObject<T> = { current: T };

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createElement, createPortal } from '@simpreact/internal';
+import { createElement, createPortal, SimpElementFlag } from '@simpreact/internal';
 
 describe('createPortal', () => {
   beforeEach(() => {
@@ -12,7 +12,7 @@ describe('createPortal', () => {
 
     const portal = createPortal(children, container);
 
-    expect(portal.flag).toBe('PORTAL');
+    expect(portal.flag).toBe(SimpElementFlag.PORTAL);
     expect(portal.parent).toBeNull();
     expect(portal.children).toBe(children);
     expect(portal.ref).toBe(container);
@@ -23,9 +23,9 @@ describe('createPortal', () => {
 
     const portal = createPortal(null, container);
 
-    expect(portal.flag).toBe('PORTAL');
+    expect(portal.flag).toBe(SimpElementFlag.PORTAL);
     expect(portal.parent).toBeNull();
-    expect(portal.children).toBeUndefined();
+    expect(portal.children).toBeNull();
     expect(portal.ref).toBe(container);
   });
 });
