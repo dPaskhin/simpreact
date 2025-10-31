@@ -1,8 +1,9 @@
-import type { Many, Maybe, Nullable, SimpText } from '@simpreact/shared';
+import type { Many, Nullable, SimpText } from '@simpreact/shared';
 import { isSimpText } from '@simpreact/shared';
 
 import { Fragment } from './fragment.js';
 import type { HostReference } from './hostAdapter.js';
+import type { ComponentStore } from './component.js';
 
 export type SimpNode = SimpElement | SimpText | Array<SimpNode> | boolean | null | undefined;
 
@@ -21,11 +22,17 @@ export const SimpElementFlag = Object.freeze({
 // This object also serves as a persistent identity for elements, making it useful
 // for tracking them consistently across rerenders.
 export interface SimpElementStore {
-  latestElement?: Maybe<SimpElement>;
+  componentStore: Nullable<ComponentStore>;
 
-  hostNamespace?: Maybe<string>;
+  latestElement: Nullable<SimpElement>;
+
+  hostNamespace: Nullable<string>;
 
   [key: string]: unknown;
+}
+
+export function createElementStore(): SimpElementStore {
+  return { componentStore: null, latestElement: null, hostNamespace: null };
 }
 
 export interface SimpElement {

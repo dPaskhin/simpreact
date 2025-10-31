@@ -1,9 +1,8 @@
 import type { Maybe, Nullable } from '@simpreact/shared';
 import { emptyObject } from '@simpreact/shared';
 
-import type { FC, Key, SimpElement, SimpNode } from './createElement.js';
-import { SimpElementFlag } from './createElement.js';
-import { normalizeRoot } from './createElement.js';
+import type { Key, SimpElement, SimpNode } from './createElement.js';
+import { createElementStore, normalizeRoot, SimpElementFlag } from './createElement.js';
 import type { HostReference } from './hostAdapter.js';
 import { hostAdapter } from './hostAdapter.js';
 import { clearElementHostReference, remove, unmount } from './unmounting.js';
@@ -98,7 +97,7 @@ function patchFunctionalComponent(
   context: unknown,
   hostNamespace: Maybe<string>
 ): void {
-  nextElement.store = prevElement.store || {};
+  nextElement.store = prevElement.store || createElementStore();
   nextElement.store.latestElement = nextElement;
 
   if (hostNamespace) {
@@ -142,10 +141,20 @@ function patchFunctionalComponent(
     do {
       triedToRerender = false;
       if (++rerenderCounter >= 25) {
-        throw new Error('Too many re-renders.');
+        lifecycleEventBus.publish({
+          type: 'errored',
+          element: nextElement,
+          error: new Error('Too many re-renders.'),
+          phase: 'updating',
+        });
+        remove(prevElement, parentReference);
+        return;
       }
       lifecycleEventBus.publish({ type: 'beforeRender', element: nextElement, phase: 'updating' });
-      nextChildren = (nextElement.type as FC)(nextElement.props || emptyObject);
+      nextChildren = (nextElement.type as any)(
+        nextElement.props || emptyObject,
+        nextElement.store.componentStore?.renderContext
+      );
       lifecycleEventBus.publish({ type: 'afterRender', element: nextElement, phase: 'updating' });
     } while (triedToRerender);
 

@@ -1,3 +1,4 @@
+export * from './component.js';
 export * from './createElement.js';
 export * from './fragment.js';
 export * from './hostAdapter.js';

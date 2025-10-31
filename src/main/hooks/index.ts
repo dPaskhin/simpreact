@@ -220,15 +220,11 @@ export function useUnmounted(cleanup: Cleanup): void {
 }
 
 export function useCatch(cb: (error: any) => void): void {
-  if (!currentElement.store) {
-    currentElement.store = createHookSimpElementStore();
+  if (!currentElement.store!.catchHandlers) {
+    currentElement.store!.catchHandlers = [];
   }
 
-  if (!currentElement.store.catchHandlers) {
-    currentElement.store.catchHandlers = [];
-  }
-
-  currentElement.store.catchHandlers.push(cb);
+  currentElement.store!.catchHandlers.push(cb);
 }
 
 export function areDepsEqual(nextDeps: Maybe<DependencyList>, prevDeps: Maybe<DependencyList>): boolean {
@@ -244,31 +240,19 @@ export function areDepsEqual(nextDeps: Maybe<DependencyList>, prevDeps: Maybe<De
 }
 
 function getOrCreateHookStates(element: HooksSimpElement) {
-  if (!element.store) {
-    element.store = createHookSimpElementStore();
+  if (!element.store!.hookStates) {
+    element.store!.hookStates = [];
   }
 
-  if (!element.store.hookStates) {
-    element.store.hookStates = [];
-  }
-
-  return element.store.hookStates;
+  return element.store!.hookStates;
 }
 
 function getOrCreateEffectHookStates(element: HooksSimpElement) {
-  if (!element.store) {
-    element.store = createHookSimpElementStore();
+  if (!element.store!.effectsHookStates) {
+    element.store!.effectsHookStates = [];
   }
 
-  if (!element.store.effectsHookStates) {
-    element.store.effectsHookStates = [];
-  }
-
-  return element.store.effectsHookStates;
-}
-
-function createHookSimpElementStore() {
-  return { hookStates: null, effectsHookStates: null, catchHandlers: null };
+  return element.store!.effectsHookStates;
 }
 
 export default {

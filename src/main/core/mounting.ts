@@ -3,10 +3,11 @@ import { emptyObject } from '@simpreact/shared';
 
 import type { HostReference } from './hostAdapter.js';
 import { hostAdapter } from './hostAdapter.js';
-import type { FC, SimpElement } from './createElement.js';
-import { createTextElement, normalizeRoot, SimpElementFlag } from './createElement.js';
+import type { SimpElement } from './createElement.js';
+import { createElementStore, createTextElement, normalizeRoot, SimpElementFlag } from './createElement.js';
 import { applyRef } from './ref.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
+import { createComponentStore, isComponentElement } from './component.js';
 
 export function mount(
   element: SimpElement,
@@ -99,10 +100,15 @@ export function mountFunctionalElement(
     element.unmounted = false;
   }
 
-  element.store = { latestElement: element };
+  element.store = createElementStore();
+  element.store.latestElement = element;
 
   if (hostNamespace) {
     element.store.hostNamespace = hostNamespace;
+  }
+
+  if (isComponentElement(element)) {
+    createComponentStore(element);
   }
 
   // FC element always has Maybe<SimpElement> children due to normalization process.
@@ -122,10 +128,16 @@ export function mountFunctionalElement(
     do {
       triedToRerender = false;
       if (++rerenderCounter >= 25) {
-        throw new Error('Too many re-renders.');
+        lifecycleEventBus.publish({
+          type: 'errored',
+          element,
+          error: new Error('Too many re-renders.'),
+          phase: 'mounting',
+        });
+        return;
       }
       lifecycleEventBus.publish({ type: 'beforeRender', element, phase: 'mounting' });
-      children = (element.type as FC)(element.props || emptyObject);
+      children = (element.type as any)(element.props || emptyObject, element.store.componentStore?.renderContext);
       lifecycleEventBus.publish({ type: 'afterRender', element, phase: 'mounting' });
     } while (triedToRerender);
 

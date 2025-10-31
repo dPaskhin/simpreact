@@ -11,6 +11,4 @@ export type LifecycleEvent =
   | { type: 'unmounted'; element: SimpElement }
   | { type: 'errored'; element: SimpElement; error: any; phase: 'mounting' | 'updating' };
 
-export type LifecycleEventBus = EventBus<LifecycleEvent>;
-
 export const lifecycleEventBus = new EventBus<LifecycleEvent>();
