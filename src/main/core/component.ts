@@ -1,4 +1,5 @@
 import type { Dict, Maybe, Nullable } from '@simpreact/shared';
+import { shallowEqual } from '@simpreact/shared';
 
 import type { SimpElement } from './createElement.js';
 import { rerender } from './rerender.js';
@@ -18,6 +19,7 @@ interface ComponentRenderContext {
   state: Dict;
   rerender: () => void;
   effects: Nullable<Array<{ effect: Effect; deps?: Maybe<DependencyList> }>>;
+  catchers: Nullable<Array<(error: any) => void>>;
 }
 
 export interface ComponentStore {
@@ -33,7 +35,7 @@ export function component(Component: any) {
 }
 
 export function isComponentElement(element: SimpElement): boolean {
-  return !!(element.type as any)._isComponent;
+  return element.type && (element.type as any)._isComponent;
 }
 
 export function createState(onChange: () => void) {
@@ -71,6 +73,7 @@ export function createComponentStore(element: SimpElement): ComponentStore {
       state: createState(_rerender),
       rerender: _rerender,
       effects: null,
+      catchers: null,
     },
     pendingEffectStates: null,
     effectStates: null,
@@ -95,7 +98,7 @@ lifecycleEventBus.subscribe(event => {
         state = store.effectStates[i] = { effect: renderEffectState.effect, deps: null, cleanup: null };
       }
 
-      if (!areDepsEqual(renderEffectState.deps, state.deps)) {
+      if (!shallowEqual(renderEffectState.deps, state.deps)) {
         state.effect = renderEffectState.effect;
         state.deps = renderEffectState.deps || null;
         (store.pendingEffectStates ||= []).push(state);
@@ -125,16 +128,38 @@ lifecycleEventBus.subscribe(event => {
       }
     }
   }
+
+  if (event.type === 'errored') {
+    function handleError(element: Nullable<SimpElement>, error: any) {
+      element = findElementWithCatchHandlers(element);
+
+      if (!element) {
+        throw new Error('Error occurred during rendering a component', { cause: error });
+      }
+
+      try {
+        for (const catcher of element.store!.componentStore!.renderContext.catchers!) {
+          catcher(error);
+        }
+      } catch (error) {
+        handleError(element.parent, error);
+      }
+    }
+
+    handleError(event.element, event.error);
+  }
 });
 
-function areDepsEqual(nextDeps: Maybe<DependencyList>, prevDeps: Maybe<DependencyList>): boolean {
-  if (nextDeps == null || prevDeps == null || nextDeps.length !== prevDeps.length) {
-    return false;
-  }
-  for (let i = 0; i < prevDeps.length; i++) {
-    if (!Object.is(nextDeps[i], prevDeps[i])) {
-      return false;
+function findElementWithCatchHandlers(element: Nullable<SimpElement>): Nullable<SimpElement> {
+  let temp: Nullable<SimpElement> = element;
+
+  while (temp != null) {
+    if (isComponentElement(temp) && temp.store!.componentStore!.renderContext.catchers) {
+      return temp;
     }
+
+    temp = temp.parent;
   }
-  return true;
+
+  return null;
 }

@@ -1,4 +1,12 @@
-import { createElement, mount, patch, provideHostAdapter, remove, type SimpElement } from '@simpreact/internal';
+import {
+  createElement,
+  hostAdapter,
+  mount,
+  patch,
+  provideHostAdapter,
+  remove,
+  type SimpElement,
+} from '@simpreact/internal';
 import type { Nullable } from '@simpreact/shared';
 
 import { domAdapter } from './domAdapter.js';
@@ -15,14 +23,14 @@ export function render(element: Nullable<SimpElement>, container: Nullable<Eleme
 
   if (!currentRootElement) {
     if (element) {
-      domAdapter.clearNode(container as any);
+      hostAdapter.clearNode(container as any);
 
       element.parent = createElement('', null, element);
       element.parent.type = null;
       element.parent.reference = container;
 
       attachElementToDom(element.parent, container as Element);
-      mount(element, container, null, null, domAdapter.getHostNamespaces(element, undefined)?.self);
+      mount(element, container, null, null, hostAdapter.getHostNamespaces(element, undefined)?.self);
     }
   } else {
     if (!element) {
@@ -32,7 +40,7 @@ export function render(element: Nullable<SimpElement>, container: Nullable<Eleme
       const prevChildren = currentRootElement.children as SimpElement;
       currentRootElement.children = element;
       element.parent = currentRootElement;
-      patch(prevChildren, element, container, null, null, domAdapter.getHostNamespaces(element, undefined)?.self);
+      patch(prevChildren, element, container, null, null, hostAdapter.getHostNamespaces(element, undefined)?.self);
     }
   }
 }

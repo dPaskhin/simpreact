@@ -3,9 +3,8 @@ import { Element } from 'flyweight-dom';
 
 import { createElement, provideHostAdapter } from '@simpreact/internal';
 import { createRoot } from '@simpreact/dom';
-import { useEffect } from '@simpreact/hooks';
+import { useEffect, useState } from '@simpreact/hooks';
 
-import { useState } from './useState.js';
 import { testHostAdapter } from './test-host-adapter.js';
 
 provideHostAdapter(testHostAdapter);

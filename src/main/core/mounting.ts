@@ -137,7 +137,9 @@ export function mountFunctionalElement(
         return;
       }
       lifecycleEventBus.publish({ type: 'beforeRender', element, phase: 'mounting' });
-      children = (element.type as any)(element.props || emptyObject, element.store.componentStore?.renderContext);
+      children = isComponentElement(element)
+        ? (element.type as any)(element.props || emptyObject, element.store.componentStore?.renderContext)
+        : (element.type as any)(element.props || emptyObject);
       lifecycleEventBus.publish({ type: 'afterRender', element, phase: 'mounting' });
     } while (triedToRerender);
 

@@ -1,4 +1,5 @@
-import * as SimpReactHooks from '../hooks/index.js';
+import * as SimpReactHooks from '@simpreact/hooks';
+import * as SimpReactShared from '@simpreact/shared';
 
 export function useSyncExternalStore<T>(subscribe: (callback: () => void) => () => void, getSnapshot: () => T): T {
   const rerender = SimpReactHooks.useRerender();
@@ -69,7 +70,7 @@ export function useMemo<T>(factory: () => T, deps: SimpReactHooks.DependencyList
     value: undefined!,
   });
 
-  if (!SimpReactHooks.areDepsEqual(ref.current.deps, deps)) {
+  if (!SimpReactShared.shallowEqual(ref.current.deps, deps)) {
     ref.current.value = factory();
     ref.current.deps = deps;
   }

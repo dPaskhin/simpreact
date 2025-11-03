@@ -30,24 +30,24 @@ export function callOrGet(value: unknown) {
 }
 
 export function shallowEqual(objA: any, objB: any): boolean {
+  if (typeof objA !== 'object' || objA == null || typeof objB !== 'object' || objB == null) {
+    return false;
+  }
+
   if (Object.is(objA, objB)) {
     return true;
   }
 
-  if (typeof objA !== 'object' || objA === null || typeof objB !== 'object' || objB === null) {
-    return false;
-  }
-
-  const keysA = Object.keys(objA);
-  const keysB = Object.keys(objB);
+  const keysA = Reflect.ownKeys(objA);
+  const keysB = Reflect.ownKeys(objB);
 
   if (keysA.length !== keysB.length) {
     return false;
   }
 
   for (let i = 0; i < keysA.length; i++) {
-    const currentKey = keysA[i];
-    if (!Object.prototype.hasOwnProperty.call(objB, currentKey!) || !Object.is(objA[currentKey!], objB[currentKey!])) {
+    const currentKey = keysA[i]!;
+    if (!objB.hasOwnProperty(currentKey) || !Object.is(objA[currentKey], objB[currentKey])) {
       return false;
     }
   }

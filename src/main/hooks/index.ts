@@ -1,7 +1,7 @@
 import type { RefObject, SimpElement } from '@simpreact/internal';
 import { lifecycleEventBus, rerender as _rerender } from '@simpreact/internal';
 import type { Maybe, Nullable } from '@simpreact/shared';
-import { callOrGet, noop } from '@simpreact/shared';
+import { callOrGet, noop, shallowEqual } from '@simpreact/shared';
 
 export type Cleanup = () => void;
 export type Effect = () => void | Cleanup;
@@ -189,7 +189,7 @@ export function useEffect(effect: Effect, deps?: DependencyList): void {
     state = hookStates[currentIndex] = { effect, deps: null, cleanup: null };
   }
 
-  if (!areDepsEqual(deps, state.deps)) {
+  if (!shallowEqual(deps, state.deps)) {
     state.effect = effect;
     state.deps = deps || null;
     getOrCreateEffectHookStates(currentElement).push(state);
@@ -227,18 +227,6 @@ export function useCatch(cb: (error: any) => void): void {
   currentElement.store!.catchHandlers.push(cb);
 }
 
-export function areDepsEqual(nextDeps: Maybe<DependencyList>, prevDeps: Maybe<DependencyList>): boolean {
-  if (nextDeps == null || prevDeps == null || nextDeps.length !== prevDeps.length) {
-    return false;
-  }
-  for (let i = 0; i < prevDeps.length; i++) {
-    if (!Object.is(nextDeps[i], prevDeps[i])) {
-      return false;
-    }
-  }
-  return true;
-}
-
 function getOrCreateHookStates(element: HooksSimpElement) {
   if (!element.store!.hookStates) {
     element.store!.hookStates = [];
@@ -263,7 +251,6 @@ export default {
   useMounted,
   useUnmounted,
   useCatch,
-  areDepsEqual,
 };
 
 export type * from './public.js';

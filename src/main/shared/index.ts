@@ -6,13 +6,12 @@ export { emptyObject, emptyMap, emptyArray, isSimpText, EventBus, noop, callOrGe
 
 export default {
   isSimpText,
-  EMPTY_MAP: emptyMap,
-  EMPTY_ARRAY: emptyArray,
-  EMPTY_OBJECT: emptyObject,
+  emptyMap,
+  emptyArray,
+  emptyObject,
   EventBus,
   noop,
   callOrGet,
-  emptyObject,
 };
 
 export type * from './public.js';

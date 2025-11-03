@@ -10,6 +10,7 @@ import { mount, mountArrayChildren, mountFunctionalElement } from './mounting.js
 import { applyRef } from './ref.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
 import { isMemo } from './memo.js';
+import { isComponentElement } from './component.js';
 
 export function patch(
   prevElement: SimpElement,
@@ -147,21 +148,18 @@ function patchFunctionalComponent(
           error: new Error('Too many re-renders.'),
           phase: 'updating',
         });
-        remove(prevElement, parentReference);
         return;
       }
       lifecycleEventBus.publish({ type: 'beforeRender', element: nextElement, phase: 'updating' });
-      nextChildren = (nextElement.type as any)(
-        nextElement.props || emptyObject,
-        nextElement.store.componentStore?.renderContext
-      );
+      nextChildren = isComponentElement(nextElement)
+        ? (nextElement.type as any)(nextElement.props || emptyObject, nextElement.store.componentStore?.renderContext)
+        : (nextElement.type as any)(nextElement.props || emptyObject);
       lifecycleEventBus.publish({ type: 'afterRender', element: nextElement, phase: 'updating' });
     } while (triedToRerender);
 
     nextChildren = normalizeRoot(nextChildren, false);
   } catch (error) {
     lifecycleEventBus.publish({ type: 'errored', element: nextElement, error, phase: 'updating' });
-    remove(prevElement, parentReference);
     return;
   } finally {
     triedToRerenderUnsubscribe!();
