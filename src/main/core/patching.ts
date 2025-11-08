@@ -98,16 +98,16 @@ function patchFunctionalComponent(
   context: unknown,
   hostNamespace: Maybe<string>
 ): void {
+  if (prevElement.unmounted) {
+    mountFunctionalElement(nextElement, parentReference, nextReference, context, hostNamespace);
+    return;
+  }
+
   nextElement.store = prevElement.store || createElementStore();
   nextElement.store.latestElement = nextElement;
 
   if (hostNamespace) {
     nextElement.store.hostNamespace = hostNamespace;
-  }
-
-  if (prevElement.unmounted) {
-    mountFunctionalElement(nextElement, parentReference, nextReference, context, hostNamespace);
-    return;
   }
 
   if (
@@ -160,6 +160,16 @@ function patchFunctionalComponent(
     nextChildren = normalizeRoot(nextChildren, false);
   } catch (error) {
     lifecycleEventBus.publish({ type: 'errored', element: nextElement, error, phase: 'updating' });
+
+    const parentChildren = prevElement.parent?.children;
+
+    if (Array.isArray(parentChildren)) {
+      parentChildren.splice(parentChildren.indexOf(prevElement), 1);
+    } else if (prevElement.parent) {
+      prevElement.parent.children = null;
+    }
+
+    remove(prevElement, parentReference);
     return;
   } finally {
     triedToRerenderUnsubscribe!();
