@@ -1,6 +1,6 @@
-import type { Nullable } from '@simpreact/shared';
 import type { SimpElement } from '@simpreact/internal';
 import { SimpElementFlag } from '@simpreact/internal';
+import type { Nullable } from '@simpreact/shared';
 
 import { getElementFromDom } from './attach-element-to-dom.js';
 
@@ -110,8 +110,14 @@ export class SyntheticEvent {
 export function dispatchDelegatedEvent(event: Event): void {
   const syntheticEvent = new SyntheticEvent(event);
 
-  const captureHandlers: Array<{ element: SimpElement; handler: (event: SyntheticEvent) => void }> = [];
-  const bubbleHandlers: Array<{ element: SimpElement; handler: (event: SyntheticEvent) => void }> = [];
+  const captureHandlers: Array<{
+    element: SimpElement;
+    handler: (event: SyntheticEvent) => void;
+  }> = [];
+  const bubbleHandlers: Array<{
+    element: SimpElement;
+    handler: (event: SyntheticEvent) => void;
+  }> = [];
 
   let element: Nullable<SimpElement> = getElementFromDom(event.target);
 

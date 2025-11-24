@@ -65,7 +65,10 @@ export function useId(prefix: string = 'id'): string {
 }
 
 export function useMemo<T>(factory: () => T, deps: SimpReactHooks.DependencyList): T {
-  const ref = SimpReactHooks.useRef<{ value: T; deps: SimpReactHooks.DependencyList }>({
+  const ref = SimpReactHooks.useRef<{
+    value: T;
+    deps: SimpReactHooks.DependencyList;
+  }>({
     deps: undefined!,
     value: undefined!,
   });

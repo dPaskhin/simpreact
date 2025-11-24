@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
 import type { SimpElement } from '@simpreact/internal';
 import { createElement } from '@simpreact/internal';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   addControlledSelectEventHandlers,

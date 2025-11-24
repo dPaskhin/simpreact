@@ -1,8 +1,8 @@
 import type { SimpElement, SimpElementStore } from './createElement.js';
 import { SimpElementFlag } from './createElement.js';
-import { findParentReferenceFromElement, updateFunctionalComponent } from './patching.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
 import { isMemo } from './memo.js';
+import { findParentReferenceFromElement, updateFunctionalComponent } from './patching.js';
 
 lifecycleEventBus.subscribe(event => {
   if (event.type === 'afterRender' || event.type === 'errored' || event.type === 'unmounted') {

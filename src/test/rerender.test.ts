@@ -1,11 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
-import { createElement, provideHostAdapter } from '@simpreact/internal';
-import { useEffect, useRef, useRerender } from '@simpreact/hooks';
 import { createRoot } from '@simpreact/dom';
+import { useEffect, useRef, useRerender } from '@simpreact/hooks';
+import { createElement, provideHostAdapter } from '@simpreact/internal';
 import { Element } from 'flyweight-dom';
-
-import { testHostAdapter } from './test-host-adapter.js';
+import { describe, expect, it, vi } from 'vitest';
 import { dispatchDelegatedEvent } from '../main/dom/events.js';
+import { testHostAdapter } from './test-host-adapter.js';
 
 provideHostAdapter(testHostAdapter);
 
@@ -52,7 +51,10 @@ describe('rerender (integration tests)', () => {
 
       useEffect(() => {
         const nativeEvent = new Event('click');
-        Object.defineProperty(nativeEvent, 'target', { value: buttonRef.current, writable: false });
+        Object.defineProperty(nativeEvent, 'target', {
+          value: buttonRef.current,
+          writable: false,
+        });
         dispatchDelegatedEvent(nativeEvent);
       }, []);
 

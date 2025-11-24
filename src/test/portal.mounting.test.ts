@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { createElement, createPortal, mountPortal, provideHostAdapter } from '@simpreact/internal';
 
 import { Element } from 'flyweight-dom';
-import { createElement, createPortal, mountPortal, provideHostAdapter } from '@simpreact/internal';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { testHostAdapter } from './test-host-adapter.js';
 
 provideHostAdapter(testHostAdapter);

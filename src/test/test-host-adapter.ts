@@ -1,7 +1,6 @@
+import type { HostAdapter } from '@simpreact/internal';
 import { Element, Text } from 'flyweight-dom';
 import { vi } from 'vitest';
-
-import type { HostAdapter } from '@simpreact/internal';
 
 export const testHostAdapter: HostAdapter<Element, Text> = {
   createReference: vi.fn(type => {

@@ -1,9 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
-import { Element } from 'flyweight-dom';
-
-import { createElement, provideHostAdapter } from '@simpreact/internal';
 import { createRoot } from '@simpreact/dom';
 import { useEffect, useState } from '@simpreact/hooks';
+
+import { createElement, provideHostAdapter } from '@simpreact/internal';
+import { Element } from 'flyweight-dom';
+import { describe, expect, it, vi } from 'vitest';
 
 import { testHostAdapter } from './test-host-adapter.js';
 

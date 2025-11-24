@@ -2,8 +2,8 @@ import type { Dict, Maybe, Nullable } from '@simpreact/shared';
 import { shallowEqual } from '@simpreact/shared';
 
 import type { SimpElement } from './createElement.js';
-import { rerender } from './rerender.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
+import { rerender } from './rerender.js';
 
 export type Cleanup = () => void;
 export type Effect = () => void | Cleanup;
@@ -49,7 +49,7 @@ export function createState(onChange: () => void) {
           return true;
         }
 
-        const hadProperty = target.hasOwnProperty(prop);
+        const hadProperty = Object.hasOwn(target, prop);
 
         (target as any)[prop] = value;
 
@@ -95,7 +95,11 @@ lifecycleEventBus.subscribe(event => {
       let state = (store.effectStates ||= [])[i];
 
       if (!state) {
-        state = store.effectStates[i] = { effect: renderEffectState.effect, deps: null, cleanup: null };
+        state = store.effectStates[i] = {
+          effect: renderEffectState.effect,
+          deps: null,
+          cleanup: null,
+        };
       }
 
       if (!shallowEqual(renderEffectState.deps, state.deps)) {
@@ -130,36 +134,32 @@ lifecycleEventBus.subscribe(event => {
   }
 
   if (event.type === 'errored') {
-    function handleError(element: Nullable<SimpElement>, error: any) {
-      element = findElementWithCatchHandlers(element);
+    let element: Nullable<SimpElement> = event.element;
+    let curError = event.error;
+    let catchers: Nullable<Array<(error: any) => void>> = null;
 
-      if (!element) {
-        throw new Error('Error occurred during rendering a component', { cause: error });
+    while (element) {
+      if (!isComponentElement(element) || !(catchers = element.store!.componentStore!.renderContext.catchers)) {
+        element = element.parent;
+        continue;
       }
 
       try {
-        for (const catcher of element.store!.componentStore!.renderContext.catchers!) {
-          catcher(error);
+        for (let i = 0; i < catchers.length; i++) {
+          catchers[i]!(curError);
         }
+        curError = null;
+        break;
       } catch (error) {
-        handleError(element.parent, error);
+        element = element.parent;
+        curError = error;
       }
     }
 
-    handleError(event.element, event.error);
+    if (curError) {
+      throw new Error('Error occurred during rendering a component', {
+        cause: curError,
+      });
+    }
   }
 });
-
-function findElementWithCatchHandlers(element: Nullable<SimpElement>): Nullable<SimpElement> {
-  let temp: Nullable<SimpElement> = element;
-
-  while (temp != null) {
-    if (isComponentElement(temp) && temp.store!.componentStore!.renderContext.catchers) {
-      return temp;
-    }
-
-    temp = temp.parent;
-  }
-
-  return null;
-}

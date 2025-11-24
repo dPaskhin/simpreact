@@ -1,9 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Element } from 'flyweight-dom';
-
+import { createContext } from '@simpreact/context';
 import type { HostReference, SimpElement } from '@simpreact/internal';
 import { createElement, Fragment, lifecycleEventBus, mount, patch, provideHostAdapter } from '@simpreact/internal';
-import { createContext } from '@simpreact/context';
+import type { Element } from 'flyweight-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { testHostAdapter } from './test-host-adapter.js';
 
 provideHostAdapter(testHostAdapter);
@@ -44,10 +43,14 @@ describe('patching', () => {
     });
 
     it('patches nodes with same keys', () => {
-      const prev = createElement(Fragment, { children: createElement('a', { id: 'prev', key: '1' }, '1') });
+      const prev = createElement(Fragment, {
+        children: createElement('a', { id: 'prev', key: '1' }, '1'),
+      });
       mount(prev, parent as HostReference, null, null, '');
 
-      const next = createElement(Fragment, { children: createElement('a', { id: 'next', key: '1' }) });
+      const next = createElement(Fragment, {
+        children: createElement('a', { id: 'next', key: '1' }),
+      });
 
       // Restore mocks before accumulation of host provider methods invokes.
       vi.resetAllMocks();
@@ -217,10 +220,21 @@ describe('patching', () => {
 
       // Expect the prev component to be unmounted and the next one is mounted.
       // Regardless of the same type (Component) identity.
-      expect(listener).toHaveBeenCalledWith({ type: 'unmounted', element: prev });
+      expect(listener).toHaveBeenCalledWith({
+        type: 'unmounted',
+        element: prev,
+      });
       expect(listener).toHaveBeenCalledWith({ type: 'mounted', element: next });
-      expect(listener).toHaveBeenCalledWith({ type: 'beforeRender', element: next, phase: 'mounting' });
-      expect(listener).toHaveBeenCalledWith({ type: 'afterRender', element: next, phase: 'mounting' });
+      expect(listener).toHaveBeenCalledWith({
+        type: 'beforeRender',
+        element: next,
+        phase: 'mounting',
+      });
+      expect(listener).toHaveBeenCalledWith({
+        type: 'afterRender',
+        element: next,
+        phase: 'mounting',
+      });
       expect(listener).toHaveBeenCalledTimes(4);
     });
   });

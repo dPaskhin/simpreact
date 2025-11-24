@@ -1,5 +1,5 @@
-import fs from 'fs';
 import path from 'node:path';
+import fs from 'fs';
 
 const root = process.cwd();
 const srcMainDir = path.resolve(root, 'src/main');

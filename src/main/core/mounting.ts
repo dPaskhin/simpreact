@@ -1,13 +1,12 @@
 import type { Many, Maybe, Nullable } from '@simpreact/shared';
 import { emptyObject } from '@simpreact/shared';
-
-import type { HostReference } from './hostAdapter.js';
-import { hostAdapter } from './hostAdapter.js';
+import { createComponentStore, isComponentElement } from './component.js';
 import type { SimpElement } from './createElement.js';
 import { createElementStore, createTextElement, normalizeRoot, SimpElementFlag } from './createElement.js';
-import { applyRef } from './ref.js';
+import type { HostReference } from './hostAdapter.js';
+import { hostAdapter } from './hostAdapter.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
-import { createComponentStore, isComponentElement } from './component.js';
+import { applyRef } from './ref.js';
 
 export function mount(
   element: SimpElement,
@@ -55,7 +54,7 @@ export function mountHostElement(
 
   hostAdapter.attachElementToReference(element, hostReference);
 
-  // HOST element always has Maybe<Many<SimpElement>> children due to normalization process.
+  // HOST element always has Maybe<Many<SimpElement>> children due to a normalization process.
   const children = element.children as Maybe<Many<SimpElement>>;
 
   if (Array.isArray(children)) {
@@ -111,7 +110,7 @@ export function mountFunctionalElement(
     createComponentStore(element);
   }
 
-  // FC element always has Maybe<SimpElement> children due to normalization process.
+  // FC element always has Maybe<SimpElement> children due to a normalization process.
   let children;
 
   let triedToRerenderUnsubscribe;
@@ -136,16 +135,29 @@ export function mountFunctionalElement(
         });
         return;
       }
-      lifecycleEventBus.publish({ type: 'beforeRender', element, phase: 'mounting' });
+      lifecycleEventBus.publish({
+        type: 'beforeRender',
+        element,
+        phase: 'mounting',
+      });
       children = isComponentElement(element)
         ? (element.type as any)(element.props || emptyObject, element.store.componentStore?.renderContext)
         : (element.type as any)(element.props || emptyObject);
-      lifecycleEventBus.publish({ type: 'afterRender', element, phase: 'mounting' });
+      lifecycleEventBus.publish({
+        type: 'afterRender',
+        element,
+        phase: 'mounting',
+      });
     } while (triedToRerender);
 
     children = normalizeRoot(children, false);
   } catch (error) {
-    lifecycleEventBus.publish({ type: 'errored', element, error, phase: 'mounting' });
+    lifecycleEventBus.publish({
+      type: 'errored',
+      element,
+      error,
+      phase: 'mounting',
+    });
     return;
   } finally {
     triedToRerenderUnsubscribe!();
@@ -166,7 +178,7 @@ export function mountFragment(
   context: unknown,
   hostNamespace: Maybe<string>
 ): void {
-  // FRAGMENT element always has Maybe<Many<SimpElement>> children due to normalization process.
+  // FRAGMENT element always has Maybe<Many<SimpElement>> children due to a normalization process.
   if (Array.isArray(element.children)) {
     mountArrayChildren(
       element.children as SimpElement[],

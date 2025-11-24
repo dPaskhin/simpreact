@@ -1,5 +1,4 @@
-import type { RefObject, SimpElement } from '@simpreact/internal';
-import { lifecycleEventBus, rerender as _rerender } from '@simpreact/internal';
+import { rerender as _rerender, lifecycleEventBus, RefObject, SimpElement } from '@simpreact/internal';
 import type { Maybe, Nullable } from '@simpreact/shared';
 import { callOrGet, noop, shallowEqual } from '@simpreact/shared';
 
@@ -95,39 +94,35 @@ lifecycleEventBus.subscribe(event => {
     }
   }
   if (event.type === 'errored') {
-    function handleError(element: Nullable<HooksSimpElement>, error: any) {
-      element = findElementWithCatchHandlers(element);
+    let element = event.element as Nullable<HooksSimpElement>;
+    let curError = event.error;
+    let catchers: Maybe<Array<(error: any) => void>> = null;
 
-      if (!element) {
-        throw new Error('Error occurred during rendering a component', { cause: error });
+    while (element) {
+      if (!(catchers = element.store?.catchHandlers)) {
+        element = element.parent as Nullable<HooksSimpElement>;
+        continue;
       }
 
       try {
-        for (const state of element.store!.catchHandlers!) {
-          state(error);
+        for (let i = 0; i < catchers.length; i++) {
+          catchers[i]!(curError);
         }
+        curError = null;
+        break;
       } catch (error) {
-        handleError(element.parent as HooksSimpElement, error);
+        element = element.parent as Nullable<HooksSimpElement>;
+        curError = error;
       }
     }
 
-    handleError(event.element as HooksSimpElement, event.error);
+    if (curError) {
+      throw new Error('Error occurred during rendering a component', {
+        cause: curError,
+      });
+    }
   }
 });
-
-function findElementWithCatchHandlers(element: Nullable<HooksSimpElement>): Nullable<HooksSimpElement> {
-  let temp: Nullable<HooksSimpElement> = element;
-
-  while (temp != null) {
-    if (temp.store?.catchHandlers) {
-      return temp;
-    }
-
-    temp = temp.parent as HooksSimpElement;
-  }
-
-  return null;
-}
 
 export function useRef<T>(initialValue: T): RefObject<T>;
 export function useRef<T>(initialValue: T | null): RefObject<T | null>;

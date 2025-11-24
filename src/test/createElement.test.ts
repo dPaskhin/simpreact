@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { createContext } from '@simpreact/context';
 
 import type { FC, SimpElement } from '@simpreact/internal';
 import {
@@ -10,7 +10,7 @@ import {
   normalizeRoot,
   SimpElementFlag,
 } from '@simpreact/internal';
-import { createContext } from '@simpreact/context';
+import { describe, expect, it } from 'vitest';
 
 function createMockHostElement(): SimpElement {
   return createElement('div', null, '123');
@@ -610,7 +610,10 @@ describe('createElement and utils', () => {
     });
 
     it('creates an element with a className and a key', () => {
-      const element = createElement('div', { className: 'red-colored', key: 'id' });
+      const element = createElement('div', {
+        className: 'red-colored',
+        key: 'id',
+      });
       expect(element).toEqual({
         flag: SimpElementFlag.HOST,
         type: 'div',
@@ -674,10 +677,18 @@ describe('createElement and utils', () => {
         ref: null,
         unmounted: null,
       });
-      expect(createElement('div', { id: 'it', children: ['child1', 'child2', createMockHostElement()] })).toEqual({
+      expect(
+        createElement('div', {
+          id: 'it',
+          children: ['child1', 'child2', createMockHostElement()],
+        })
+      ).toEqual({
         flag: SimpElementFlag.HOST,
         type: 'div',
-        props: { id: 'it', children: ['child1', 'child2', { ...createMockHostElement(), key: '.2' }] },
+        props: {
+          id: 'it',
+          children: ['child1', 'child2', { ...createMockHostElement(), key: '.2' }],
+        },
         children: [
           {
             flag: SimpElementFlag.TEXT,
@@ -749,7 +760,12 @@ describe('createElement and utils', () => {
       expect(element).toEqual({
         flag: SimpElementFlag.FC,
         type: MockComponent,
-        props: { foo: 'bar', children: ['child1', 'child2'], className: 'red-colored', key: 'KEY' },
+        props: {
+          foo: 'bar',
+          children: ['child1', 'child2'],
+          className: 'red-colored',
+          key: 'KEY',
+        },
         key: 'KEY',
         parent: null,
         children: null,
@@ -829,7 +845,10 @@ describe('createElement and utils', () => {
     });
 
     it('creates an element with the children only from props', () => {
-      const element = createElement(MockComponent, { foo: 'bar', children: ['child1', 'child2'] });
+      const element = createElement(MockComponent, {
+        foo: 'bar',
+        children: ['child1', 'child2'],
+      });
 
       expect(element).toEqual({
         flag: SimpElementFlag.FC,
@@ -973,7 +992,12 @@ describe('createElement and utils', () => {
         ref: null,
         unmounted: null,
       });
-      expect(createElement(Fragment, { key: 'KEY', children: createMockHostElement() })).toEqual({
+      expect(
+        createElement(Fragment, {
+          key: 'KEY',
+          children: createMockHostElement(),
+        })
+      ).toEqual({
         flag: SimpElementFlag.FRAGMENT,
         key: 'KEY',
         children: {
@@ -1133,9 +1157,18 @@ describe('createElement and utils', () => {
         ref: null,
         unmounted: null,
       });
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
-      expect(createElement(TestContext.Consumer, { key: '123', children: MockComponent })).toEqual({
+
+      expect(
+        createElement(
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-expect-error
+          TestContext.Consumer,
+          {
+            key: '123',
+            children: MockComponent,
+          }
+        )
+      ).toEqual({
         flag: SimpElementFlag.FC,
         type: TestContext.Consumer,
         props: { children: MockComponent, key: '123' },

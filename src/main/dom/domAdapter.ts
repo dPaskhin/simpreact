@@ -1,9 +1,9 @@
 import type { HostAdapter } from '@simpreact/internal';
 
 import { attachElementToDom } from './attach-element-to-dom.js';
-import { mountProps, patchProps, unmountProps } from './props/index.js';
 import type { Namespace } from './namespace.js';
 import { defaultNamespace } from './namespace.js';
+import { mountProps, patchProps, unmountProps } from './props/index.js';
 
 export const domAdapter: HostAdapter<HTMLElement | SVGElement, Text, Namespace> = {
   createReference(type, namespace) {
@@ -89,7 +89,10 @@ export const domAdapter: HostAdapter<HTMLElement | SVGElement, Text, Namespace> 
 
   getHostNamespaces(element, currentNamespace) {
     if (element.type === 'svg') {
-      return { self: 'http://www.w3.org/2000/svg', children: 'http://www.w3.org/2000/svg' };
+      return {
+        self: 'http://www.w3.org/2000/svg',
+        children: 'http://www.w3.org/2000/svg',
+      };
     }
     if (element.type === 'foreignObject') {
       return { self: 'http://www.w3.org/2000/svg', children: null };

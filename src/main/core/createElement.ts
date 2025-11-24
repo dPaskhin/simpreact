@@ -1,9 +1,8 @@
 import type { Many, Nullable, SimpText } from '@simpreact/shared';
 import { isSimpText } from '@simpreact/shared';
-
+import type { ComponentStore } from './component.js';
 import { Fragment } from './fragment.js';
 import type { HostReference } from './hostAdapter.js';
-import type { ComponentStore } from './component.js';
 
 export type SimpNode = SimpElement | SimpText | Array<SimpNode> | boolean | null | undefined;
 

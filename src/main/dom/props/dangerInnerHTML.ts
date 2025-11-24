@@ -1,6 +1,6 @@
-import type { Many, Maybe } from '@simpreact/shared';
 import type { SimpElement } from '@simpreact/internal';
 import { unmount } from '@simpreact/internal';
+import type { Many, Maybe } from '@simpreact/shared';
 
 export function patchDangerInnerHTML(
   prevValue: Maybe<{ __html: string }>,

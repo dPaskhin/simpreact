@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { Element } from 'flyweight-dom';
+import { render } from '@simpreact/dom';
+import { useEffect, useRef, useRerender } from '@simpreact/hooks';
 import type { SimpElement } from '@simpreact/internal';
 import {
   createElement,
@@ -9,10 +9,10 @@ import {
   patchPortal,
   provideHostAdapter,
 } from '@simpreact/internal';
-import { testHostAdapter } from './test-host-adapter.js';
-import { useEffect, useRef, useRerender } from '@simpreact/hooks';
+import { Element } from 'flyweight-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { dispatchDelegatedEvent } from '../main/dom/events.js';
-import { render } from '@simpreact/dom';
+import { testHostAdapter } from './test-host-adapter.js';
 
 provideHostAdapter(testHostAdapter);
 
@@ -73,7 +73,10 @@ describe('patchPortal', () => {
 
         useEffect(() => {
           const nativeEvent = new Event('click');
-          Object.defineProperty(nativeEvent, 'target', { value: buttonRef.current, writable: false });
+          Object.defineProperty(nativeEvent, 'target', {
+            value: buttonRef.current,
+            writable: false,
+          });
           dispatchDelegatedEvent(nativeEvent);
         }, []);
 

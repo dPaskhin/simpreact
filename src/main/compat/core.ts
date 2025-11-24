@@ -1,5 +1,5 @@
-import * as SimpReactInternal from '@simpreact/internal';
 import * as SimpReactHooks from '@simpreact/hooks';
+import * as SimpReactInternal from '@simpreact/internal';
 
 export const Children = {
   map(

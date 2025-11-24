@@ -18,7 +18,9 @@ interface SimpContext<T = any> {
   Consumer: Consumer<T>;
 }
 
-type ContextSimpElement = Omit<SimpElement, 'context'> & { context?: Maybe<SimpContextMap> };
+type ContextSimpElement = Omit<SimpElement, 'context'> & {
+  context?: Maybe<SimpContextMap>;
+};
 
 // In runtime these variables are nullable.
 let currentElement: ContextSimpElement;
@@ -50,7 +52,10 @@ export function createContext<T>(defaultValue: T): SimpContext<T> {
       }
 
       if (phase === 'mounting') {
-        currentElement.context.set(context, { value: props.value, subs: new Set() });
+        currentElement.context.set(context, {
+          value: props.value,
+          subs: new Set(),
+        });
         return props.children;
       }
 
@@ -68,7 +73,7 @@ export function createContext<T>(defaultValue: T): SimpContext<T> {
 
       contextEntry.value = props.value;
 
-      for (let sub of contextEntry.subs) {
+      for (const sub of contextEntry.subs) {
         rerender(sub.latestElement!);
       }
 

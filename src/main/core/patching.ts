@@ -1,16 +1,15 @@
 import type { Maybe, Nullable } from '@simpreact/shared';
 import { emptyObject } from '@simpreact/shared';
-
+import { isComponentElement } from './component.js';
 import type { Key, SimpElement, SimpNode } from './createElement.js';
 import { createElementStore, normalizeRoot, SimpElementFlag } from './createElement.js';
 import type { HostReference } from './hostAdapter.js';
 import { hostAdapter } from './hostAdapter.js';
-import { clearElementHostReference, remove, unmount } from './unmounting.js';
-import { mount, mountArrayChildren, mountFunctionalElement } from './mounting.js';
-import { applyRef } from './ref.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
 import { isMemo } from './memo.js';
-import { isComponentElement } from './component.js';
+import { mount, mountArrayChildren, mountFunctionalElement } from './mounting.js';
+import { applyRef } from './ref.js';
+import { clearElementHostReference, remove, unmount } from './unmounting.js';
 
 export function patch(
   prevElement: SimpElement,
@@ -150,16 +149,29 @@ function patchFunctionalComponent(
         });
         return;
       }
-      lifecycleEventBus.publish({ type: 'beforeRender', element: nextElement, phase: 'updating' });
+      lifecycleEventBus.publish({
+        type: 'beforeRender',
+        element: nextElement,
+        phase: 'updating',
+      });
       nextChildren = isComponentElement(nextElement)
         ? (nextElement.type as any)(nextElement.props || emptyObject, nextElement.store.componentStore?.renderContext)
         : (nextElement.type as any)(nextElement.props || emptyObject);
-      lifecycleEventBus.publish({ type: 'afterRender', element: nextElement, phase: 'updating' });
+      lifecycleEventBus.publish({
+        type: 'afterRender',
+        element: nextElement,
+        phase: 'updating',
+      });
     } while (triedToRerender);
 
     nextChildren = normalizeRoot(nextChildren, false);
   } catch (error) {
-    lifecycleEventBus.publish({ type: 'errored', element: nextElement, error, phase: 'updating' });
+    lifecycleEventBus.publish({
+      type: 'errored',
+      element: nextElement,
+      error,
+      phase: 'updating',
+    });
 
     const parentChildren = prevElement.parent?.children;
 

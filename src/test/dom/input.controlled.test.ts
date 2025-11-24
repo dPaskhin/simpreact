@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
 import { createElement } from '@simpreact/internal';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   addControlledInputEventHandlers,
@@ -67,7 +67,12 @@ describe('input controlled', () => {
   describe('syncControlledInputProps', () => {
     it('sets type, value, checked, multiple for checkbox', () => {
       const input = createInput('checkbox');
-      const props = { type: 'checkbox', value: 'on', checked: true, multiple: true };
+      const props = {
+        type: 'checkbox',
+        value: 'on',
+        checked: true,
+        multiple: true,
+      };
       const element = createElement('input', props);
       element.reference = input;
 

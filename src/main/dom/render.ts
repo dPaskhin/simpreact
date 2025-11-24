@@ -8,9 +8,8 @@ import {
   type SimpElement,
 } from '@simpreact/internal';
 import type { Nullable } from '@simpreact/shared';
-
-import { domAdapter } from './domAdapter.js';
 import { attachElementToDom, getElementFromDom } from './attach-element-to-dom.js';
+import { domAdapter } from './domAdapter.js';
 
 provideHostAdapter(domAdapter);
 

@@ -1,22 +1,24 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createRoot } from '@simpreact/dom';
+import { useEffect, useRef, useRerender } from '@simpreact/hooks';
+import { createElement, provideHostAdapter } from '@simpreact/internal';
 import { Element } from 'flyweight-dom';
-
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   dispatchDelegatedEvent,
   isPropNameEventName,
   patchDelegatedEvent,
   patchNormalEvent,
 } from '../main/dom/events.js';
-import { createElement, provideHostAdapter } from '@simpreact/internal';
-import { createRoot } from '@simpreact/dom';
-import { useEffect, useRef, useRerender } from '@simpreact/hooks';
 import { testHostAdapter } from './test-host-adapter.js';
 
 provideHostAdapter(testHostAdapter);
 
 const createEventWithTarget = (simpElement: any, type: string) => {
   const nativeEvent = new Event(type);
-  Object.defineProperty(nativeEvent, 'target', { value: { __SIMP_ELEMENT__: simpElement }, writable: false });
+  Object.defineProperty(nativeEvent, 'target', {
+    value: { __SIMP_ELEMENT__: simpElement },
+    writable: false,
+  });
   return nativeEvent;
 };
 
@@ -232,7 +234,10 @@ describe('events', () => {
       const root = createElement('root', { onClick: rootBubbleHandler });
       const mid = createElement('mid', { onClickCapture: midCaptureHandler });
       mid.parent = root;
-      const leaf = createElement('leaf', { onClickCapture: leafCaptureHandler, onClick: leafBubbleHandler });
+      const leaf = createElement('leaf', {
+        onClickCapture: leafCaptureHandler,
+        onClick: leafBubbleHandler,
+      });
       leaf.parent = mid;
       const event = createEventWithTarget(leaf, 'click');
 
@@ -258,7 +263,10 @@ describe('events', () => {
 
         useEffect(() => {
           const nativeEvent = new Event('click');
-          Object.defineProperty(nativeEvent, 'target', { value: leafRef.current, writable: false });
+          Object.defineProperty(nativeEvent, 'target', {
+            value: leafRef.current,
+            writable: false,
+          });
           dispatchDelegatedEvent(nativeEvent);
         }, []);
 

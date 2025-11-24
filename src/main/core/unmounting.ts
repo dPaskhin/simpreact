@@ -4,8 +4,8 @@ import type { SimpElement } from './createElement.js';
 import { SimpElementFlag } from './createElement.js';
 import type { HostReference } from './hostAdapter.js';
 import { hostAdapter } from './hostAdapter.js';
-import { unmountRef } from './ref.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
+import { unmountRef } from './ref.js';
 
 export function unmount(element: Many<SimpElement>): void {
   if (Array.isArray(element)) {

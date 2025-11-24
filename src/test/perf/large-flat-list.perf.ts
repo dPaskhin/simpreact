@@ -1,15 +1,12 @@
-import { describe, measure, test } from 'toofast';
-
-import * as SimpReact from '../../../lib/core/index.js';
-import * as SimpReactDom from '../../../lib/dom/index.js';
+import * as Inferno from 'inferno';
+import { h } from 'inferno-hyperscript';
+import * as Preact from 'preact';
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-
-import * as Preact from 'preact';
-
-import * as Inferno from 'inferno';
-import { h } from 'inferno-hyperscript';
+import { describe, measure, test } from 'toofast';
+import * as SimpReact from '../../../lib/core/index.js';
+import * as SimpReactDom from '../../../lib/dom/index.js';
 
 describe('Large flat list mounting', () => {
   test('simpreact', () => {

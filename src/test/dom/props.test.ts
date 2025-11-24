@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createElement } from '@simpreact/core';
 import { unmount } from '@simpreact/internal';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { patchDangerInnerHTML } from '../../main/dom/props/dangerInnerHTML.js';
 

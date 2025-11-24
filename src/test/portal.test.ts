@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createElement, createPortal, SimpElementFlag } from '@simpreact/internal';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('createPortal', () => {
   beforeEach(() => {

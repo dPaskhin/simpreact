@@ -1,6 +1,3 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { Element, Text } from 'flyweight-dom';
-
 import { createContext } from '@simpreact/context';
 import type { HostReference, SimpElement } from '@simpreact/internal';
 import {
@@ -13,6 +10,8 @@ import {
   mountTextElement,
   provideHostAdapter,
 } from '@simpreact/internal';
+import { Element, Text } from 'flyweight-dom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { testHostAdapter } from './test-host-adapter.js';
 
 provideHostAdapter(testHostAdapter);
@@ -114,8 +113,16 @@ describe('mounting', () => {
 
       mountFunctionalElement(element, parentRef as HostReference, nextRef as HostReference, contextMap, '');
 
-      expect(listener).toHaveBeenCalledWith({ type: 'beforeRender', element, phase: 'mounting' });
-      expect(listener).toHaveBeenCalledWith({ type: 'afterRender', element, phase: 'mounting' });
+      expect(listener).toHaveBeenCalledWith({
+        type: 'beforeRender',
+        element,
+        phase: 'mounting',
+      });
+      expect(listener).toHaveBeenCalledWith({
+        type: 'afterRender',
+        element,
+        phase: 'mounting',
+      });
       expect(listener).toHaveBeenCalledWith({ type: 'mounted', element });
       expect(listener).toHaveBeenCalledTimes(3);
       expect(testHostAdapter.insertOrAppend).toHaveBeenCalledWith(
@@ -265,7 +272,9 @@ describe('mounting', () => {
     it('should handle null result from Consumer children FC gracefully', () => {
       const context = createContext('DEFAULT_VALUE');
 
-      const element = createElement(context.Consumer as any, { children: () => null });
+      const element = createElement(context.Consumer as any, {
+        children: () => null,
+      });
 
       mount(element, null, null, null, null);
 

@@ -1,5 +1,4 @@
 import type { FC, Fragment as FragmentType, Key, SimpElement } from '@simpreact/core';
-import type { Maybe } from '@simpreact/shared';
 import type {
   AnchorHTMLAttributes,
   AreaHTMLAttributes,
@@ -55,6 +54,7 @@ import type {
   VideoHTMLAttributes,
   WebViewHTMLAttributes,
 } from '@simpreact/dom';
+import type { Maybe } from '@simpreact/shared';
 
 declare function jsx<P = {}>(type: string | FC<P>, props?: P, key?: Maybe<Key>): SimpElement<P>;
 
@@ -64,6 +64,7 @@ export { jsx as jsxs, jsx as jsxDEV };
 export { Fragment };
 
 declare global {
+  // biome-ignore lint/style/noNamespace: React-like API requirement.
   namespace JSX {
     interface IntrinsicElements {
       // HTML

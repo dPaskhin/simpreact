@@ -47,7 +47,7 @@ export function shallowEqual(objA: any, objB: any): boolean {
 
   for (let i = 0; i < keysA.length; i++) {
     const currentKey = keysA[i]!;
-    if (!objB.hasOwnProperty(currentKey) || !Object.is(objA[currentKey], objB[currentKey])) {
+    if (!Object.hasOwn(objB, currentKey) || !Object.is(objA[currentKey], objB[currentKey])) {
       return false;
     }
   }

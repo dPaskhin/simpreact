@@ -227,8 +227,12 @@ export interface SyntheticEvent<C = Element, E = Event> {
   stopPropagation(): void;
 }
 
-export type EventHandler<E extends SyntheticEvent<any>> = { bivarianceHack(event: E): void }['bivarianceHack'];
-export type NativeEventHandler<E extends Event = Event> = { bivarianceHack(event: E): void }['bivarianceHack'];
+export type EventHandler<E extends SyntheticEvent<any>> = {
+  bivarianceHack(event: E): void;
+}['bivarianceHack'];
+export type NativeEventHandler<E extends Event = Event> = {
+  bivarianceHack(event: E): void;
+}['bivarianceHack'];
 
 export type ClipboardEventHandler = NativeEventHandler<ClipboardEvent>;
 export type CompositionEventHandler = NativeEventHandler<CompositionEvent>;
