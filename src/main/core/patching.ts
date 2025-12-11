@@ -5,7 +5,7 @@ import type { Key, SimpElement, SimpNode } from './createElement.js';
 import { createElementStore, normalizeRoot, SimpElementFlag } from './createElement.js';
 import type { HostReference } from './hostAdapter.js';
 import { hostAdapter } from './hostAdapter.js';
-import { lifecycleEventBus } from './lifecycleEventBus.js';
+import { type LifecycleEvent, lifecycleEventBus } from './lifecycleEventBus.js';
 import { isMemo } from './memo.js';
 import { mount, mountArrayChildren, mountFunctionalElement } from './mounting.js';
 import { applyRef } from './ref.js';
@@ -141,13 +141,7 @@ function patchFunctionalComponent(
     do {
       triedToRerender = false;
       if (++rerenderCounter >= 25) {
-        lifecycleEventBus.publish({
-          type: 'errored',
-          element: nextElement,
-          error: new Error('Too many re-renders.'),
-          phase: 'updating',
-        });
-        return;
+        throw new Error('Too many re-renders.');
       }
       lifecycleEventBus.publish({
         type: 'beforeRender',
@@ -166,13 +160,6 @@ function patchFunctionalComponent(
 
     nextChildren = normalizeRoot(nextChildren, false);
   } catch (error) {
-    lifecycleEventBus.publish({
-      type: 'errored',
-      element: nextElement,
-      error,
-      phase: 'updating',
-    });
-
     const parentChildren = prevElement.parent?.children;
 
     if (Array.isArray(parentChildren)) {
@@ -182,6 +169,15 @@ function patchFunctionalComponent(
     }
 
     remove(prevElement, parentReference);
+
+    const event: LifecycleEvent = { type: 'errored', element: nextElement, error, phase: 'updating', handled: false };
+
+    lifecycleEventBus.publish(event);
+
+    if (!event.handled) {
+      throw new Error('Error occurred during rendering a component', { cause: event.error });
+    }
+
     return;
   } finally {
     triedToRerenderUnsubscribe!();

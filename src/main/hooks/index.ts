@@ -93,7 +93,7 @@ lifecycleEventBus.subscribe(event => {
       }
     }
   }
-  if (event.type === 'errored') {
+  if (event.type === 'errored' && !event.handled) {
     let element = event.element as Nullable<HooksSimpElement>;
     let curError = event.error;
     let catchers: Maybe<Array<(error: any) => void>> = null;
@@ -109,17 +109,12 @@ lifecycleEventBus.subscribe(event => {
           catchers[i]!(curError);
         }
         curError = null;
+        event.handled = true;
         break;
       } catch (error) {
         element = element.parent as Nullable<HooksSimpElement>;
         curError = error;
       }
-    }
-
-    if (curError) {
-      throw new Error('Error occurred during rendering a component', {
-        cause: curError,
-      });
     }
   }
 });

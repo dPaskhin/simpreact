@@ -5,7 +5,7 @@ import type { SimpElement } from './createElement.js';
 import { createElementStore, createTextElement, normalizeRoot, SimpElementFlag } from './createElement.js';
 import type { HostReference } from './hostAdapter.js';
 import { hostAdapter } from './hostAdapter.js';
-import { lifecycleEventBus } from './lifecycleEventBus.js';
+import { type LifecycleEvent, lifecycleEventBus } from './lifecycleEventBus.js';
 import { applyRef } from './ref.js';
 
 export function mount(
@@ -127,13 +127,7 @@ export function mountFunctionalElement(
     do {
       triedToRerender = false;
       if (++rerenderCounter >= 25) {
-        lifecycleEventBus.publish({
-          type: 'errored',
-          element,
-          error: new Error('Too many re-renders.'),
-          phase: 'mounting',
-        });
-        return;
+        throw new Error('Too many re-renders.');
       }
       lifecycleEventBus.publish({
         type: 'beforeRender',
@@ -152,12 +146,14 @@ export function mountFunctionalElement(
 
     children = normalizeRoot(children, false);
   } catch (error) {
-    lifecycleEventBus.publish({
-      type: 'errored',
-      element,
-      error,
-      phase: 'mounting',
-    });
+    const event: LifecycleEvent = { type: 'errored', element, error, phase: 'mounting', handled: false };
+
+    lifecycleEventBus.publish(event);
+
+    if (!event.handled) {
+      throw new Error('Error occurred during rendering a component', { cause: event.error });
+    }
+
     return;
   } finally {
     triedToRerenderUnsubscribe!();

@@ -1,5 +1,3 @@
-import { EventBus } from '@simpreact/shared';
-
 import type { SimpElement } from './createElement.js';
 
 export type LifecycleEvent =
@@ -22,6 +20,26 @@ export type LifecycleEvent =
       element: SimpElement;
       error: any;
       phase: 'mounting' | 'updating';
+      handled: boolean;
     };
 
-export const lifecycleEventBus = new EventBus<LifecycleEvent>();
+type Subscriber = (event: LifecycleEvent) => boolean | void;
+
+const subscribers: Subscriber[] = [];
+
+export const lifecycleEventBus = {
+  publish(event: LifecycleEvent) {
+    for (const subscriber of subscribers) {
+      subscriber(event);
+    }
+  },
+
+  subscribe(subscriber: Subscriber): () => void {
+    if (subscribers.indexOf(subscriber) === -1) {
+      subscribers.push(subscriber);
+    }
+    return () => {
+      subscribers.splice(subscribers.indexOf(subscriber), 1);
+    };
+  },
+};
