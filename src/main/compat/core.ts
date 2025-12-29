@@ -56,12 +56,12 @@ export function cloneElement(
   if (!isValidElement(element)) {
     throw new Error(`cloneElement: expected a SimpElement, got ${element}`);
   }
-  if (element.flag === SimpReactInternal.SimpElementFlag.PORTAL) {
+  if ((element.flag & SimpReactInternal.SIMP_ELEMENT_FLAG_PORTAL) !== 0) {
     throw new Error('cloneElement: the argument must be a SimpElement, but you passed a portal instead.');
   }
 
   return SimpReactInternal.createElement(
-    element.flag === SimpReactInternal.SimpElementFlag.FRAGMENT ? SimpReactInternal.Fragment : element.type!,
+    (element.flag & SimpReactInternal.SIMP_ELEMENT_FLAG_FRAGMENT) !== 0 ? SimpReactInternal.Fragment : element.type!,
     Object.assign({}, element.props, props),
     arguments.length > 2 ? children : props.children || element.children
   );

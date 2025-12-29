@@ -1,4 +1,4 @@
-import { createElement, createPortal, SimpElementFlag } from '@simpreact/internal';
+import { createElement, createPortal, SIMP_ELEMENT_FLAG_PORTAL } from '@simpreact/internal';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('createPortal', () => {
@@ -12,7 +12,7 @@ describe('createPortal', () => {
 
     const portal = createPortal(children, container);
 
-    expect(portal.flag).toBe(SimpElementFlag.PORTAL);
+    expect(portal.flag).toBe(SIMP_ELEMENT_FLAG_PORTAL);
     expect(portal.parent).toBeNull();
     expect(portal.children).toBe(children);
     expect(portal.ref).toBe(container);
@@ -23,7 +23,7 @@ describe('createPortal', () => {
 
     const portal = createPortal(null, container);
 
-    expect(portal.flag).toBe(SimpElementFlag.PORTAL);
+    expect(portal.flag).toBe(SIMP_ELEMENT_FLAG_PORTAL);
     expect(portal.parent).toBeNull();
     expect(portal.children).toBeNull();
     expect(portal.ref).toBe(container);

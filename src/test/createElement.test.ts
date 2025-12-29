@@ -1,14 +1,23 @@
 import { createContext } from '@simpreact/context';
 
-import type { FC, SimpElement } from '@simpreact/internal';
 import {
   createElement,
   createPortal,
   createTextElement,
+  type FC,
   Fragment,
   normalizeChildren,
   normalizeRoot,
-  SimpElementFlag,
+  SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
+  SIMP_ELEMENT_CHILD_FLAG_EMPTY,
+  SIMP_ELEMENT_CHILD_FLAG_LIST,
+  SIMP_ELEMENT_CHILD_FLAG_TEXT,
+  SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
+  SIMP_ELEMENT_FLAG_FC,
+  SIMP_ELEMENT_FLAG_FRAGMENT,
+  SIMP_ELEMENT_FLAG_HOST,
+  SIMP_ELEMENT_FLAG_TEXT,
+  type SimpElement,
 } from '@simpreact/internal';
 import { describe, expect, it } from 'vitest';
 
@@ -24,71 +33,115 @@ const TestContext = createContext('DEFAULT_VALUE');
 
 describe('createElement and utils', () => {
   describe('normalizeChildren', () => {
-    it('returns undefined for null, undefined, boolean, or empty arrays', () => {
-      expect(normalizeChildren(null, false)).toBeNull();
-      expect(normalizeChildren(undefined, false)).toBeNull();
-      expect(normalizeChildren(true, false)).toBeNull();
-      expect(normalizeChildren(false, false)).toBeNull();
-      expect(normalizeChildren([], false)).toBeNull();
-      expect(normalizeChildren([[[], [[], [], []], []], [false, undefined], [''], ''], false)).toBeNull();
-      expect(normalizeChildren([undefined, null, false, true], false)).toBeNull();
-      expect(normalizeChildren('', false)).toBeNull();
-      expect(normalizeChildren(createElement(Fragment), false)).toBeNull();
-      expect(normalizeChildren(createPortal(undefined, {}), false)).toBeNull();
+    it('returns element with children:null for null, undefined, boolean, or empty arrays', () => {
+      expect(normalizeChildren(createMockHostElement(), null, false)).toEqual({
+        ...createMockHostElement(),
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
+      });
+      expect(normalizeChildren(createMockHostElement(), undefined, false)).toEqual({
+        ...createMockHostElement(),
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
+      });
+      expect(normalizeChildren(createMockHostElement(), true, false)).toEqual({
+        ...createMockHostElement(),
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
+      });
+      expect(normalizeChildren(createMockHostElement(), false, false)).toEqual({
+        ...createMockHostElement(),
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
+      });
+      expect(normalizeChildren(createMockHostElement(), [], false)).toEqual({
+        ...createMockHostElement(),
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
+      });
+      expect(
+        normalizeChildren(createMockHostElement(), [[[], [[], [], []], []], [false, undefined], [''], ''], false)
+      ).toEqual({
+        ...createMockHostElement(),
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
+      });
+      expect(normalizeChildren(createMockHostElement(), [undefined, null, false, true], false)).toEqual({
+        ...createMockHostElement(),
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
+      });
+      expect(normalizeChildren(createMockHostElement(), '', false)).toEqual({
+        ...createMockHostElement(),
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
+      });
+      expect(normalizeChildren(createMockHostElement(), createElement(Fragment), false)).toEqual({
+        ...createMockHostElement(),
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
+      });
+      expect(normalizeChildren(createMockHostElement(), createPortal(undefined, {}), false)).toEqual({
+        ...createMockHostElement(),
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
+      });
     });
 
     it('wraps string and number into text elements', () => {
-      expect(normalizeChildren('hello', true)).toEqual({
-        flag: SimpElementFlag.TEXT,
-        children: 'hello',
-        parent: null,
-        key: '.0',
-        type: null,
-        props: null,
-        className: null,
-        reference: null,
-        store: null,
-        context: null,
-        ref: null,
-        unmounted: null,
+      expect(normalizeChildren(createMockHostElement(), 'hello', true)).toEqual({
+        ...createMockHostElement(),
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
+        children: {
+          flag: SIMP_ELEMENT_FLAG_TEXT,
+          childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
+          children: 'hello',
+          parent: null,
+          key: '.0',
+          type: null,
+          props: null,
+          className: null,
+          reference: null,
+          store: null,
+          context: null,
+          ref: null,
+          unmounted: null,
+        },
       });
-      expect(normalizeChildren(42, true)).toEqual({
-        flag: SimpElementFlag.TEXT,
-        children: '42',
-        parent: null,
-        key: '.0',
-        type: null,
-        props: null,
-        className: null,
-        reference: null,
-        store: null,
-        context: null,
-        ref: null,
-        unmounted: null,
+      expect(normalizeChildren(createMockHostElement(), 42, true)).toEqual({
+        ...createMockHostElement(),
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
+        children: {
+          flag: SIMP_ELEMENT_FLAG_TEXT,
+          childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
+          children: '42',
+          parent: null,
+          key: '.0',
+          type: null,
+          props: null,
+          className: null,
+          reference: null,
+          store: null,
+          context: null,
+          ref: null,
+          unmounted: null,
+        },
       });
-      expect(normalizeChildren(42n, true)).toEqual({
-        flag: SimpElementFlag.TEXT,
-        children: '42',
-        parent: null,
-        key: '.0',
-        type: null,
-        props: null,
-        className: null,
-        reference: null,
-        store: null,
-        context: null,
-        ref: null,
-        unmounted: null,
+      expect(normalizeChildren(createMockHostElement(), 42n, true)).toEqual({
+        ...createMockHostElement(),
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
+        children: {
+          flag: SIMP_ELEMENT_FLAG_TEXT,
+          childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
+          children: '42',
+          parent: null,
+          key: '.0',
+          type: null,
+          props: null,
+          className: null,
+          reference: null,
+          store: null,
+          context: null,
+          ref: null,
+          unmounted: null,
+        },
       });
-    });
-
-    it('returns the element itself if valid SimpElement', () => {
-      const el = createMockHostElement();
-      expect(normalizeChildren(el, true)).toBe(el);
     });
 
     it('flattens nested arrays of elements and provides proper keys to each element', () => {
-      const result = normalizeChildren(
+      const el = createMockHostElement();
+      normalizeChildren(
+        el,
         [
           createElement('span'),
           createElement('span'),
@@ -101,11 +154,12 @@ describe('createElement and utils', () => {
         true
       );
 
-      expect(result).toEqual([
+      expect(el.children).toEqual([
         {
           key: '.0',
           type: 'span',
-          flag: SimpElementFlag.HOST,
+          flag: SIMP_ELEMENT_FLAG_HOST,
+          childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
           parent: null,
           props: null,
           children: null,
@@ -119,7 +173,8 @@ describe('createElement and utils', () => {
         {
           key: '.1',
           type: 'span',
-          flag: SimpElementFlag.HOST,
+          flag: SIMP_ELEMENT_FLAG_HOST,
+          childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
           parent: null,
           props: null,
           children: null,
@@ -133,7 +188,8 @@ describe('createElement and utils', () => {
         {
           children: '123',
           key: '.2',
-          flag: SimpElementFlag.TEXT,
+          flag: SIMP_ELEMENT_FLAG_TEXT,
+          childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
           parent: null,
           type: null,
           props: null,
@@ -147,7 +203,8 @@ describe('createElement and utils', () => {
         {
           key: '.3.0',
           type: 'p',
-          flag: SimpElementFlag.HOST,
+          flag: SIMP_ELEMENT_FLAG_HOST,
+          childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
           parent: null,
           props: null,
           children: null,
@@ -161,7 +218,8 @@ describe('createElement and utils', () => {
         {
           key: '.3.1',
           type: 'p',
-          flag: SimpElementFlag.HOST,
+          flag: SIMP_ELEMENT_FLAG_HOST,
+          childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
           parent: null,
           props: null,
           children: null,
@@ -175,7 +233,8 @@ describe('createElement and utils', () => {
         {
           key: '.3.2.0',
           type: 's',
-          flag: SimpElementFlag.HOST,
+          flag: SIMP_ELEMENT_FLAG_HOST,
+          childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
           parent: null,
           props: null,
           children: null,
@@ -189,7 +248,8 @@ describe('createElement and utils', () => {
         {
           key: '.3.2.1',
           type: 's',
-          flag: SimpElementFlag.HOST,
+          flag: SIMP_ELEMENT_FLAG_HOST,
+          childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
           parent: null,
           props: null,
           children: null,
@@ -203,7 +263,8 @@ describe('createElement and utils', () => {
         {
           key: '.4bKeyI',
           type: 'b',
-          flag: SimpElementFlag.HOST,
+          flag: SIMP_ELEMENT_FLAG_HOST,
+          childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
           parent: null,
           props: { key: 'bKeyI' },
           children: null,
@@ -217,7 +278,8 @@ describe('createElement and utils', () => {
         {
           key: '.4bKeyII',
           type: 'b',
-          flag: SimpElementFlag.HOST,
+          flag: SIMP_ELEMENT_FLAG_HOST,
+          childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
           parent: null,
           props: { key: 'bKeyII' },
           children: null,
@@ -231,7 +293,8 @@ describe('createElement and utils', () => {
         {
           key: 'bKeyII',
           type: 'b',
-          flag: SimpElementFlag.HOST,
+          flag: SIMP_ELEMENT_FLAG_HOST,
+          childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
           parent: null,
           props: { key: 'bKeyII' },
           children: null,
@@ -245,7 +308,8 @@ describe('createElement and utils', () => {
         {
           key: '.6',
           type: 'span',
-          flag: SimpElementFlag.HOST,
+          flag: SIMP_ELEMENT_FLAG_HOST,
+          childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
           parent: null,
           props: null,
           children: null,
@@ -261,10 +325,11 @@ describe('createElement and utils', () => {
 
     it('flattens mixed array of elements and text', () => {
       const el = createMockHostElement();
-      const result = normalizeChildren(['a', el, 2], true);
-      expect(result).toEqual([
+      normalizeChildren(el, ['a', el, 2], true);
+      expect(el.children).toEqual([
         {
-          flag: SimpElementFlag.TEXT,
+          flag: SIMP_ELEMENT_FLAG_TEXT,
+          childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
           children: 'a',
           parent: null,
           key: '.0',
@@ -277,9 +342,10 @@ describe('createElement and utils', () => {
           ref: null,
           unmounted: null,
         },
-        { ...el, key: '.1' },
+        { ...el, childFlag: SIMP_ELEMENT_CHILD_FLAG_LIST, key: '.1' },
         {
-          flag: SimpElementFlag.TEXT,
+          flag: SIMP_ELEMENT_FLAG_TEXT,
+          childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
           children: '2',
           parent: null,
           key: '.2',
@@ -295,23 +361,20 @@ describe('createElement and utils', () => {
       ]);
     });
 
-    it('returns single element directly', () => {
-      const el = createMockHostElement();
-      expect(normalizeChildren(el, true)).toBe(el);
-    });
-
     it('returns array if more than one element after normalization', () => {
+      const parent = createMockHostElement();
       const el1 = createMockHostElement();
       const el2 = createMockHostElement();
-      const result = normalizeChildren([el1, el2], true);
-      expect(result).toEqual([el1, el2]);
+      normalizeChildren(parent, [el1, el2], true);
+      expect(parent.children).toEqual([el1, el2]);
     });
   });
 
   describe('createTextElement', () => {
     it('makes text element from different children types', () => {
       expect(createTextElement(1)).toEqual({
-        flag: SimpElementFlag.TEXT,
+        flag: SIMP_ELEMENT_FLAG_TEXT,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
         children: '1',
         parent: null,
         key: null,
@@ -325,7 +388,8 @@ describe('createElement and utils', () => {
         unmounted: null,
       });
       expect(createTextElement(0)).toEqual({
-        flag: SimpElementFlag.TEXT,
+        flag: SIMP_ELEMENT_FLAG_TEXT,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
         children: '0',
         parent: null,
         key: null,
@@ -339,7 +403,8 @@ describe('createElement and utils', () => {
         unmounted: null,
       });
       expect(createTextElement(-1)).toEqual({
-        flag: SimpElementFlag.TEXT,
+        flag: SIMP_ELEMENT_FLAG_TEXT,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
         children: '-1',
         parent: null,
         key: null,
@@ -353,7 +418,8 @@ describe('createElement and utils', () => {
         unmounted: null,
       });
       expect(createTextElement(42n)).toEqual({
-        flag: SimpElementFlag.TEXT,
+        flag: SIMP_ELEMENT_FLAG_TEXT,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
         children: '42',
         parent: null,
         key: null,
@@ -367,7 +433,8 @@ describe('createElement and utils', () => {
         unmounted: null,
       });
       expect(createTextElement('')).toEqual({
-        flag: SimpElementFlag.TEXT,
+        flag: SIMP_ELEMENT_FLAG_TEXT,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
         children: '',
         parent: null,
         key: null,
@@ -387,7 +454,8 @@ describe('createElement and utils', () => {
     it('creates an element with a string type and no props or children', () => {
       const element = createElement('div');
       expect(element).toEqual({
-        flag: SimpElementFlag.HOST,
+        flag: SIMP_ELEMENT_FLAG_HOST,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
         type: 'div',
         parent: null,
         key: null,
@@ -404,7 +472,8 @@ describe('createElement and utils', () => {
 
     it('creates an element with a string type and with text children', () => {
       expect(createElement('div', null, 'child')).toEqual({
-        flag: SimpElementFlag.HOST,
+        flag: SIMP_ELEMENT_FLAG_HOST,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
         type: 'div',
         props: { children: 'child' },
         parent: null,
@@ -418,7 +487,8 @@ describe('createElement and utils', () => {
         unmounted: null,
       });
       expect(createElement('div', null, '')).toEqual({
-        flag: SimpElementFlag.HOST,
+        flag: SIMP_ELEMENT_FLAG_HOST,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
         type: 'div',
         parent: null,
         key: null,
@@ -432,7 +502,8 @@ describe('createElement and utils', () => {
         unmounted: null,
       });
       expect(createElement('div', null, 0)).toEqual({
-        flag: SimpElementFlag.HOST,
+        flag: SIMP_ELEMENT_FLAG_HOST,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
         type: 'div',
         props: { children: '0' },
         parent: null,
@@ -449,10 +520,12 @@ describe('createElement and utils', () => {
 
     it('creates an element with a string type and with combined children', () => {
       expect(createElement('div', null, ['child'])).toEqual({
-        flag: SimpElementFlag.HOST,
+        flag: SIMP_ELEMENT_FLAG_HOST,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
         type: 'div',
         children: {
-          flag: SimpElementFlag.TEXT,
+          flag: SIMP_ELEMENT_FLAG_TEXT,
+          childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
           children: 'child',
           parent: null,
           key: '.0',
@@ -476,12 +549,14 @@ describe('createElement and utils', () => {
         unmounted: null,
       });
       expect(createElement('div', null, 'child', createMockHostElement(), 'tail')).toEqual({
-        flag: SimpElementFlag.HOST,
+        flag: SIMP_ELEMENT_FLAG_HOST,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_LIST,
         type: 'div',
         children: [
           {
-            flag: SimpElementFlag.TEXT,
+            flag: SIMP_ELEMENT_FLAG_TEXT,
             children: 'child',
+            childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
             parent: null,
             key: '.0',
             type: null,
@@ -494,7 +569,8 @@ describe('createElement and utils', () => {
             unmounted: null,
           },
           {
-            flag: SimpElementFlag.HOST,
+            flag: SIMP_ELEMENT_FLAG_HOST,
+            childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
             type: 'div',
             props: { children: '123' },
             parent: null,
@@ -508,7 +584,8 @@ describe('createElement and utils', () => {
             unmounted: null,
           },
           {
-            flag: SimpElementFlag.TEXT,
+            flag: SIMP_ELEMENT_FLAG_TEXT,
+            childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
             children: 'tail',
             parent: null,
             key: '.2',
@@ -533,11 +610,13 @@ describe('createElement and utils', () => {
         unmounted: null,
       });
       expect(createElement('div', null, ['child', createMockHostElement(), 'tail'])).toEqual({
-        flag: SimpElementFlag.HOST,
+        flag: SIMP_ELEMENT_FLAG_HOST,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_LIST,
         type: 'div',
         children: [
           {
-            flag: SimpElementFlag.TEXT,
+            flag: SIMP_ELEMENT_FLAG_TEXT,
+            childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
             children: 'child',
             parent: null,
             key: '.0',
@@ -551,7 +630,8 @@ describe('createElement and utils', () => {
             unmounted: null,
           },
           {
-            flag: SimpElementFlag.HOST,
+            flag: SIMP_ELEMENT_FLAG_HOST,
+            childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
             type: 'div',
             props: { children: '123' },
             parent: null,
@@ -565,7 +645,8 @@ describe('createElement and utils', () => {
             unmounted: null,
           },
           {
-            flag: SimpElementFlag.TEXT,
+            flag: SIMP_ELEMENT_FLAG_TEXT,
+            childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
             children: 'tail',
             parent: null,
             key: '.2',
@@ -594,7 +675,8 @@ describe('createElement and utils', () => {
     it('creates an element with a string type and props', () => {
       const element = createElement('div', { id: 'it' });
       expect(element).toEqual({
-        flag: SimpElementFlag.HOST,
+        flag: SIMP_ELEMENT_FLAG_HOST,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
         type: 'div',
         props: { id: 'it' },
         parent: null,
@@ -615,7 +697,8 @@ describe('createElement and utils', () => {
         key: 'id',
       });
       expect(element).toEqual({
-        flag: SimpElementFlag.HOST,
+        flag: SIMP_ELEMENT_FLAG_HOST,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
         type: 'div',
         className: 'red-colored',
         key: 'id',
@@ -632,15 +715,17 @@ describe('createElement and utils', () => {
 
     it('creates an element with a string type, props, and children', () => {
       expect(createElement('div', { id: 'it' }, 'child1', 'child2', createMockHostElement())).toEqual({
-        flag: SimpElementFlag.HOST,
+        flag: SIMP_ELEMENT_FLAG_HOST,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_LIST,
         type: 'div',
         props: {
           id: 'it',
         },
         children: [
           {
-            flag: SimpElementFlag.TEXT,
+            flag: SIMP_ELEMENT_FLAG_TEXT,
             children: 'child1',
+            childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
             parent: null,
             key: '.0',
             type: null,
@@ -653,7 +738,8 @@ describe('createElement and utils', () => {
             unmounted: null,
           },
           {
-            flag: SimpElementFlag.TEXT,
+            flag: SIMP_ELEMENT_FLAG_TEXT,
+            childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
             children: 'child2',
             parent: null,
             key: '.1',
@@ -683,7 +769,8 @@ describe('createElement and utils', () => {
           children: ['child1', 'child2', createMockHostElement()],
         })
       ).toEqual({
-        flag: SimpElementFlag.HOST,
+        flag: SIMP_ELEMENT_FLAG_HOST,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_LIST,
         type: 'div',
         props: {
           id: 'it',
@@ -691,7 +778,8 @@ describe('createElement and utils', () => {
         },
         children: [
           {
-            flag: SimpElementFlag.TEXT,
+            flag: SIMP_ELEMENT_FLAG_TEXT,
+            childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
             children: 'child1',
             parent: null,
             key: '.0',
@@ -705,7 +793,8 @@ describe('createElement and utils', () => {
             unmounted: null,
           },
           {
-            flag: SimpElementFlag.TEXT,
+            flag: SIMP_ELEMENT_FLAG_TEXT,
+            childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
             children: 'child2',
             parent: null,
             key: '.1',
@@ -735,7 +824,8 @@ describe('createElement and utils', () => {
       const props = { foo: 'bar' };
       const element = createElement(MockComponent, props);
       expect(element).toEqual({
-        flag: SimpElementFlag.FC,
+        flag: SIMP_ELEMENT_FLAG_FC,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
         type: MockComponent,
         props,
         parent: null,
@@ -758,7 +848,8 @@ describe('createElement and utils', () => {
         'child2'
       );
       expect(element).toEqual({
-        flag: SimpElementFlag.FC,
+        flag: SIMP_ELEMENT_FLAG_FC,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
         type: MockComponent,
         props: {
           foo: 'bar',
@@ -783,8 +874,9 @@ describe('createElement and utils', () => {
       const hostElement = createElement('div', { foo: 'bar', children: 'ignored children' }, 'child1', 'child2');
 
       expect(fcElement).toEqual({
-        flag: SimpElementFlag.FC,
+        flag: SIMP_ELEMENT_FLAG_FC,
         type: MockComponent,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
         props: { foo: 'bar', children: ['child1', 'child2'] },
         parent: null,
         key: null,
@@ -797,7 +889,8 @@ describe('createElement and utils', () => {
         unmounted: null,
       });
       expect(hostElement).toEqual({
-        flag: SimpElementFlag.HOST,
+        flag: SIMP_ELEMENT_FLAG_HOST,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_LIST,
         type: 'div',
         props: {
           foo: 'bar',
@@ -805,7 +898,8 @@ describe('createElement and utils', () => {
         },
         children: [
           {
-            flag: SimpElementFlag.TEXT,
+            flag: SIMP_ELEMENT_FLAG_TEXT,
+            childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
             children: 'child1',
             parent: null,
             key: '.0',
@@ -819,7 +913,8 @@ describe('createElement and utils', () => {
             unmounted: null,
           },
           {
-            flag: SimpElementFlag.TEXT,
+            flag: SIMP_ELEMENT_FLAG_TEXT,
+            childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
             children: 'child2',
             parent: null,
             key: '.1',
@@ -851,7 +946,8 @@ describe('createElement and utils', () => {
       });
 
       expect(element).toEqual({
-        flag: SimpElementFlag.FC,
+        flag: SIMP_ELEMENT_FLAG_FC,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
         type: MockComponent,
         props: { foo: 'bar', children: ['child1', 'child2'] },
         parent: null,
@@ -868,7 +964,8 @@ describe('createElement and utils', () => {
 
     it('creates a Fragment element', () => {
       expect(createElement(Fragment)).toEqual({
-        flag: SimpElementFlag.FRAGMENT,
+        flag: SIMP_ELEMENT_FLAG_FRAGMENT,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
         parent: null,
         key: null,
         type: null,
@@ -882,9 +979,11 @@ describe('createElement and utils', () => {
         unmounted: null,
       });
       expect(createElement(Fragment, { children: '12' })).toEqual({
-        flag: SimpElementFlag.FRAGMENT,
+        flag: SIMP_ELEMENT_FLAG_FRAGMENT,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
         children: {
-          flag: SimpElementFlag.TEXT,
+          flag: SIMP_ELEMENT_FLAG_TEXT,
+          childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
           children: '12',
           parent: null,
           key: '.0',
@@ -909,9 +1008,11 @@ describe('createElement and utils', () => {
         unmounted: null,
       });
       expect(createElement(Fragment, { children: 'ignored children' }, '123')).toEqual({
-        flag: SimpElementFlag.FRAGMENT,
+        flag: SIMP_ELEMENT_FLAG_FRAGMENT,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
         children: {
-          flag: SimpElementFlag.TEXT,
+          flag: SIMP_ELEMENT_FLAG_TEXT,
+          childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
           children: '123',
           parent: null,
           key: '.0',
@@ -936,10 +1037,12 @@ describe('createElement and utils', () => {
         unmounted: null,
       });
       expect(createElement(Fragment, null!, '123', '456', createMockHostElement())).toEqual({
-        flag: SimpElementFlag.FRAGMENT,
+        flag: SIMP_ELEMENT_FLAG_FRAGMENT,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_LIST,
         children: [
           {
-            flag: SimpElementFlag.TEXT,
+            flag: SIMP_ELEMENT_FLAG_TEXT,
+            childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
             children: '123',
             parent: null,
             key: '.0',
@@ -953,7 +1056,8 @@ describe('createElement and utils', () => {
             unmounted: null,
           },
           {
-            flag: SimpElementFlag.TEXT,
+            flag: SIMP_ELEMENT_FLAG_TEXT,
+            childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
             children: '456',
             parent: null,
             key: '.1',
@@ -967,7 +1071,8 @@ describe('createElement and utils', () => {
             unmounted: null,
           },
           {
-            flag: SimpElementFlag.HOST,
+            flag: SIMP_ELEMENT_FLAG_HOST,
+            childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
             type: 'div',
             props: { children: '123' },
             parent: null,
@@ -998,10 +1103,12 @@ describe('createElement and utils', () => {
           children: createMockHostElement(),
         })
       ).toEqual({
-        flag: SimpElementFlag.FRAGMENT,
+        flag: SIMP_ELEMENT_FLAG_FRAGMENT,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
         key: 'KEY',
         children: {
-          flag: SimpElementFlag.HOST,
+          flag: SIMP_ELEMENT_FLAG_HOST,
+          childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
           type: 'div',
           props: { children: '123' },
           parent: null,
@@ -1028,7 +1135,8 @@ describe('createElement and utils', () => {
 
     it('creates a Provider element', () => {
       expect(createElement(TestContext.Provider, { value: 'PROVIDED_VALUE' }, 12)).toEqual({
-        flag: SimpElementFlag.FC,
+        flag: SIMP_ELEMENT_FLAG_FC,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
         type: TestContext.Provider,
         props: { value: 'PROVIDED_VALUE', children: 12 },
         parent: null,
@@ -1047,12 +1155,14 @@ describe('createElement and utils', () => {
           children: createMockHostElement(),
         })
       ).toEqual({
-        flag: SimpElementFlag.FC,
+        flag: SIMP_ELEMENT_FLAG_FC,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
         type: TestContext.Provider,
         props: {
           value: 'PROVIDED_VALUE',
           children: {
-            flag: SimpElementFlag.HOST,
+            flag: SIMP_ELEMENT_FLAG_HOST,
+            childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
             parent: null,
             props: { children: '123' },
             type: 'div',
@@ -1079,7 +1189,8 @@ describe('createElement and utils', () => {
       expect(
         createElement(TestContext.Provider, { value: 'PROVIDED_VALUE', children: 'ignored children' }, '123')
       ).toEqual({
-        flag: SimpElementFlag.FC,
+        flag: SIMP_ELEMENT_FLAG_FC,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
         type: TestContext.Provider,
         props: { value: 'PROVIDED_VALUE', children: '123' },
         parent: null,
@@ -1093,8 +1204,9 @@ describe('createElement and utils', () => {
         unmounted: null,
       });
       expect(createElement(TestContext.Provider, { key: '123', value: 'PROVIDED_VALUE' }, '123')).toEqual({
-        flag: SimpElementFlag.FC,
+        flag: SIMP_ELEMENT_FLAG_FC,
         type: TestContext.Provider,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
         props: { value: 'PROVIDED_VALUE', children: '123', key: '123' },
         key: '123',
         parent: null,
@@ -1107,7 +1219,8 @@ describe('createElement and utils', () => {
         unmounted: null,
       });
       expect(createElement(TestContext.Provider, { value: 'PROVIDED_VALUE' })).toEqual({
-        flag: SimpElementFlag.FC,
+        flag: SIMP_ELEMENT_FLAG_FC,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
         type: TestContext.Provider,
         props: { value: 'PROVIDED_VALUE' },
         children: null,
@@ -1128,7 +1241,8 @@ describe('createElement and utils', () => {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
       expect(createElement(TestContext.Consumer, null, MockComponent)).toEqual({
-        flag: SimpElementFlag.FC,
+        flag: SIMP_ELEMENT_FLAG_FC,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
         type: TestContext.Consumer,
         props: { children: MockComponent },
         parent: null,
@@ -1144,7 +1258,8 @@ describe('createElement and utils', () => {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
       expect(createElement(TestContext.Consumer, { children: MockComponent })).toEqual({
-        flag: SimpElementFlag.FC,
+        flag: SIMP_ELEMENT_FLAG_FC,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
         type: TestContext.Consumer,
         props: { children: MockComponent },
         parent: null,
@@ -1169,8 +1284,9 @@ describe('createElement and utils', () => {
           }
         )
       ).toEqual({
-        flag: SimpElementFlag.FC,
+        flag: SIMP_ELEMENT_FLAG_FC,
         type: TestContext.Consumer,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
         props: { children: MockComponent, key: '123' },
         key: '123',
         parent: null,
@@ -1185,8 +1301,9 @@ describe('createElement and utils', () => {
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-expect-error
       expect(createElement(TestContext.Consumer)).toEqual({
-        flag: SimpElementFlag.FC,
+        flag: SIMP_ELEMENT_FLAG_FC,
         type: TestContext.Consumer,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
         parent: null,
         key: null,
         props: null,
@@ -1203,8 +1320,9 @@ describe('createElement and utils', () => {
 
   describe('normalizeRoot', () => {
     it('should wrap null in a text element or return nothing', () => {
-      expect(normalizeRoot('hello', false)).toEqual({
-        flag: SimpElementFlag.TEXT,
+      expect(normalizeRoot(createMockHostElement(), 'hello', false).children).toEqual({
+        flag: SIMP_ELEMENT_FLAG_TEXT,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
         children: 'hello',
         parent: null,
         key: null,
@@ -1217,8 +1335,9 @@ describe('createElement and utils', () => {
         ref: null,
         unmounted: null,
       });
-      expect(normalizeRoot(42, false)).toEqual({
-        flag: SimpElementFlag.TEXT,
+      expect(normalizeRoot(createMockHostElement(), 42, false).children).toEqual({
+        flag: SIMP_ELEMENT_FLAG_TEXT,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
         children: '42',
         parent: null,
         key: null,
@@ -1231,8 +1350,9 @@ describe('createElement and utils', () => {
         ref: null,
         unmounted: null,
       });
-      expect(normalizeRoot(123n, false)).toEqual({
-        flag: SimpElementFlag.TEXT,
+      expect(normalizeRoot(createMockHostElement(), 123n, false).children).toEqual({
+        flag: SIMP_ELEMENT_FLAG_TEXT,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
         children: '123',
         parent: null,
         key: null,
@@ -1245,26 +1365,29 @@ describe('createElement and utils', () => {
         ref: null,
         unmounted: null,
       });
-      expect(normalizeRoot('', false)).toBeNull();
-      expect(normalizeRoot(true, false)).toBeNull();
-      expect(normalizeRoot(false, false)).toBeNull();
-      expect(normalizeRoot(null, false)).toBeNull();
-      expect(normalizeRoot(undefined, false)).toBeNull();
-      expect(normalizeRoot([''], false)).toBeNull();
-      expect(normalizeRoot([null], false)).toBeNull();
-      expect(normalizeRoot([], false)).toBeNull();
-      expect(normalizeRoot([undefined, ['', [[], ['']]]], false)).toBeNull();
-      expect(normalizeRoot(createElement(Fragment), false)).toBeNull();
-      expect(normalizeRoot(createPortal(undefined, {}), false)).toBeNull();
+      expect(normalizeRoot(createMockHostElement(), '', false).children).toBeNull();
+      expect(normalizeRoot(createMockHostElement(), true, false).children).toBeNull();
+      expect(normalizeRoot(createMockHostElement(), false, false).children).toBeNull();
+      expect(normalizeRoot(createMockHostElement(), null, false).children).toBeNull();
+      expect(normalizeRoot(createMockHostElement(), undefined, false).children).toBeNull();
+      expect(normalizeRoot(createMockHostElement(), [''], false).children).toBeNull();
+      expect(normalizeRoot(createMockHostElement(), [null], false).children).toBeNull();
+      expect(normalizeRoot(createMockHostElement(), [], false).children).toBeNull();
+      expect(normalizeRoot(createMockHostElement(), [undefined, ['', [[], ['']]]], false).children).toBeNull();
+      expect(normalizeRoot(createMockHostElement(), createElement(Fragment), false).children).toBeNull();
+      expect(normalizeRoot(createMockHostElement(), createPortal(undefined, {}), false).children).toBeNull();
     });
 
     it('should wrap an array in a fragment element', () => {
-      const result = normalizeRoot(['a', 'b', ['c'], '', false, [[[true]], '']], true);
-      expect(result).toEqual({
-        flag: SimpElementFlag.FRAGMENT,
+      expect(
+        normalizeRoot(createMockHostElement(), ['a', 'b', ['c'], '', false, [[[true]], '']], true).children
+      ).toEqual({
+        flag: SIMP_ELEMENT_FLAG_FRAGMENT,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_LIST,
         children: [
           {
-            flag: SimpElementFlag.TEXT,
+            flag: SIMP_ELEMENT_FLAG_TEXT,
+            childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
             children: 'a',
             parent: null,
             key: '.0',
@@ -1278,7 +1401,8 @@ describe('createElement and utils', () => {
             unmounted: null,
           },
           {
-            flag: SimpElementFlag.TEXT,
+            flag: SIMP_ELEMENT_FLAG_TEXT,
+            childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
             children: 'b',
             parent: null,
             key: '.1',
@@ -1292,7 +1416,8 @@ describe('createElement and utils', () => {
             unmounted: null,
           },
           {
-            flag: SimpElementFlag.TEXT,
+            flag: SIMP_ELEMENT_FLAG_TEXT,
+            childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
             children: 'c',
             parent: null,
             key: '.2.0',
@@ -1320,9 +1445,9 @@ describe('createElement and utils', () => {
     });
 
     it('should not wrap elements which left single element after normalization', () => {
-      const result = normalizeRoot([createElement('a'), undefined], true);
-      expect(result).toEqual({
-        flag: SimpElementFlag.HOST,
+      expect(normalizeRoot(createMockHostElement(), [createElement('a'), undefined], true).children).toEqual({
+        flag: SIMP_ELEMENT_FLAG_HOST,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_EMPTY,
         type: 'a',
         parent: null,
         key: '.0',
@@ -1338,22 +1463,8 @@ describe('createElement and utils', () => {
     });
 
     it('should return node itself if it is already a SimpElement', () => {
-      const node: SimpElement = {
-        type: 'div',
-        flag: SimpElementFlag.HOST,
-        parent: null,
-        key: null,
-        props: null,
-        children: null,
-        className: null,
-        reference: null,
-        store: null,
-        context: null,
-        ref: null,
-        unmounted: null,
-      };
-      const result = normalizeRoot(node, true);
-      expect(result).toBe(node);
+      const node: SimpElement = createElement('div');
+      expect(normalizeRoot(node, node, true).children).toBe(node);
     });
   });
 });

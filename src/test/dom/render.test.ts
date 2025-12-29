@@ -1,5 +1,5 @@
 import { createRoot, render } from '@simpreact/dom';
-import { createElement, provideHostAdapter, SimpElementFlag } from '@simpreact/internal';
+import { createElement, provideHostAdapter, SIMP_ELEMENT_FLAG_HOST } from '@simpreact/internal';
 import { Element } from 'flyweight-dom';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -21,7 +21,7 @@ describe('render', () => {
       render(element, container as any);
 
       expect(testHostAdapter.clearNode).toHaveBeenCalledWith(container);
-      expect((container as any).__SIMP_ELEMENT__.flag).toBe(SimpElementFlag.HOST);
+      expect((container as any).__SIMP_ELEMENT__.flag).toBe(SIMP_ELEMENT_FLAG_HOST);
       expect((container as any).__SIMP_ELEMENT__.children).toBe(element);
     });
 
@@ -32,7 +32,7 @@ describe('render', () => {
       render(initial, container as any);
       render(next, container as any);
 
-      expect((container as any).__SIMP_ELEMENT__.flag).toBe(SimpElementFlag.HOST);
+      expect((container as any).__SIMP_ELEMENT__.flag).toBe(SIMP_ELEMENT_FLAG_HOST);
       expect((container as any).__SIMP_ELEMENT__.children).toBe(next);
     });
 
@@ -63,7 +63,7 @@ describe('render', () => {
 
       root.render(element);
 
-      expect((container as any).__SIMP_ELEMENT__.flag).toBe(SimpElementFlag.HOST);
+      expect((container as any).__SIMP_ELEMENT__.flag).toBe(SIMP_ELEMENT_FLAG_HOST);
       expect((container as any).__SIMP_ELEMENT__.children).toBe(element);
     });
 
@@ -75,7 +75,7 @@ describe('render', () => {
       root.render(first);
       root.render(second);
 
-      expect((container as any).__SIMP_ELEMENT__.flag).toBe(SimpElementFlag.HOST);
+      expect((container as any).__SIMP_ELEMENT__.flag).toBe(SIMP_ELEMENT_FLAG_HOST);
       expect((container as any).__SIMP_ELEMENT__.children).toBe(second);
     });
 
@@ -86,7 +86,7 @@ describe('render', () => {
       root.render(element);
       root.unmount();
 
-      expect((container as any).__SIMP_ELEMENT__.flag).toBe(SimpElementFlag.HOST);
+      expect((container as any).__SIMP_ELEMENT__.flag).toBe(SIMP_ELEMENT_FLAG_HOST);
       expect((container as any).__SIMP_ELEMENT__.children).toBe(null);
     });
   });

@@ -1,4 +1,4 @@
-import { rerender as _rerender, lifecycleEventBus, RefObject, SimpElement } from '@simpreact/internal';
+import { rerender as _rerender, lifecycleEventBus, type RefObject, type SimpElement } from '@simpreact/internal';
 import type { Maybe, Nullable } from '@simpreact/shared';
 import { callOrGet, noop, shallowEqual } from '@simpreact/shared';
 

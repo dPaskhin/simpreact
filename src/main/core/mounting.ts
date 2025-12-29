@@ -1,12 +1,21 @@
-import type { Many, Maybe, Nullable } from '@simpreact/shared';
+import type { Maybe, Nullable } from '@simpreact/shared';
 import { emptyObject } from '@simpreact/shared';
 import { createComponentStore, isComponentElement } from './component.js';
-import type { SimpElement } from './createElement.js';
-import { createElementStore, createTextElement, normalizeRoot, SimpElementFlag } from './createElement.js';
+import {
+  createElementStore,
+  createTextElement,
+  normalizeRoot,
+  SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
+  SIMP_ELEMENT_CHILD_FLAG_LIST,
+  SIMP_ELEMENT_CHILD_FLAG_TEXT,
+  type SimpElement,
+} from './createElement.js';
 import type { HostReference } from './hostAdapter.js';
 import { hostAdapter } from './hostAdapter.js';
 import { type LifecycleEvent, lifecycleEventBus } from './lifecycleEventBus.js';
 import { applyRef } from './ref.js';
+
+const mountHandlers = [mountHostElement, mountFunctionalElement, mountTextElement, mountPortal, mountFragment];
 
 export function mount(
   element: SimpElement,
@@ -15,17 +24,9 @@ export function mount(
   context: unknown,
   hostNamespace: Maybe<string>
 ): void {
-  if (element.flag === SimpElementFlag.TEXT) {
-    mountTextElement(element, parentReference, nextReference);
-  } else if (element.flag === SimpElementFlag.HOST) {
-    mountHostElement(element, parentReference, nextReference, context, hostNamespace);
-  } else if (element.flag === SimpElementFlag.FC) {
-    mountFunctionalElement(element, parentReference, nextReference, context, hostNamespace);
-  } else if (element.flag === SimpElementFlag.FRAGMENT) {
-    mountFragment(element, parentReference, nextReference, context, hostNamespace);
-  } else {
-    mountPortal(element, parentReference, nextReference, context);
-  }
+  const index = Math.log2(element.flag & -element.flag);
+
+  mountHandlers[index]!(element, parentReference, nextReference, context, hostNamespace);
 }
 
 export function mountTextElement(
@@ -33,11 +34,11 @@ export function mountTextElement(
   parentReference: Nullable<HostReference>,
   nextReference: Nullable<HostReference>
 ): void {
-  const reference = (element.reference = hostAdapter.createTextReference(element.children as string));
-
-  if (parentReference) {
-    hostAdapter.insertOrAppend(parentReference, reference, nextReference);
-  }
+  hostAdapter.insertOrAppend(
+    parentReference,
+    (element.reference = hostAdapter.createTextReference(element.children as string)),
+    nextReference
+  );
 }
 
 export function mountHostElement(
@@ -54,23 +55,26 @@ export function mountHostElement(
 
   hostAdapter.attachElementToReference(element, hostReference);
 
-  // HOST element always has Maybe<Many<SimpElement>> children due to a normalization process.
-  const children = element.children as Maybe<Many<SimpElement>>;
-
-  if (Array.isArray(children)) {
-    mountArrayChildren(children, hostReference, null, context, element, hostNamespaces?.children);
-  } else if (children) {
-    children.parent = element;
-    mount(children, hostReference, null, context, hostNamespaces?.children);
+  if (element.childFlag === SIMP_ELEMENT_CHILD_FLAG_LIST) {
+    mountArrayChildren(
+      element.children as SimpElement[],
+      hostReference,
+      null,
+      context,
+      element,
+      hostNamespaces?.children
+    );
+  }
+  if (element.childFlag === SIMP_ELEMENT_CHILD_FLAG_ELEMENT) {
+    (element.children as SimpElement).parent = element;
+    mount(element.children as SimpElement, hostReference, null, context, hostNamespaces?.children);
+  }
+  if (element.childFlag === SIMP_ELEMENT_CHILD_FLAG_TEXT) {
+    hostAdapter.setTextContent(hostReference, element.props.children);
   }
 
   if (element.props) {
     hostAdapter.mountProps(hostReference, element, hostNamespace);
-
-    // HOST elements can have either children elements or string children in the props due to normalization.
-    if (!element.children && typeof element.props.children === 'string') {
-      hostAdapter.setTextContent(hostReference, element.props.children);
-    }
   }
 
   if (element.className) {
@@ -144,7 +148,7 @@ export function mountFunctionalElement(
       });
     } while (triedToRerender);
 
-    children = normalizeRoot(children, false);
+    normalizeRoot(element, children, false);
   } catch (error) {
     const event: LifecycleEvent = { type: 'errored', element, error, phase: 'mounting', handled: false };
 
@@ -159,9 +163,9 @@ export function mountFunctionalElement(
     triedToRerenderUnsubscribe!();
   }
 
-  if (children) {
-    children.parent = element;
-    mount((element.children = children), parentReference, nextReference, element.context, hostNamespace);
+  if (element.children) {
+    (element.children as SimpElement).parent = element;
+    mount(element.children as SimpElement, parentReference, nextReference, element.context, hostNamespace);
   }
 
   lifecycleEventBus.publish({ type: 'mounted', element });

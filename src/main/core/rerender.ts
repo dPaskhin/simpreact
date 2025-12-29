@@ -1,5 +1,4 @@
-import type { SimpElement, SimpElementStore } from './createElement.js';
-import { SimpElementFlag } from './createElement.js';
+import { SIMP_ELEMENT_FLAG_FC, type SimpElement, type SimpElementStore } from './createElement.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
 import { isMemo } from './memo.js';
 import { findParentReferenceFromElement, updateFunctionalComponent } from './patching.js';
@@ -40,7 +39,7 @@ function startScheduler() {
 }
 
 export function rerender(element: SimpElement) {
-  if (element.flag !== SimpElementFlag.FC) {
+  if ((element.flag & SIMP_ELEMENT_FLAG_FC) === 0) {
     throw new TypeError('Re-rendering is only supported for FC elements.');
   }
   if (element.unmounted) {

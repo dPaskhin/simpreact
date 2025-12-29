@@ -1,5 +1,4 @@
-import type { SimpElement } from '@simpreact/internal';
-import { SimpElementFlag } from '@simpreact/internal';
+import { SIMP_ELEMENT_FLAG_HOST, type SimpElement } from '@simpreact/internal';
 import type { Nullable } from '@simpreact/shared';
 
 import { getElementFromDom } from './attach-element-to-dom.js';
@@ -122,7 +121,7 @@ export function dispatchDelegatedEvent(event: Event): void {
   let element: Nullable<SimpElement> = getElementFromDom(event.target);
 
   while (element) {
-    if (element.flag === SimpElementFlag.HOST) {
+    if ((element.flag & SIMP_ELEMENT_FLAG_HOST) !== 0) {
       const captureHandler = element.props?.[eventNameByTypes[event.type as DelegatedEventType] + 'Capture'];
       const bubbleHandler = element.props?.[eventNameByTypes[event.type as DelegatedEventType]];
       if (captureHandler) {

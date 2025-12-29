@@ -54,13 +54,14 @@
           },
           "correctness": {
             "noUnusedVariables": "error",
-            "noUnusedImports": "warn"
+            "noUnusedImports": "error"
           },
           "style": {
             "noCommonJs": "error",
             "noNamespace": "error",
             "useArrayLiterals": "error",
-            "useAsConstAssertion": "error"
+            "useAsConstAssertion": "error",
+            "useImportType": "error"
           },
           "suspicious": {
             "noExplicitAny": "off",

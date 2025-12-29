@@ -1,7 +1,13 @@
 import type { Many, Maybe } from '@simpreact/shared';
 
-import type { SimpElement } from './createElement.js';
-import { SimpElementFlag } from './createElement.js';
+import {
+  SIMP_ELEMENT_FLAG_FC,
+  SIMP_ELEMENT_FLAG_FRAGMENT,
+  SIMP_ELEMENT_FLAG_HOST,
+  SIMP_ELEMENT_FLAG_PORTAL,
+  SIMP_ELEMENT_FLAG_TEXT,
+  type SimpElement,
+} from './createElement.js';
 import type { HostReference } from './hostAdapter.js';
 import { hostAdapter } from './hostAdapter.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
@@ -15,8 +21,8 @@ export function unmount(element: Many<SimpElement>): void {
     return;
   }
 
-  if (element.flag === SimpElementFlag.FC) {
-    // Skip — element is already unmounted.
+  if ((element.flag & SIMP_ELEMENT_FLAG_FC) !== 0) {
+    // Skip — the element is already unmounted.
     if (element.unmounted) {
       return;
     }
@@ -30,11 +36,11 @@ export function unmount(element: Many<SimpElement>): void {
     return;
   }
 
-  if (element.flag === SimpElementFlag.TEXT) {
+  if ((element.flag & SIMP_ELEMENT_FLAG_TEXT) !== 0) {
     return;
   }
 
-  if (element.flag === SimpElementFlag.PORTAL) {
+  if ((element.flag & SIMP_ELEMENT_FLAG_PORTAL) !== 0) {
     remove(element.children as SimpElement, element.ref as HostReference);
     return;
   }
@@ -45,7 +51,7 @@ export function unmount(element: Many<SimpElement>): void {
     unmount(element.children as Many<SimpElement>);
   }
 
-  if (element.flag === SimpElementFlag.HOST) {
+  if ((element.flag & SIMP_ELEMENT_FLAG_HOST) !== 0) {
     unmountRef(element);
     hostAdapter.unmountProps(element.reference, element);
   }
@@ -54,20 +60,20 @@ export function unmount(element: Many<SimpElement>): void {
 export function clearElementHostReference(element: Maybe<SimpElement>, parentHostReference: HostReference): void {
   while (element != null) {
     if (
-      element.flag === SimpElementFlag.HOST ||
-      element.flag === SimpElementFlag.TEXT ||
-      element.flag === SimpElementFlag.PORTAL
+      (element.flag & SIMP_ELEMENT_FLAG_HOST) !== 0 ||
+      (element.flag & SIMP_ELEMENT_FLAG_TEXT) !== 0 ||
+      (element.flag & SIMP_ELEMENT_FLAG_PORTAL) !== 0
     ) {
       hostAdapter.removeChild(parentHostReference, element.reference!);
       return;
     }
     const children = element.children;
 
-    if (element.flag === SimpElementFlag.FC) {
+    if ((element.flag & SIMP_ELEMENT_FLAG_FC) !== 0) {
       element = children as SimpElement;
       continue;
     }
-    if (element.flag === SimpElementFlag.FRAGMENT) {
+    if ((element.flag & SIMP_ELEMENT_FLAG_FRAGMENT) !== 0) {
       if (Array.isArray(children)) {
         for (let i = 0, len = children.length; i < len; ++i) {
           clearElementHostReference(children[i] as SimpElement, parentHostReference);

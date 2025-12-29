@@ -1,15 +1,26 @@
-import type { Maybe, Nullable } from '@simpreact/shared';
-import { emptyObject } from '@simpreact/shared';
+import { emptyObject, type Maybe, type Nullable } from '@simpreact/shared';
 import { isComponentElement } from './component.js';
-import type { Key, SimpElement, SimpNode } from './createElement.js';
-import { createElementStore, normalizeRoot, SimpElementFlag } from './createElement.js';
-import type { HostReference } from './hostAdapter.js';
-import { hostAdapter } from './hostAdapter.js';
+import {
+  createElementStore,
+  type Key,
+  normalizeRoot,
+  SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
+  SIMP_ELEMENT_CHILD_FLAG_LIST,
+  SIMP_ELEMENT_CHILD_FLAG_TEXT,
+  SIMP_ELEMENT_FLAG_HOST,
+  SIMP_ELEMENT_FLAG_PORTAL,
+  SIMP_ELEMENT_FLAG_TEXT,
+  type SimpElement,
+  type SimpNode,
+} from './createElement.js';
+import { type HostReference, hostAdapter } from './hostAdapter.js';
 import { type LifecycleEvent, lifecycleEventBus } from './lifecycleEventBus.js';
 import { isMemo } from './memo.js';
 import { mount, mountArrayChildren, mountFunctionalElement } from './mounting.js';
 import { applyRef } from './ref.js';
 import { clearElementHostReference, remove, unmount } from './unmounting.js';
+
+const patchHandlers = [patchHostElement, patchFunctionalComponent, patchTextElement, patchPortal, patchFragment];
 
 export function patch(
   prevElement: SimpElement,
@@ -21,17 +32,12 @@ export function patch(
 ): void {
   if (prevElement.type !== nextElement.type || prevElement.key !== nextElement.key) {
     replaceWithNewElement(prevElement, nextElement, parentReference, context, hostNamespace);
-  } else if (nextElement.flag === SimpElementFlag.HOST) {
-    patchHostElement(prevElement, nextElement, context, hostNamespace);
-  } else if (nextElement.flag === SimpElementFlag.FC) {
-    patchFunctionalComponent(prevElement, nextElement, parentReference, nextReference, context, hostNamespace);
-  } else if (nextElement.flag === SimpElementFlag.TEXT) {
-    patchTextElement(prevElement, nextElement);
-  } else if (nextElement.flag === SimpElementFlag.FRAGMENT) {
-    patchFragment(prevElement, nextElement, parentReference, context, hostNamespace);
-  } else {
-    patchPortal(prevElement, nextElement, context);
+    return;
   }
+
+  const index = Math.log2(nextElement.flag & -nextElement.flag);
+
+  patchHandlers[index]!(prevElement, nextElement, context, parentReference, hostNamespace, nextReference);
 }
 
 function replaceWithNewElement(
@@ -44,7 +50,7 @@ function replaceWithNewElement(
   unmount(prevElement);
 
   nextElement.parent = prevElement.parent;
-  if (nextElement.flag === SimpElementFlag.HOST && prevElement.flag === SimpElementFlag.HOST) {
+  if ((nextElement.flag & SIMP_ELEMENT_FLAG_HOST) !== 0 && (prevElement.flag & SIMP_ELEMENT_FLAG_HOST) !== 0) {
     mount(nextElement, null, null, context, hostNamespace);
     hostAdapter.replaceChild(parentReference, nextElement.reference, prevElement.reference);
   } else {
@@ -57,25 +63,24 @@ function patchHostElement(
   prevElement: SimpElement,
   nextElement: SimpElement,
   context: unknown,
+  _parentReference: HostReference,
   hostNamespace: Maybe<string>
 ): void {
-  if (prevElement.ref) {
-    nextElement.ref = prevElement.ref;
-  }
+  nextElement.ref = prevElement.ref;
+  nextElement.reference = prevElement.reference;
+  hostAdapter.attachElementToReference(nextElement, nextElement.reference);
 
   const hostNamespaces = hostAdapter.getHostNamespaces(nextElement, hostNamespace);
   hostNamespace = hostNamespaces?.self;
 
-  nextElement.reference = prevElement.reference;
-
-  hostAdapter.attachElementToReference(nextElement, nextElement.reference);
-
   patchChildren(
+    prevElement.childFlag,
+    nextElement.childFlag,
     prevElement.children || prevElement.props?.children,
     nextElement.children || nextElement.props?.children,
-    nextElement.reference,
     null,
     nextElement,
+    nextElement.reference,
     context,
     hostNamespaces?.children
   );
@@ -92,10 +97,10 @@ function patchHostElement(
 function patchFunctionalComponent(
   prevElement: SimpElement,
   nextElement: SimpElement,
-  parentReference: HostReference,
-  nextReference: Nullable<HostReference>,
   context: unknown,
-  hostNamespace: Maybe<string>
+  parentReference: HostReference,
+  hostNamespace: Maybe<string>,
+  nextReference: Nullable<HostReference>
 ): void {
   if (prevElement.unmounted) {
     mountFunctionalElement(nextElement, parentReference, nextReference, context, hostNamespace);
@@ -111,6 +116,7 @@ function patchFunctionalComponent(
 
   if (
     isMemo(nextElement.type) &&
+    // TODO: replace with a comparing the prev and next elements cause its a unique way when we need to forcly rerender the component.
     !nextElement.type._forceRender &&
     nextElement.type._compare(prevElement.props, nextElement.props)
   ) {
@@ -125,7 +131,8 @@ function patchFunctionalComponent(
 
   nextElement.context = prevElement.context || context;
 
-  // FC element always has Maybe<SimpElement> children due to normalization process.
+  const { children: prevChildren, childFlag: prevChildFlag } = prevElement;
+
   let nextChildren;
   let triedToRerenderUnsubscribe;
 
@@ -158,12 +165,12 @@ function patchFunctionalComponent(
       });
     } while (triedToRerender);
 
-    nextChildren = normalizeRoot(nextChildren, false);
+    normalizeRoot(nextElement, nextChildren, false);
   } catch (error) {
     const parentChildren = prevElement.parent?.children;
 
-    if (Array.isArray(parentChildren)) {
-      parentChildren.splice(parentChildren.indexOf(prevElement), 1);
+    if (prevElement.parent?.childFlag === SIMP_ELEMENT_CHILD_FLAG_LIST) {
+      (parentChildren as SimpElement[]).splice((parentChildren as SimpElement[]).indexOf(prevElement), 1);
     } else if (prevElement.parent) {
       prevElement.parent.children = null;
     }
@@ -183,19 +190,14 @@ function patchFunctionalComponent(
     triedToRerenderUnsubscribe!();
   }
 
-  // Keep prevElement's children reference when prev and next elements are identical to avoid reassignment.
-  const prevChildren = prevElement.children;
-
-  if (nextChildren) {
-    nextElement.children = nextChildren;
-  }
-
   patchChildren(
+    prevChildFlag,
+    nextElement.childFlag,
     prevChildren,
-    nextChildren,
-    parentReference,
+    nextElement.children,
     nextReference,
     nextElement,
+    parentReference,
     nextElement.context,
     hostNamespace
   );
@@ -213,24 +215,29 @@ function patchTextElement(prevElement: SimpElement, nextElement: SimpElement): v
 function patchFragment(
   prevElement: SimpElement,
   nextElement: SimpElement,
-  parentReference: HostReference,
   context: unknown,
+  parentReference: HostReference,
   hostNamespace: Maybe<string>
 ): void {
   let nextReference: Nullable<HostReference> = null;
 
-  if (Array.isArray(prevElement.children) && !Array.isArray(nextElement.children) && nextElement.children) {
+  if (
+    prevElement.childFlag === SIMP_ELEMENT_CHILD_FLAG_LIST &&
+    nextElement.childFlag === SIMP_ELEMENT_CHILD_FLAG_ELEMENT
+  ) {
     nextReference = hostAdapter.findNextSiblingReference(
-      findHostReferenceFromElement(prevElement.children[prevElement.children.length - 1] as SimpElement)
+      findHostReferenceFromElement((prevElement.children as SimpElement[]).at(-1)!)
     );
   }
 
   patchChildren(
+    prevElement.childFlag,
+    nextElement.childFlag,
     prevElement.children,
     nextElement.children,
-    parentReference,
     nextReference,
     nextElement,
+    parentReference,
     context,
     hostNamespace
   );
@@ -242,10 +249,12 @@ export function patchPortal(prevElement: SimpElement, nextElement: SimpElement, 
   const nextChildren = nextElement.children as SimpElement;
 
   patchChildren(
+    prevElement.childFlag,
+    nextElement.childFlag,
     prevElement.children,
     nextChildren,
-    prevContainer as HostReference,
     null,
+    prevContainer as HostReference,
     nextElement,
     context,
     hostAdapter.getHostNamespaces(nextChildren, undefined)?.self
@@ -266,110 +275,141 @@ export function updateFunctionalComponent(
   context: unknown,
   hostNamespace: Maybe<string>
 ): void {
-  patchFunctionalComponent(element, element, parentReference, nextReference, context, hostNamespace);
+  patchFunctionalComponent(element, element, context, parentReference, hostNamespace, nextReference);
 }
 
 function patchChildren(
+  prevChildFlag: number,
+  nextChildFlag: number,
   prevChildren: SimpNode,
   nextChildren: SimpNode,
-  parentReference: HostReference,
   nextReference: Nullable<HostReference>,
-  nextElement: SimpElement,
+  parentElement: SimpElement,
+  parentReference: HostReference,
   context: unknown,
   hostNamespace: Maybe<string>
 ): void {
-  if (Array.isArray(prevChildren)) {
-    if (Array.isArray(nextChildren)) {
-      for (const child of nextChildren) {
-        (child as SimpElement).parent = nextElement;
+  switch (prevChildFlag) {
+    case SIMP_ELEMENT_CHILD_FLAG_LIST: {
+      switch (nextChildFlag) {
+        case SIMP_ELEMENT_CHILD_FLAG_LIST: {
+          for (const child of nextChildren as SimpElement[]) {
+            (child as SimpElement).parent = parentElement;
+          }
+          patchKeyedChildren(
+            prevChildren as SimpElement[],
+            nextChildren as SimpElement[],
+            parentReference,
+            nextReference,
+            context,
+            hostNamespace
+          );
+          break;
+        }
+        case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
+          patchKeyedChildren(
+            prevChildren as SimpElement[],
+            [nextChildren] as SimpElement[],
+            parentReference,
+            nextReference,
+            context,
+            hostNamespace
+          );
+          break;
+        }
+        case SIMP_ELEMENT_CHILD_FLAG_TEXT: {
+          unmount(prevChildren as SimpElement[]);
+          hostAdapter.setTextContent(parentReference, nextChildren as string);
+          break;
+        }
+        default: {
+          unmount(prevChildren as SimpElement[]);
+          hostAdapter.clearNode(parentReference);
+        }
       }
-      patchKeyedChildren(
-        prevChildren as SimpElement[],
-        nextChildren as SimpElement[],
-        parentReference,
-        nextReference,
-        context,
-        hostNamespace
-      );
-    } else if (typeof nextChildren === 'string') {
-      unmount(prevChildren as SimpElement[]);
-      hostAdapter.setTextContent(parentReference, nextChildren);
-    } else if (nextChildren) {
-      patchKeyedChildren(
-        prevChildren as SimpElement[],
-        [nextChildren] as SimpElement[],
-        parentReference,
-        nextReference,
-        context,
-        hostNamespace
-      );
-    } else {
-      unmount(prevChildren as SimpElement[]);
-      hostAdapter.clearNode(parentReference);
+      break;
     }
-  } else if (typeof prevChildren === 'string') {
-    if (Array.isArray(nextChildren)) {
-      hostAdapter.clearNode(parentReference);
-      mountArrayChildren(
-        nextChildren as SimpElement[],
-        parentReference,
-        nextReference,
-        context,
-        nextElement,
-        hostNamespace
-      );
-    } else if (typeof nextChildren === 'string') {
-      if (prevChildren !== nextChildren) {
-        hostAdapter.setTextContent(nextElement.reference, nextChildren as string, true);
+    case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
+      switch (nextChildFlag) {
+        case SIMP_ELEMENT_CHILD_FLAG_LIST: {
+          patchKeyedChildren(
+            [prevChildren] as SimpElement[],
+            nextChildren as SimpElement[],
+            parentReference,
+            nextReference,
+            context,
+            hostNamespace
+          );
+          break;
+        }
+        case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
+          (nextChildren as SimpElement).parent = parentElement;
+          patch(
+            prevChildren as SimpElement,
+            nextChildren as SimpElement,
+            parentReference,
+            nextReference,
+            context,
+            hostNamespace
+          );
+          break;
+        }
+        case SIMP_ELEMENT_CHILD_FLAG_TEXT: {
+          unmount(prevChildren as SimpElement);
+          hostAdapter.setTextContent(parentReference, nextChildren as string);
+          break;
+        }
+        default: {
+          remove(prevChildren as SimpElement, parentReference);
+        }
       }
-    } else if (nextChildren) {
-      hostAdapter.clearNode(parentReference);
-      (nextChildren as SimpElement).parent = nextElement;
-      mount(nextChildren as SimpElement, parentReference, nextReference, context, hostNamespace);
-    } else {
-      hostAdapter.clearNode(parentReference);
+      break;
     }
-  } else if (prevChildren) {
-    if (Array.isArray(nextChildren)) {
-      patchKeyedChildren(
-        [prevChildren] as SimpElement[],
-        nextChildren as SimpElement[],
-        parentReference,
-        nextReference,
-        context,
-        hostNamespace
-      );
-    } else if (typeof nextChildren === 'string') {
-      unmount(prevChildren as SimpElement);
-      hostAdapter.setTextContent(parentReference, nextChildren);
-    } else if (nextChildren) {
-      (nextChildren as SimpElement).parent = nextElement;
-      patch(
-        prevChildren as SimpElement,
-        nextChildren as SimpElement,
-        parentReference,
-        nextReference,
-        context,
-        hostNamespace
-      );
-    } else {
-      remove(prevChildren as SimpElement, parentReference);
+    case SIMP_ELEMENT_CHILD_FLAG_TEXT: {
+      if (nextChildFlag === SIMP_ELEMENT_CHILD_FLAG_LIST) {
+        hostAdapter.clearNode(parentReference);
+        mountArrayChildren(
+          nextChildren as SimpElement[],
+          parentReference,
+          nextReference,
+          context,
+          parentElement,
+          hostNamespace
+        );
+        break;
+      } else if (nextChildFlag === SIMP_ELEMENT_CHILD_FLAG_ELEMENT) {
+        hostAdapter.clearNode(parentReference);
+        (nextChildren as SimpElement).parent = parentReference;
+        mount(nextChildren as SimpElement, parentReference, nextReference, context, hostNamespace);
+      } else if (nextChildFlag === SIMP_ELEMENT_CHILD_FLAG_TEXT) {
+        if (prevChildren !== nextChildren) {
+          hostAdapter.setTextContent(parentReference, nextChildren as string, true);
+        }
+      }
+      break;
     }
-  } else {
-    if (Array.isArray(nextChildren)) {
-      mountArrayChildren(
-        nextChildren as SimpElement[],
-        parentReference,
-        nextReference,
-        context,
-        nextElement,
-        hostNamespace
-      );
-    } else if (typeof nextChildren === 'string') {
-      hostAdapter.setTextContent(parentReference, nextChildren);
-    } else if (nextChildren) {
-      (nextChildren as SimpElement).parent = nextElement;
-      mount(nextChildren as SimpElement, parentReference, nextReference, context, hostNamespace);
+    default: {
+      switch (nextChildFlag) {
+        case SIMP_ELEMENT_CHILD_FLAG_LIST: {
+          mountArrayChildren(
+            nextChildren as SimpElement[],
+            parentReference,
+            nextReference,
+            context,
+            parentElement,
+            hostNamespace
+          );
+          break;
+        }
+        case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
+          (nextChildren as SimpElement).parent = parentElement;
+          mount(nextChildren as SimpElement, parentReference, nextReference, context, hostNamespace);
+          break;
+        }
+        case SIMP_ELEMENT_CHILD_FLAG_TEXT: {
+          hostAdapter.setTextContent(parentReference, nextChildren as string);
+        }
+      }
     }
   }
 }
@@ -479,7 +519,7 @@ export function findParentReferenceFromElement(element: SimpElement): Nullable<H
   while (temp != null) {
     flag = temp.flag;
 
-    if (flag === SimpElementFlag.HOST) {
+    if ((flag & SIMP_ELEMENT_FLAG_HOST) !== 0) {
       return temp.reference as HostReference;
     }
 
@@ -496,11 +536,18 @@ export function findHostReferenceFromElement(element: SimpElement): Nullable<Hos
   while (temp != null) {
     flag = temp.flag;
 
-    if (flag === SimpElementFlag.HOST || flag === SimpElementFlag.TEXT || flag === SimpElementFlag.PORTAL) {
+    if (
+      (flag & SIMP_ELEMENT_FLAG_HOST) !== 0 ||
+      (flag & SIMP_ELEMENT_FLAG_TEXT) !== 0 ||
+      (flag & SIMP_ELEMENT_FLAG_PORTAL) !== 0
+    ) {
       return temp.reference as HostReference;
     }
 
-    temp = (Array.isArray(temp.children) ? temp.children[0] : temp.children) as SimpElement;
+    temp =
+      temp.childFlag === SIMP_ELEMENT_CHILD_FLAG_LIST
+        ? (temp.children as SimpElement[])[0]!
+        : (temp.children as SimpElement);
   }
 
   return null;

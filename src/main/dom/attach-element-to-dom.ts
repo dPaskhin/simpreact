@@ -1,11 +1,10 @@
-import type { SimpElement } from '@simpreact/internal';
-import { SimpElementFlag } from '@simpreact/internal';
+import { SIMP_ELEMENT_FLAG_TEXT, type SimpElement } from '@simpreact/internal';
 import type { Nullable } from '@simpreact/shared';
 
 const elementPropertyName = '__SIMP_ELEMENT__';
 
 export function attachElementToDom(element: SimpElement, dom: Node): void {
-  if (element.flag !== SimpElementFlag.TEXT) {
+  if ((element.flag & SIMP_ELEMENT_FLAG_TEXT) === 0) {
     Object.defineProperty(dom, elementPropertyName, {
       value: element,
       writable: true,

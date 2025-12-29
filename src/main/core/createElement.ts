@@ -1,4 +1,4 @@
-import type { Many, Nullable, SimpText } from '@simpreact/shared';
+import type { Nullable, SimpText } from '@simpreact/shared';
 import { isSimpText } from '@simpreact/shared';
 import type { ComponentStore } from './component.js';
 import { Fragment } from './fragment.js';
@@ -10,13 +10,17 @@ export type Key = string | number | bigint;
 
 export type FC = (props: any) => SimpNode;
 
-export const SimpElementFlag = Object.freeze({
-  HOST: 1,
-  FC: 1 << 2,
-  TEXT: 1 << 3,
-  FRAGMENT: 1 << 4,
-  PORTAL: 1 << 5,
-});
+export const SIMP_ELEMENT_FLAG_HOST = 1;
+export const SIMP_ELEMENT_FLAG_FC = 1 << 1;
+export const SIMP_ELEMENT_FLAG_TEXT = 1 << 2;
+export const SIMP_ELEMENT_FLAG_PORTAL = 1 << 3;
+export const SIMP_ELEMENT_FLAG_FRAGMENT = 1 << 4;
+
+export const SIMP_ELEMENT_CHILD_FLAG_EMPTY = 1;
+export const SIMP_ELEMENT_CHILD_FLAG_UNKNOWN = 1 << 1;
+export const SIMP_ELEMENT_CHILD_FLAG_ELEMENT = 1 << 2;
+export const SIMP_ELEMENT_CHILD_FLAG_LIST = 1 << 3;
+export const SIMP_ELEMENT_CHILD_FLAG_TEXT = 1 << 4;
 
 // This object also serves as a persistent identity for elements, making it useful
 // for tracking them consistently across rerenders.
@@ -36,6 +40,8 @@ export function createElementStore(): SimpElementStore {
 
 export interface SimpElement {
   flag: number;
+
+  childFlag: number;
 
   parent: Nullable<SimpElement>;
 
@@ -69,9 +75,9 @@ export function createElement(type: string | FC, props?: any): SimpElement {
     if (argLength === 3) {
       definedChildren = arguments[2];
     } else {
-      const arr = new Array(argLength - 2);
+      const arr = [];
       for (let i = 2; i < argLength; i++) {
-        arr[i - 2] = arguments[i];
+        arr.push(arguments[i]);
       }
       definedChildren = arr;
     }
@@ -82,30 +88,38 @@ export function createElement(type: string | FC, props?: any): SimpElement {
   switch (typeof type) {
     case 'string': {
       if (!isSimpText(definedChildren)) {
-        return {
-          flag: SimpElementFlag.HOST,
-          parent: null,
-          key: props?.key || null,
-          type,
-          props: props || null,
-          children: normalizeChildren(definedChildren, false),
-          className: props?.className || null,
-          reference: null,
-          store: null,
-          context: null,
-          ref: props?.ref ? { value: props.ref } : null,
-          unmounted: null,
-        };
+        return normalizeChildren(
+          {
+            flag: SIMP_ELEMENT_FLAG_HOST,
+            childFlag: SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
+            parent: null,
+            key: props?.key || null,
+            type,
+            props: props || null,
+            children: null,
+            className: props?.className || null,
+            reference: null,
+            store: null,
+            context: null,
+            ref: props?.ref ? { value: props.ref } : null,
+            unmounted: null,
+          },
+          definedChildren,
+          false
+        );
       }
 
+      let childFlag = SIMP_ELEMENT_CHILD_FLAG_EMPTY;
       definedChildren = definedChildren.toString();
 
       if (definedChildren !== '') {
         (props ||= {}).children = definedChildren;
+        childFlag = SIMP_ELEMENT_CHILD_FLAG_TEXT;
       }
 
       return {
-        flag: SimpElementFlag.HOST,
+        flag: SIMP_ELEMENT_FLAG_HOST,
+        childFlag,
         parent: null,
         key: props?.key || null,
         type,
@@ -125,7 +139,8 @@ export function createElement(type: string | FC, props?: any): SimpElement {
       }
 
       return {
-        flag: SimpElementFlag.FC,
+        flag: SIMP_ELEMENT_FLAG_FC,
+        childFlag: SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
         parent: null,
         key: props?.key || null,
         type,
@@ -140,27 +155,33 @@ export function createElement(type: string | FC, props?: any): SimpElement {
       };
     }
     default: {
-      return {
-        flag: SimpElementFlag.FRAGMENT,
-        parent: null,
-        key: props?.key || null,
-        type: null,
-        props: null,
-        children: normalizeChildren(definedChildren, false),
-        className: null,
-        reference: null,
-        store: null,
-        context: null,
-        ref: null,
-        unmounted: null,
-      };
+      return normalizeChildren(
+        {
+          flag: SIMP_ELEMENT_FLAG_FRAGMENT,
+          childFlag: SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
+          parent: null,
+          key: props?.key || null,
+          type: null,
+          props: null,
+          children: null,
+          className: null,
+          reference: null,
+          store: null,
+          context: null,
+          ref: null,
+          unmounted: null,
+        },
+        definedChildren,
+        false
+      );
     }
   }
 }
 
 export function createTextElement(text: SimpText): SimpElement {
   return {
-    flag: SimpElementFlag.TEXT,
+    flag: SIMP_ELEMENT_FLAG_TEXT,
+    childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
     parent: null,
     key: null,
     type: null,
@@ -175,9 +196,11 @@ export function createTextElement(text: SimpText): SimpElement {
   };
 }
 
-export function normalizeChildren(children: SimpNode, skipIgnoredCheck: boolean): Nullable<Many<SimpElement>> {
+export function normalizeChildren(element: SimpElement, children: SimpNode, skipIgnoredCheck: boolean): SimpElement {
   if (!skipIgnoredCheck && isIgnoredNode(children)) {
-    return null;
+    element.childFlag = SIMP_ELEMENT_CHILD_FLAG_EMPTY;
+    element.children = null;
+    return element;
   }
 
   const result: SimpElement[] = [];
@@ -185,10 +208,20 @@ export function normalizeChildren(children: SimpNode, skipIgnoredCheck: boolean)
   normalizeNode(children, result, undefined, true);
 
   if (result.length === 0) {
-    return null;
+    element.childFlag = SIMP_ELEMENT_CHILD_FLAG_EMPTY;
+    element.children = null;
+    return element;
   }
 
-  return result.length === 1 ? result[0] || null : result;
+  if (result.length === 1) {
+    element.childFlag = SIMP_ELEMENT_CHILD_FLAG_ELEMENT;
+    element.children = result[0]!;
+    return element;
+  }
+
+  element.childFlag = SIMP_ELEMENT_CHILD_FLAG_LIST;
+  element.children = result;
+  return element;
 }
 
 function normalizeNode(child: SimpNode, result: SimpElement[], currentKey = '', skipIgnoredCheck: boolean): void {
@@ -223,24 +256,38 @@ function normalizeNode(child: SimpNode, result: SimpElement[], currentKey = '', 
   result.push(child as SimpElement);
 }
 
-export function normalizeRoot(node: SimpNode, skipIgnoredCheck: boolean): Nullable<SimpElement> {
+export function normalizeRoot(element: SimpElement, node: SimpNode, skipIgnoredCheck: boolean): SimpElement {
   if (!skipIgnoredCheck && isIgnoredNode(node)) {
-    return null;
+    element.childFlag = SIMP_ELEMENT_CHILD_FLAG_EMPTY;
+    element.children = null;
+    return element;
   }
 
   if (isSimpText(node)) {
-    return createTextElement(node);
+    element.childFlag = SIMP_ELEMENT_CHILD_FLAG_ELEMENT;
+    element.children = createTextElement(node);
+    return element;
   }
 
   if (!Array.isArray(node)) {
-    return node as SimpElement;
+    element.childFlag = SIMP_ELEMENT_CHILD_FLAG_ELEMENT;
+    element.children = node as SimpElement;
+    return element;
   }
 
-  node = normalizeChildren(node, true);
-  if (Array.isArray(node)) {
-    return createElement(Fragment, { children: node });
+  normalizeChildren(element, node, true);
+
+  if (element.childFlag === SIMP_ELEMENT_CHILD_FLAG_ELEMENT) {
+    return element;
   }
-  return node;
+
+  if (element.childFlag === SIMP_ELEMENT_CHILD_FLAG_EMPTY) {
+    return element;
+  }
+
+  element.childFlag = SIMP_ELEMENT_CHILD_FLAG_ELEMENT;
+  element.children = createElement(Fragment, { children: element.children });
+  return element;
 }
 
 function isIgnoredNode(node: SimpNode): node is Extract<SimpNode, '' | null | undefined | boolean> {
@@ -253,7 +300,7 @@ function isIgnoredNode(node: SimpNode): node is Extract<SimpNode, '' | null | un
   if (isSimpText(node)) {
     return false;
   }
-  if (node.flag === SimpElementFlag.FRAGMENT || node.flag === SimpElementFlag.PORTAL) {
+  if ((node.flag & SIMP_ELEMENT_FLAG_FRAGMENT) !== 0 || (node.flag & SIMP_ELEMENT_FLAG_PORTAL) !== 0) {
     return node.children == null;
   }
   return false;
