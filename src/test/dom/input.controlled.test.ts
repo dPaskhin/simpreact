@@ -1,6 +1,6 @@
-import { createElement } from '@simpreact/internal';
+import { createElement, type SimpRenderRuntime } from '@simpreact/internal';
+import { emptyObject } from '@simpreact/shared';
 import { describe, expect, it, vi } from 'vitest';
-
 import {
   addControlledInputEventHandlers,
   isCheckedType,
@@ -8,11 +8,19 @@ import {
   removeControlledInputEventHandlers,
   syncControlledInputProps,
 } from '../../main/dom/props/controlled/input.js';
+import { testHostAdapter } from '../test-host-adapter.js';
 
 const createInput = (type = 'text') => {
   const input = document.createElement('input');
   input.type = type;
   return input;
+};
+
+const renderRuntime: SimpRenderRuntime = {
+  hostAdapter: testHostAdapter,
+  renderer(type, element) {
+    return type(element.props || emptyObject);
+  },
 };
 
 describe('input controlled', () => {
@@ -48,18 +56,18 @@ describe('input controlled', () => {
       const input = createInput('checkbox');
       const add = vi.spyOn(input, 'addEventListener');
       const remove = vi.spyOn(input, 'removeEventListener');
-      addControlledInputEventHandlers(input);
+      addControlledInputEventHandlers(input, renderRuntime);
       expect(add).toHaveBeenCalledWith('change', expect.any(Function));
-      removeControlledInputEventHandlers(input);
+      removeControlledInputEventHandlers(input, renderRuntime);
       expect(remove).toHaveBeenCalledWith('change', expect.any(Function));
     });
     it('adds and removes input for text', () => {
       const input = createInput('text');
       const add = vi.spyOn(input, 'addEventListener');
       const remove = vi.spyOn(input, 'removeEventListener');
-      addControlledInputEventHandlers(input);
+      addControlledInputEventHandlers(input, renderRuntime);
       expect(add).toHaveBeenCalledWith('input', expect.any(Function));
-      removeControlledInputEventHandlers(input);
+      removeControlledInputEventHandlers(input, renderRuntime);
       expect(remove).toHaveBeenCalledWith('input', expect.any(Function));
     });
   });

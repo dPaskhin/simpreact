@@ -1,12 +1,22 @@
-import { createRoot } from '@simpreact/dom';
-import { useEffect, useRef, useRerender } from '@simpreact/hooks';
-import { createElement, provideHostAdapter } from '@simpreact/internal';
-import { Element } from 'flyweight-dom';
+import { createCreateRoot } from '@simpreact/dom';
+import { createUseEffect, createUseRef, createUseRerender } from '@simpreact/hooks';
+import { createElement, type SimpRenderRuntime } from '@simpreact/internal';
+import { emptyObject } from '@simpreact/shared';
 import { describe, expect, it, vi } from 'vitest';
 import { dispatchDelegatedEvent } from '../main/dom/events.js';
 import { testHostAdapter } from './test-host-adapter.js';
 
-provideHostAdapter(testHostAdapter);
+const renderRuntime: SimpRenderRuntime = {
+  hostAdapter: testHostAdapter,
+  renderer(type, element) {
+    return type(element.props || emptyObject);
+  },
+};
+
+const createRoot = createCreateRoot(renderRuntime);
+const useEffect = createUseEffect(renderRuntime);
+const useRef = createUseRef(renderRuntime);
+const useRerender = createUseRerender(renderRuntime);
 
 describe('rerender (integration tests)', () => {
   it('should batch several rerenders of one FC element (effect)', async () => {
@@ -29,7 +39,7 @@ describe('rerender (integration tests)', () => {
       return createElement('root');
     });
 
-    createRoot(new Element('div') as any).render(totalRoot);
+    createRoot(document.createElement('div')).render(totalRoot);
 
     // First render happens in sync flow when root.render is ongoing.
     expect(renderFn).toHaveBeenCalledTimes(1);
@@ -71,7 +81,7 @@ describe('rerender (integration tests)', () => {
       });
     });
 
-    createRoot(new Element('div') as any).render(totalRoot);
+    createRoot(document.createElement('div')).render(totalRoot);
 
     // First render happens in sync flow when root.render is ongoing.
     expect(renderFn).toHaveBeenCalledTimes(1);
@@ -119,7 +129,7 @@ describe('rerender (integration tests)', () => {
       );
     }
 
-    createRoot(new Element('div') as any).render(createElement(App));
+    createRoot(document.createElement('div')).render(createElement(App));
 
     await Promise.resolve();
 

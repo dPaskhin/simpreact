@@ -6,14 +6,12 @@ export interface MemoizedComponent {
   (props: any): SimpNode;
 
   _compare: (prevProps: any, nextProps: any) => boolean;
-  _forceRender: boolean;
 }
 
 export function memo(Component: FC, compare = shallowEqual): MemoizedComponent {
   const Memoized = (props => Component(props)) as MemoizedComponent;
 
   Memoized._compare = compare;
-  Memoized._forceRender = false;
 
   return Memoized;
 }

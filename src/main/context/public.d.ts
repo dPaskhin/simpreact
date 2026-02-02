@@ -19,6 +19,10 @@ export type ContextType<C extends SimpContext<any>> = C extends SimpContext<infe
 export type Provider<T> = FunctionalComponent<ProviderProps<T>>;
 export type Consumer<T> = FunctionalComponent<ConsumerProps<T>>;
 
-declare function createContext<T>(defaultValue: T): SimpContext<T>;
+export interface CreateContext {
+  <T>(defaultValue: T): SimpContext<T>;
+}
+
+declare function createCreateContext(renderRuntime: SimpRenderRuntime): CreateContext;
 
 declare function useContext<T>(context: SimpContext<T>): T;

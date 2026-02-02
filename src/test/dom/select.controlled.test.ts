@@ -1,13 +1,21 @@
-import type { SimpElement } from '@simpreact/internal';
+import type { SimpElement, SimpRenderRuntime } from '@simpreact/internal';
 import { createElement } from '@simpreact/internal';
+import { emptyObject } from '@simpreact/shared';
 import { describe, expect, it, vi } from 'vitest';
-
 import {
   addControlledSelectEventHandlers,
   isEventNameIgnored,
   removeControlledSelectEventHandlers,
   syncControlledSelectProps,
 } from '../../main/dom/props/controlled/select.js';
+import { testHostAdapter } from '../test-host-adapter.js';
+
+const renderRuntime: SimpRenderRuntime = {
+  hostAdapter: testHostAdapter,
+  renderer(type, element) {
+    return type(element.props || emptyObject);
+  },
+};
 
 const createSelect = (props: any = {}) => {
   const select = document.createElement('select');
@@ -36,9 +44,9 @@ describe('select controlled', () => {
       const select = createSelect();
       const add = vi.spyOn(select, 'addEventListener');
       const remove = vi.spyOn(select, 'removeEventListener');
-      addControlledSelectEventHandlers(select);
+      addControlledSelectEventHandlers(select, renderRuntime);
       expect(add).toHaveBeenCalledWith('change', expect.any(Function));
-      removeControlledSelectEventHandlers(select);
+      removeControlledSelectEventHandlers(select, renderRuntime);
       expect(remove).toHaveBeenCalledWith('change', expect.any(Function));
     });
   });

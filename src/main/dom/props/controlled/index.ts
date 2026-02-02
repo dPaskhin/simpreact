@@ -1,4 +1,4 @@
-import type { SimpElement } from '@simpreact/internal';
+import type { SimpElement, SimpRenderRuntime } from '@simpreact/internal';
 import type { Dict } from '@simpreact/shared';
 
 import {
@@ -35,23 +35,23 @@ export function isFormElementControlled(props: Dict): boolean {
   return props.value != null || props.checked != null;
 }
 
-export function addControlledFormElementEventHandlers(element: SimpElement): void {
+export function addControlledFormElementEventHandlers(element: SimpElement, renderRuntime: SimpRenderRuntime): void {
   if (element.type === 'input') {
-    addControlledInputEventHandlers(element.reference);
+    addControlledInputEventHandlers(element.reference as any, renderRuntime);
   } else if (element.type === 'select') {
-    addControlledSelectEventHandlers(element.reference);
+    addControlledSelectEventHandlers(element.reference as any, renderRuntime);
   } else if (element.type === 'textarea') {
-    addControlledTextareaEventHandlers(element.reference);
+    addControlledTextareaEventHandlers(element.reference as any, renderRuntime);
   }
 }
 
-export function removeControlledFormElementEventHandlers(element: SimpElement): void {
+export function removeControlledFormElementEventHandlers(element: SimpElement, renderRuntime: SimpRenderRuntime): void {
   if (element.type === 'input') {
-    removeControlledInputEventHandlers(element.reference);
+    removeControlledInputEventHandlers(element.reference as any, renderRuntime);
   } else if (element.type === 'select') {
-    removeControlledSelectEventHandlers(element.reference);
+    removeControlledSelectEventHandlers(element.reference as any, renderRuntime);
   } else if (element.type === 'textarea') {
-    removeControlledTextareaEventHandlers(element.reference);
+    removeControlledTextareaEventHandlers(element.reference as any, renderRuntime);
   }
 }
 

@@ -1,4 +1,4 @@
-import type { SimpElement, SimpElementStore, SimpNode } from '@simpreact/internal';
+import type { SimpElement, SimpElementStore, SimpNode, SimpRenderRuntime } from '@simpreact/internal';
 import { lifecycleEventBus, rerender } from '@simpreact/internal';
 import type { Maybe, Nullable } from '@simpreact/shared';
 
@@ -40,52 +40,58 @@ lifecycleEventBus.subscribe(event => {
   }
 });
 
-export function createContext<T>(defaultValue: T): SimpContext<T> {
-  const context: SimpContext<T> = {
-    defaultValue,
+export interface CreateContext {
+  <T>(defaultValue: T): SimpContext<T>;
+}
 
-    Provider(props) {
-      if (!currentElement.context) {
-        currentElement.context = new Map();
-      } else if (phase === 'mounting') {
-        currentElement.context = new Map(currentElement.context);
-      }
+export function createCreateContext(renderRuntime: SimpRenderRuntime): CreateContext {
+  return <T>(defaultValue: T) => {
+    const context: SimpContext<T> = {
+      defaultValue,
 
-      if (phase === 'mounting') {
-        currentElement.context.set(context, {
-          value: props.value,
-          subs: new Set(),
-        });
+      Provider(props) {
+        if (!currentElement.context) {
+          currentElement.context = new Map();
+        } else if (phase === 'mounting') {
+          currentElement.context = new Map(currentElement.context);
+        }
+
+        if (phase === 'mounting') {
+          currentElement.context.set(context, {
+            value: props.value,
+            subs: new Set(),
+          });
+          return props.children;
+        }
+
+        let contextEntry = currentElement.context.get(context);
+
+        if (!contextEntry) {
+          contextEntry = { value: props.value, subs: new Set() };
+          currentElement.context.set(context, contextEntry);
+          return props.children;
+        }
+
+        if (Object.is(contextEntry.value, props.value)) {
+          return props.children;
+        }
+
+        contextEntry.value = props.value;
+
+        for (const sub of contextEntry.subs) {
+          rerender(sub.latestElement!, renderRuntime);
+        }
+
         return props.children;
-      }
+      },
 
-      let contextEntry = currentElement.context.get(context);
+      Consumer(props) {
+        return props.children((currentElement as ContextSimpElement).context?.get(context)?.value ?? defaultValue);
+      },
+    };
 
-      if (!contextEntry) {
-        contextEntry = { value: props.value, subs: new Set() };
-        currentElement.context.set(context, contextEntry);
-        return props.children;
-      }
-
-      if (Object.is(contextEntry.value, props.value)) {
-        return props.children;
-      }
-
-      contextEntry.value = props.value;
-
-      for (const sub of contextEntry.subs) {
-        rerender(sub.latestElement!);
-      }
-
-      return props.children;
-    },
-
-    Consumer(props) {
-      return props.children((currentElement as ContextSimpElement).context?.get(context)?.value ?? defaultValue);
-    },
+    return context;
   };
-
-  return context;
 }
 
 export function useContext<T>(context: SimpContext<T>): T {

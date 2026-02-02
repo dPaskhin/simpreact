@@ -1,17 +1,24 @@
 import type { Maybe, Nullable } from '@simpreact/shared';
 
 import type { SimpElement } from './createElement.js';
+import type { SimpRenderRuntime } from './runtime.js';
 
-export type HostReference = any;
+export type HostReference = unknown;
 
-export interface HostAdapter<HostRef = any, HostTextRef = any, NS = string> {
+export interface HostAdapter<HostRef = unknown, HostTextRef = unknown, NS = string> {
   createReference(type: string, namespace?: Maybe<NS>): HostRef;
 
   createTextReference(text: string): HostTextRef;
 
-  mountProps(reference: HostRef, element: SimpElement, namespace?: Maybe<NS>): void;
+  mountProps(reference: HostRef, element: SimpElement, renderRuntime: SimpRenderRuntime, namespace?: Maybe<NS>): void;
 
-  patchProps(reference: HostRef, prevElement: SimpElement, nextElement: SimpElement, namespace?: Maybe<NS>): void;
+  patchProps(
+    reference: HostRef,
+    prevElement: SimpElement,
+    nextElement: SimpElement,
+    renderRuntime: SimpRenderRuntime,
+    namespace?: Maybe<NS>
+  ): void;
 
   unmountProps(reference: HostRef, element: SimpElement): void;
 
@@ -44,10 +51,4 @@ export interface HostAdapter<HostRef = any, HostTextRef = any, NS = string> {
     self: Nullable<NS>;
     children: Nullable<NS>;
   }>;
-}
-
-export let hostAdapter: HostAdapter;
-
-export function provideHostAdapter(adapter: HostAdapter): void {
-  hostAdapter = adapter;
 }

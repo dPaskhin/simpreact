@@ -1,5 +1,5 @@
-import type { SimpElement } from '@simpreact/internal';
-import { syncRerenderLocker } from '@simpreact/internal';
+import type { SimpElement, SimpRenderRuntime } from '@simpreact/internal';
+import { flushSyncRerender, lockSyncRendering } from '@simpreact/internal';
 import type { Dict } from '@simpreact/shared';
 
 import { getElementFromDom } from '../../attach-element-to-dom.js';
@@ -12,57 +12,61 @@ export function isEventNameIgnored(props: Dict, eventName: string): boolean {
   return isCheckedType(props.type as string) ? eventName === 'onChange' : eventName === 'onInput';
 }
 
-function onControlledInputInput(event: Event): void {
-  let element = getElementFromDom(event.target);
+function createControlledInputInputHandler(renderRuntime: SimpRenderRuntime): (event: Event) => void {
+  return event => {
+    let element = getElementFromDom(event.target);
 
-  if (!element || !element.props) {
-    return;
-  }
+    if (!element || !element.props) {
+      return;
+    }
 
-  if (element.props['onInput']) {
-    syncRerenderLocker.lock();
+    if (element.props['onInput']) {
+      lockSyncRendering();
+    }
     element.props['onInput'](event);
-    syncRerenderLocker.flush();
+    flushSyncRerender(renderRuntime);
     element = getElementFromDom(event.target);
-  }
 
-  if (element) {
-    syncControlledInputProps(element, element.props);
-  }
+    if (element) {
+      syncControlledInputProps(element, element.props);
+    }
+  };
 }
 
-function onControlledInputChange(event: Event): void {
-  let element = getElementFromDom(event.target);
+function createControlledInputChangeHandler(renderRuntime: SimpRenderRuntime): (event: Event) => void {
+  return event => {
+    let element = getElementFromDom(event.target);
 
-  if (!element || !element.props) {
-    return;
-  }
+    if (!element || !element.props) {
+      return;
+    }
 
-  if (element.props['onChange']) {
-    syncRerenderLocker.lock();
-    element.props['onChange'](event);
-    syncRerenderLocker.flush();
-    element = getElementFromDom(event.target);
-  }
+    if (element.props['onChange']) {
+      lockSyncRendering();
+      element.props['onChange'](event);
+      flushSyncRerender(renderRuntime);
+      element = getElementFromDom(event.target);
+    }
 
-  if (element) {
-    syncControlledInputProps(element, element.props);
-  }
+    if (element) {
+      syncControlledInputProps(element, element.props);
+    }
+  };
 }
 
-export function addControlledInputEventHandlers(dom: HTMLInputElement): void {
+export function addControlledInputEventHandlers(dom: HTMLInputElement, renderRuntime: SimpRenderRuntime): void {
   if (isCheckedType(dom.type)) {
-    dom.addEventListener('change', onControlledInputChange);
+    dom.addEventListener('change', createControlledInputChangeHandler(renderRuntime));
   } else {
-    dom.addEventListener('input', onControlledInputInput);
+    dom.addEventListener('input', createControlledInputInputHandler(renderRuntime));
   }
 }
 
-export function removeControlledInputEventHandlers(dom: HTMLInputElement): void {
+export function removeControlledInputEventHandlers(dom: HTMLInputElement, renderRuntime: SimpRenderRuntime): void {
   if (isCheckedType(dom.type)) {
-    dom.removeEventListener('change', onControlledInputChange);
+    dom.removeEventListener('change', createControlledInputChangeHandler(renderRuntime));
   } else {
-    dom.removeEventListener('input', onControlledInputInput);
+    dom.removeEventListener('input', createControlledInputInputHandler(renderRuntime));
   }
 }
 

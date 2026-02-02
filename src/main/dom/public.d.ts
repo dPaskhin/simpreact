@@ -1,4 +1,4 @@
-import type { RefAttributes, SimpElement, SimpNode } from '@simpreact/core';
+import type { RefAttributes, SimpElement, SimpNode, SimpRenderRuntime } from '@simpreact/core';
 import type { Nullable } from '@simpreact/shared';
 
 import type { PropertiesHyphen } from 'csstype';
@@ -16,9 +16,13 @@ export interface SimpRoot {
   unmount(): void;
 }
 
-declare function createRoot(container: Element | DocumentFragment): SimpRoot;
+declare function createCreateRoot(
+  renderRuntime: SimpRenderRuntime
+): (container: Element | DocumentFragment) => SimpRoot;
 
-declare function render(element: SimpElement, parentReference: Nullable<HTMLElement>): void;
+declare function createRenderer(
+  renderRuntime: SimpRenderRuntime
+): (element: SimpElement, parentReference: Nullable<HTMLElement>) => void;
 
 export interface SimpReactHTMLElement<T extends HTMLElement>
   extends DetailedSimpReactHTMLElement<AllHTMLAttributes<T>, T> {}

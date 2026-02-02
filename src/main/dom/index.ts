@@ -1,7 +1,8 @@
-import { createRoot, render } from './render.js';
+import { domAdapter } from './domAdapter.js';
+import { createCreateRoot, createRenderer } from './render.js';
 
-export { createRoot, render } from './render.js';
+export { createCreateRoot, createRenderer, domAdapter };
 
-export default { createRoot, render };
+export default { createCreateRoot, createRenderer, domAdapter };
 
 export type * from './public.js';

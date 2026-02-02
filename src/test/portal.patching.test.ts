@@ -1,20 +1,24 @@
-import { render } from '@simpreact/dom';
-import { useEffect, useRef, useRerender } from '@simpreact/hooks';
-import type { SimpElement } from '@simpreact/internal';
-import {
-  createElement,
-  createPortal,
-  Fragment,
-  mountPortal,
-  patchPortal,
-  provideHostAdapter,
-} from '@simpreact/internal';
-import { Element } from 'flyweight-dom';
+import { createRenderer } from '@simpreact/dom';
+import { createUseEffect, createUseRef, createUseRerender } from '@simpreact/hooks';
+import type { SimpElement, SimpRenderRuntime } from '@simpreact/internal';
+import { createElement, createPortal, Fragment, mountPortal, patchPortal } from '@simpreact/internal';
+import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { dispatchDelegatedEvent } from '../main/dom/events.js';
 import { testHostAdapter } from './test-host-adapter.js';
 
-provideHostAdapter(testHostAdapter);
+const renderRuntime: SimpRenderRuntime = {
+  hostAdapter: testHostAdapter,
+  renderer(type, element) {
+    return type(element.props || emptyObject);
+  },
+};
+
+const render = createRenderer(renderRuntime);
+
+const useEffect = createUseEffect(renderRuntime);
+const useRef = createUseRef(renderRuntime);
+const useRerender = createUseRerender(renderRuntime);
 
 describe('patchPortal', () => {
   let body: Element;
@@ -22,9 +26,9 @@ describe('patchPortal', () => {
   let containerB: Element;
 
   beforeEach(() => {
-    body = new Element('body');
-    containerA = new Element('section');
-    containerB = new Element('article');
+    body = document.body;
+    containerA = document.createElement('section');
+    containerB = document.createElement('article');
     body.textContent = '';
     body.append(containerA, containerB);
     vi.clearAllMocks();
@@ -37,14 +41,14 @@ describe('patchPortal', () => {
 
       const prevPortal = createPortal(prevChild, containerA);
 
-      mountPortal(prevPortal, new Element('div'), null, null);
+      mountPortal(prevPortal, document.createElement('div'), null, null, null, renderRuntime);
 
       const nextPortal = createPortal(nextChild, containerA);
 
-      patchPortal(prevPortal, nextPortal, null);
+      patchPortal(prevPortal, nextPortal, null, null, null, null, renderRuntime);
 
-      expect(containerA.contains(nextChild.reference)).toBe(true);
-      expect(containerA.contains(prevChild.reference)).toBe(true);
+      expect(containerA.contains(nextChild.reference as HTMLElement)).toBe(true);
+      expect(containerA.contains(prevChild.reference as HTMLElement)).toBe(true);
     });
 
     it('moves child to new container if portal target changes', () => {
@@ -53,14 +57,14 @@ describe('patchPortal', () => {
 
       const prevPortal = createPortal(prevChild, containerA);
 
-      mountPortal(prevPortal, new Element('div'), null, null);
+      mountPortal(prevPortal, document.createElement('div'), null, null, null, renderRuntime);
 
       const nextPortal = createPortal(nextChild, containerB);
 
-      patchPortal(prevPortal, nextPortal, null);
+      patchPortal(prevPortal, nextPortal, null, null, null, null, renderRuntime);
 
-      expect(containerB.contains(nextChild.reference)).toBe(true);
-      expect(containerA.contains(prevChild.reference)).toBe(false);
+      expect(containerB.contains(nextChild.reference as HTMLElement)).toBe(true);
+      expect(containerA.contains(prevChild.reference as HTMLElement)).toBe(false);
     });
   });
 

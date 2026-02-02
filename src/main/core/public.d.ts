@@ -60,3 +60,12 @@ export interface ComponentRenderContext<S = {}> {
 }
 
 declare function component<P = {}, S = {}>(Component: (props: P, ctx: ComponentRenderContext<S>) => SimpNode): FC<P>;
+
+export interface SimpRuntimeFCRenderer {
+  (component: FC, element: SimpElement): SimpNode;
+}
+
+export interface SimpRenderRuntime {
+  hostAdapter: HostAdapter;
+  renderer: SimpRuntimeFCRenderer;
+}

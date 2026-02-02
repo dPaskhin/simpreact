@@ -1,11 +1,27 @@
-import * as SimpReactHooks from '@simpreact/hooks';
+import {
+  createUseCatch,
+  createUseEffect,
+  createUseRef,
+  createUseRerender,
+  createUseState,
+  type DependencyList,
+} from '@simpreact/hooks';
 import * as SimpReactShared from '@simpreact/shared';
+import { renderRuntime } from './renderRuntime.js';
+
+export const useRerender = createUseRerender(renderRuntime);
+export const useState = createUseState(renderRuntime);
+export const useEffect = createUseEffect(renderRuntime);
+export const useLayoutEffect = createUseEffect(renderRuntime);
+export const useInsertionEffect = createUseEffect(renderRuntime);
+export const useRef = createUseRef(renderRuntime);
+export const useCatch = createUseCatch(renderRuntime);
 
 export function useSyncExternalStore<T>(subscribe: (callback: () => void) => () => void, getSnapshot: () => T): T {
-  const rerender = SimpReactHooks.useRerender();
-  const lastSnapshotRef = SimpReactHooks.useRef(getSnapshot());
+  const rerender = useRerender();
+  const lastSnapshotRef = useRef(getSnapshot());
 
-  SimpReactHooks.useEffect(() => {
+  useEffect(() => {
     function checkForUpdates() {
       const nextSnapshot = getSnapshot();
       if (!Object.is(lastSnapshotRef.current, nextSnapshot)) {
@@ -29,12 +45,12 @@ export function useReducer<R extends (state: any, action: any) => any, I>(
   initializerArg: I,
   initializer?: (arg: I) => ReturnType<R>
 ): [ReturnType<R>, (action: Parameters<R>[1]) => void] {
-  const rerender = SimpReactHooks.useRerender();
-  const reducerRef = SimpReactHooks.useRef(reducer);
+  const rerender = useRerender();
+  const reducerRef = useRef(reducer);
 
   reducerRef.current = reducer;
 
-  const stateRef = SimpReactHooks.useRef<[ReturnType<R>, (action: Parameters<R>[1]) => void]>([
+  const stateRef = useRef<[ReturnType<R>, (action: Parameters<R>[1]) => void]>([
     initializer ? initializer(initializerArg) : (initializerArg as unknown as ReturnType<R>),
     function dispatch(action: Parameters<R>[1]) {
       const newState = reducerRef.current(stateRef.current[0], action);
@@ -54,7 +70,7 @@ export function useReducer<R extends (state: any, action: any) => any, I>(
 let globalId = 0;
 
 export function useId(prefix: string = 'id'): string {
-  const idRef = SimpReactHooks.useRef('');
+  const idRef = useRef('');
 
   if (idRef.current === '') {
     globalId += 1;
@@ -64,10 +80,10 @@ export function useId(prefix: string = 'id'): string {
   return idRef.current;
 }
 
-export function useMemo<T>(factory: () => T, deps: SimpReactHooks.DependencyList): T {
-  const ref = SimpReactHooks.useRef<{
+export function useMemo<T>(factory: () => T, deps: DependencyList): T {
+  const ref = useRef<{
     value: T;
-    deps: SimpReactHooks.DependencyList;
+    deps: DependencyList;
   }>({
     deps: undefined!,
     value: undefined!,
@@ -81,15 +97,9 @@ export function useMemo<T>(factory: () => T, deps: SimpReactHooks.DependencyList
   return ref.current.value;
 }
 
-export function useCallback<T>(cb: T, deps: SimpReactHooks.DependencyList): T {
+export function useCallback<T>(cb: T, deps: DependencyList): T {
   return useMemo(() => cb, deps);
 }
-
-export const useState = SimpReactHooks.useState;
-export const useEffect = SimpReactHooks.useEffect;
-export const useLayoutEffect = SimpReactHooks.useEffect;
-export const useInsertionEffect = SimpReactHooks.useEffect;
-export const useRef = SimpReactHooks.useRef;
 
 export default {
   useSyncExternalStore,

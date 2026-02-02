@@ -1,13 +1,21 @@
-import { createRoot } from '@simpreact/dom';
-import { useEffect, useState } from '@simpreact/hooks';
+import { createCreateRoot } from '@simpreact/dom';
+import { createUseEffect, createUseState } from '@simpreact/hooks';
 
-import { createElement, provideHostAdapter } from '@simpreact/internal';
-import { Element } from 'flyweight-dom';
+import { createElement, type SimpRenderRuntime } from '@simpreact/internal';
+import { emptyObject } from '@simpreact/shared';
 import { describe, expect, it, vi } from 'vitest';
-
 import { testHostAdapter } from './test-host-adapter.js';
 
-provideHostAdapter(testHostAdapter);
+const renderRuntime: SimpRenderRuntime = {
+  hostAdapter: testHostAdapter,
+  renderer(type, element) {
+    return type(element.props || emptyObject);
+  },
+};
+
+const createRoot = createCreateRoot(renderRuntime);
+const useEffect = createUseEffect(renderRuntime);
+const useState = createUseState(renderRuntime);
 
 function BadComponent() {
   const [count, setCount] = useState(0);
@@ -27,7 +35,7 @@ describe('BadComponent', () => {
   it('tries to update state after unmount', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    const root = createRoot(new Element('div') as any);
+    const root = createRoot(document.createElement('div'));
     root.render(createElement(BadComponent));
     root.unmount(); // unmount immediately
 

@@ -17,12 +17,12 @@ export const domAdapter: HostAdapter<HTMLElement | SVGElement, Text, Namespace> 
     return document.createTextNode(text);
   },
 
-  mountProps(dom, element, namespace) {
-    mountProps(dom, element, namespace || defaultNamespace);
+  mountProps(dom, element, renderRuntime, namespace) {
+    mountProps(dom, element, namespace || defaultNamespace, renderRuntime);
   },
 
-  patchProps(dom, prevElement, nextElement, namespace) {
-    patchProps(dom, prevElement, nextElement, namespace || defaultNamespace);
+  patchProps(dom, prevElement, nextElement, renderRuntime, namespace) {
+    patchProps(dom, prevElement, nextElement, namespace || defaultNamespace, renderRuntime);
   },
 
   unmountProps(dom, element) {

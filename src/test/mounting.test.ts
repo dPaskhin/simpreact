@@ -1,5 +1,5 @@
-import { createContext } from '@simpreact/context';
-import type { HostReference, SimpElement } from '@simpreact/internal';
+import { createCreateContext } from '@simpreact/context';
+import type { SimpElement, SimpRenderRuntime } from '@simpreact/internal';
 import {
   createElement,
   createTextElement,
@@ -8,13 +8,19 @@ import {
   mountFunctionalElement,
   mountHostElement,
   mountTextElement,
-  provideHostAdapter,
 } from '@simpreact/internal';
-import { Element, Text } from 'flyweight-dom';
+import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 import { testHostAdapter } from './test-host-adapter.js';
 
-provideHostAdapter(testHostAdapter);
+const renderRuntime: SimpRenderRuntime = {
+  hostAdapter: testHostAdapter,
+  renderer(type, element) {
+    return type(element.props || emptyObject);
+  },
+};
+
+const createContext = createCreateContext(renderRuntime);
 
 describe('mounting', () => {
   beforeEach(() => {
@@ -26,7 +32,7 @@ describe('mounting', () => {
       const element = createElement('div');
       const parentReference = testHostAdapter.createReference('div');
 
-      mountHostElement(element, parentReference, null, null, null);
+      mountHostElement(element, parentReference, null, null, null, renderRuntime);
 
       expect(testHostAdapter.createReference).toHaveBeenCalledWith('div', '');
       expect(element.reference).instanceof(Element);
@@ -39,7 +45,7 @@ describe('mounting', () => {
       const element = createElement('div', { className: 'test-class' });
       const parentReference = testHostAdapter.createReference('div');
 
-      mountHostElement(element, parentReference, null, null, null);
+      mountHostElement(element, parentReference, null, null, null, renderRuntime);
 
       expect(testHostAdapter.setClassname).toHaveBeenCalledWith(element.reference, 'test-class', '');
     });
@@ -49,14 +55,14 @@ describe('mounting', () => {
       const element = createElement('div', null, childElement);
       const parentReference = testHostAdapter.createReference('div');
 
-      mountHostElement(element, parentReference, null, null, null);
+      mountHostElement(element, parentReference, null, null, null, renderRuntime);
 
       expect(testHostAdapter.createReference).toHaveBeenCalledWith('div', '');
       expect(testHostAdapter.createReference).toHaveBeenCalledWith('span', '');
       expect(element.reference).instanceof(Element);
-      expect((element.reference as unknown as Element).nodeName).toEqual('div');
+      expect((element.reference as HTMLDivElement).tagName).toEqual('DIV');
       expect((element.children as SimpElement).reference).instanceof(Element);
-      expect(((element.children as SimpElement).reference as unknown as Element).nodeName).toEqual('span');
+      expect(((element.children as SimpElement).reference as HTMLSpanElement).tagName).toEqual('SPAN');
     });
 
     it('should mount array of children', () => {
@@ -65,28 +71,28 @@ describe('mounting', () => {
       const element = createElement('div', null, child1, child2);
       const parentReference = testHostAdapter.createReference('div');
 
-      mountHostElement(element, parentReference, null, null, null);
+      mountHostElement(element, parentReference, null, null, null, renderRuntime);
 
       expect(testHostAdapter.createReference).toHaveBeenCalledWith('div', '');
       expect(testHostAdapter.createReference).toHaveBeenCalledWith('span', '');
       expect(testHostAdapter.createReference).toHaveBeenCalledWith('p', '');
       expect(element.reference).instanceof(Element);
-      expect((element.reference as unknown as Element).nodeName).toEqual('div');
+      expect((element.reference as HTMLDivElement).nodeName).toEqual('DIV');
       expect((element.children as SimpElement[])[0]!.reference).instanceof(Element);
       expect((element.children as SimpElement[])[1]!.reference).instanceof(Element);
-      expect(((element.children as SimpElement[])[0]!.reference as unknown as Element).nodeName).toEqual('span');
-      expect(((element.children as SimpElement[])[1]!.reference as unknown as Element).nodeName).toEqual('p');
+      expect(((element.children as SimpElement[])[0]!.reference as HTMLSpanElement).tagName).toEqual('SPAN');
+      expect(((element.children as SimpElement[])[1]!.reference as HTMLParagraphElement).tagName).toEqual('P');
     });
 
     it('should insert into parent when provided', () => {
-      const parentRef = new Element('root');
-      const nextRef = new Element('sibling');
+      const parentRef = document.createElement('root');
+      const nextRef = document.createElement('sibling');
 
       parentRef.appendChild(nextRef);
 
       const element = createElement('div');
 
-      mountHostElement(element, parentRef as HostReference, nextRef as HostReference, null, null);
+      mountHostElement(element, parentRef, nextRef, null, null, renderRuntime);
 
       expect(testHostAdapter.insertOrAppend).toHaveBeenCalledWith(parentRef, element.reference, nextRef);
     });
@@ -95,9 +101,8 @@ describe('mounting', () => {
       const props = { id: 'test-id', onClick: vi.fn() };
       const element = createElement('button', props);
 
-      mountHostElement(element, testHostAdapter.createReference('div'), null, null, null);
-
-      expect(testHostAdapter.mountProps).toHaveBeenCalledWith(element.reference, element, '');
+      mountHostElement(element, testHostAdapter.createReference('div'), null, null, null, renderRuntime);
+      expect(testHostAdapter.mountProps).toHaveBeenCalledWith(element.reference, element, renderRuntime, '');
     });
   });
 
@@ -105,8 +110,8 @@ describe('mounting', () => {
     it('should call lifecycle events and mount child', async () => {
       const testFn = vi.fn(() => createElement('div'));
       const element = createElement(testFn);
-      const parentRef = new Element('root');
-      const nextRef = new Element('sibling');
+      const parentRef = document.createElement('root');
+      const nextRef = document.createElement('sibling');
       const contextMap = new Map();
 
       parentRef.appendChild(nextRef);
@@ -115,19 +120,21 @@ describe('mounting', () => {
 
       lifecycleEventBus.subscribe(listener);
 
-      mountFunctionalElement(element, parentRef as HostReference, nextRef as HostReference, contextMap, '');
+      mountFunctionalElement(element, parentRef, nextRef, contextMap, '', renderRuntime);
 
       expect(listener).toHaveBeenCalledWith({
         type: 'beforeRender',
         element,
         phase: 'mounting',
+        renderRuntime,
       });
       expect(listener).toHaveBeenCalledWith({
         type: 'afterRender',
         element,
         phase: 'mounting',
+        renderRuntime,
       });
-      expect(listener).toHaveBeenCalledWith({ type: 'mounted', element });
+      expect(listener).toHaveBeenCalledWith({ type: 'mounted', element, renderRuntime });
       expect(listener).toHaveBeenCalledTimes(3);
       expect(testHostAdapter.insertOrAppend).toHaveBeenCalledWith(
         parentRef,
@@ -141,7 +148,7 @@ describe('mounting', () => {
       const child = createElement('span');
       const element = createElement(() => child);
 
-      mountFunctionalElement(element, testHostAdapter.createReference('div'), null, null, null);
+      mountFunctionalElement(element, testHostAdapter.createReference('div'), null, null, null, renderRuntime);
 
       expect(element.children).toBe(child);
     });
@@ -151,12 +158,13 @@ describe('mounting', () => {
       const props = { id: 'main-section', custom: 42 };
       const element = createElement(testFn, props);
 
-      mountFunctionalElement(element, testHostAdapter.createReference('div'), null, null, null);
+      mountFunctionalElement(element, testHostAdapter.createReference('div'), null, null, null, renderRuntime);
 
       expect(testFn).toHaveBeenCalledWith(props);
       expect(testHostAdapter.mountProps).toHaveBeenCalledWith(
         (element.children as SimpElement).reference,
         element.children,
+        renderRuntime,
         ''
       );
     });
@@ -166,7 +174,7 @@ describe('mounting', () => {
       const context = {};
       const element = createElement(testFn);
 
-      mountFunctionalElement(element, testHostAdapter.createReference('div'), null, context, null);
+      mountFunctionalElement(element, testHostAdapter.createReference('div'), null, context, null, renderRuntime);
 
       expect(element.context).toBe(context);
     });
@@ -176,7 +184,7 @@ describe('mounting', () => {
       const outerFn = vi.fn(() => createElement(innerFn));
       const element = createElement(outerFn);
 
-      mountFunctionalElement(element, testHostAdapter.createReference('div'), null, null, null);
+      mountFunctionalElement(element, testHostAdapter.createReference('div'), null, null, null, renderRuntime);
 
       expect(outerFn).toHaveBeenCalled();
       expect(innerFn).toHaveBeenCalled();
@@ -187,7 +195,7 @@ describe('mounting', () => {
       const testFn = vi.fn(() => null);
       const element = createElement(testFn);
 
-      mountFunctionalElement(element, testHostAdapter.createReference('div'), null, null, null);
+      mountFunctionalElement(element, testHostAdapter.createReference('div'), null, null, null, renderRuntime);
 
       expect(element.children).toBeNull();
     });
@@ -197,7 +205,7 @@ describe('mounting', () => {
     it('should create text reference from string children', () => {
       const element = createTextElement('Hello World');
 
-      mountTextElement(element, testHostAdapter.createReference('div'), null);
+      mountTextElement(element, testHostAdapter.createReference('div'), null, null, null, renderRuntime);
 
       expect(element.reference).instanceof(Text);
       expect(testHostAdapter.createTextReference).toHaveBeenCalledWith('Hello World');
@@ -205,12 +213,12 @@ describe('mounting', () => {
 
     it('should insert into parent if provided', () => {
       const element = createTextElement('Hello');
-      const parentRef = new Element('div');
-      const nextRef = new Element('span');
+      const parentRef = document.createElement('div');
+      const nextRef = document.createElement('span');
 
       parentRef.appendChild(nextRef);
 
-      mountTextElement(element, parentRef as HostReference, nextRef as HostReference);
+      mountTextElement(element, parentRef, nextRef, null, null, renderRuntime);
 
       expect(testHostAdapter.insertOrAppend).toHaveBeenCalledWith(parentRef, element.reference, nextRef);
     });
@@ -222,7 +230,7 @@ describe('mounting', () => {
       const child = createElement(() => null);
       const element = createElement(context.Provider, { value: 123 }, child);
 
-      mount(element, null, null, null, null);
+      mount(element, null, null, null, null, renderRuntime);
 
       expect(child.context?.get(context as any).value).toBe(123);
     });
@@ -233,7 +241,7 @@ describe('mounting', () => {
       const child2 = createElement(() => null);
       const element = createElement(context.Provider, { value: 'dark' }, child1, child2);
 
-      mount(element, null, null, null, null);
+      mount(element, null, null, null, null, renderRuntime);
 
       expect(child1.context?.get(context as any).value).toBe('dark');
       expect(child2.context?.get(context as any).value).toBe('dark');
@@ -253,14 +261,15 @@ describe('mounting', () => {
       const contextMap = new Map();
       contextMap.set(context, { value: 'PROVIDED_VALUE' });
 
-      mount(element, testHostAdapter.createReference('div'), null, contextMap, null);
+      mount(element, testHostAdapter.createReference('div'), null, contextMap, null, renderRuntime);
 
       expect(spyOnConsumer).toHaveBeenCalledWith(consumerProps);
       expect(consumerRenderer).toHaveBeenCalledWith('PROVIDED_VALUE');
       expect(testHostAdapter.createReference).toHaveBeenCalledWith('div', '');
       expect(testHostAdapter.mountProps).toHaveBeenCalledWith(
-        expect.objectContaining({ nodeName: 'div' }),
+        document.createElement('div'),
         element.children,
+        renderRuntime,
         ''
       );
     });
@@ -272,7 +281,7 @@ describe('mounting', () => {
         children: () => null,
       });
 
-      mount(element, testHostAdapter.createReference('div'), null, null, null);
+      mount(element, testHostAdapter.createReference('div'), null, null, null, renderRuntime);
 
       (testHostAdapter.createReference as Mock).mockClear();
 
@@ -287,7 +296,7 @@ describe('mounting', () => {
         children: () => [createElement('span', { key: 'a' }), createElement('p', { key: 'b' })],
       });
 
-      mount(element, testHostAdapter.createReference('div'), null, null, null);
+      mount(element, testHostAdapter.createReference('div'), null, null, null, renderRuntime);
 
       expect(Array.isArray((element.children as SimpElement).children)).toBe(true);
       expect(testHostAdapter.createReference).toHaveBeenCalledWith('span', '');

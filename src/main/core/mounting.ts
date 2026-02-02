@@ -1,9 +1,8 @@
-import type { Maybe, Nullable } from '@simpreact/shared';
-import { emptyObject } from '@simpreact/shared';
-import { createComponentStore, isComponentElement } from './component.js';
+import type { Maybe } from '@simpreact/shared';
 import {
   createElementStore,
   createTextElement,
+  type FC,
   normalizeRoot,
   SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
   SIMP_ELEMENT_CHILD_FLAG_LIST,
@@ -11,49 +10,57 @@ import {
   type SimpElement,
 } from './createElement.js';
 import type { HostReference } from './hostAdapter.js';
-import { hostAdapter } from './hostAdapter.js';
 import { type LifecycleEvent, lifecycleEventBus } from './lifecycleEventBus.js';
 import { applyRef } from './ref.js';
+import type { SimpRenderRuntime } from './runtime.js';
 
 const mountHandlers = [mountHostElement, mountFunctionalElement, mountTextElement, mountPortal, mountFragment];
 
 export function mount(
   element: SimpElement,
-  parentReference: Nullable<HostReference>,
-  nextReference: Nullable<HostReference>,
+  parentReference: HostReference,
+  nextReference: HostReference,
   context: unknown,
-  hostNamespace: Maybe<string>
+  hostNamespace: Maybe<string>,
+  renderRuntime: SimpRenderRuntime
 ): void {
   const index = Math.log2(element.flag & -element.flag);
 
-  mountHandlers[index]!(element, parentReference, nextReference, context, hostNamespace);
+  mountHandlers[index]!(element, parentReference, nextReference, context, hostNamespace, renderRuntime);
 }
 
 export function mountTextElement(
   element: SimpElement,
-  parentReference: Nullable<HostReference>,
-  nextReference: Nullable<HostReference>
+  parentReference: HostReference,
+  nextReference: HostReference,
+  _context: unknown,
+  _hostNamespace: Maybe<string>,
+  renderRuntime: SimpRenderRuntime
 ): void {
-  hostAdapter.insertOrAppend(
+  renderRuntime.hostAdapter.insertOrAppend(
     parentReference,
-    (element.reference = hostAdapter.createTextReference(element.children as string)),
+    (element.reference = renderRuntime.hostAdapter.createTextReference(element.children as string)),
     nextReference
   );
 }
 
 export function mountHostElement(
   element: SimpElement,
-  parentReference: Nullable<HostReference>,
-  nextReference: Nullable<HostReference>,
+  parentReference: HostReference,
+  nextReference: HostReference,
   context: unknown,
-  hostNamespace: Maybe<string>
+  hostNamespace: Maybe<string>,
+  renderRuntime: SimpRenderRuntime
 ): void {
-  const hostNamespaces = hostAdapter.getHostNamespaces(element, hostNamespace);
+  const hostNamespaces = renderRuntime.hostAdapter.getHostNamespaces(element, hostNamespace);
   hostNamespace = hostNamespaces?.self;
 
-  const hostReference = (element.reference = hostAdapter.createReference(element.type as string, hostNamespace));
+  const hostReference = (element.reference = renderRuntime.hostAdapter.createReference(
+    element.type as string,
+    hostNamespace
+  ));
 
-  hostAdapter.attachElementToReference(element, hostReference);
+  renderRuntime.hostAdapter.attachElementToReference(element, hostReference);
 
   if (element.childFlag === SIMP_ELEMENT_CHILD_FLAG_LIST) {
     mountArrayChildren(
@@ -62,27 +69,28 @@ export function mountHostElement(
       null,
       context,
       element,
-      hostNamespaces?.children
+      hostNamespaces?.children,
+      renderRuntime
     );
   }
   if (element.childFlag === SIMP_ELEMENT_CHILD_FLAG_ELEMENT) {
     (element.children as SimpElement).parent = element;
-    mount(element.children as SimpElement, hostReference, null, context, hostNamespaces?.children);
+    mount(element.children as SimpElement, hostReference, null, context, hostNamespaces?.children, renderRuntime);
   }
   if (element.childFlag === SIMP_ELEMENT_CHILD_FLAG_TEXT) {
-    hostAdapter.setTextContent(hostReference, element.props.children);
+    renderRuntime.hostAdapter.setTextContent(hostReference, element.props.children);
   }
 
   if (element.props) {
-    hostAdapter.mountProps(hostReference, element, hostNamespace);
+    renderRuntime.hostAdapter.mountProps(hostReference, element, renderRuntime, hostNamespace);
   }
 
   if (element.className) {
-    hostAdapter.setClassname(hostReference, element.className, hostNamespace);
+    renderRuntime.hostAdapter.setClassname(hostReference, element.className, hostNamespace);
   }
 
   if (parentReference) {
-    hostAdapter.insertOrAppend(parentReference, hostReference, nextReference);
+    renderRuntime.hostAdapter.insertOrAppend(parentReference, hostReference, nextReference);
   }
 
   applyRef(element);
@@ -90,10 +98,11 @@ export function mountHostElement(
 
 export function mountFunctionalElement(
   element: SimpElement,
-  parentReference: Nullable<HostReference>,
-  nextReference: Nullable<HostReference>,
+  parentReference: HostReference,
+  nextReference: HostReference,
   context: unknown,
-  hostNamespace: Maybe<string>
+  hostNamespace: Maybe<string>,
+  renderRuntime: SimpRenderRuntime
 ): void {
   if (context) {
     element.context = context;
@@ -108,10 +117,6 @@ export function mountFunctionalElement(
 
   if (hostNamespace) {
     element.store.hostNamespace = hostNamespace;
-  }
-
-  if (isComponentElement(element)) {
-    createComponentStore(element);
   }
 
   // FC element always has Maybe<SimpElement> children due to a normalization process.
@@ -137,20 +142,25 @@ export function mountFunctionalElement(
         type: 'beforeRender',
         element,
         phase: 'mounting',
+        renderRuntime,
       });
-      children = isComponentElement(element)
-        ? (element.type as any)(element.props || emptyObject, element.store.componentStore?.renderContext)
-        : (element.type as any)(element.props || emptyObject);
+      // children = isComponentElement(element)
+      //   ? (element.type as any)(element.props || emptyObject, element.store.componentStore?.renderContext)
+      //   : (element.type as any)(element.props || emptyObject);
+
+      children = renderRuntime.renderer(element.type as FC, element);
+
       lifecycleEventBus.publish({
         type: 'afterRender',
         element,
         phase: 'mounting',
+        renderRuntime,
       });
     } while (triedToRerender);
 
     normalizeRoot(element, children, false);
   } catch (error) {
-    const event: LifecycleEvent = { type: 'errored', element, error, phase: 'mounting', handled: false };
+    const event: LifecycleEvent = { type: 'errored', element, error, phase: 'mounting', handled: false, renderRuntime };
 
     lifecycleEventBus.publish(event);
 
@@ -165,54 +175,67 @@ export function mountFunctionalElement(
 
   if (element.children) {
     (element.children as SimpElement).parent = element;
-    mount(element.children as SimpElement, parentReference, nextReference, element.context, hostNamespace);
+    mount(
+      element.children as SimpElement,
+      parentReference,
+      nextReference,
+      element.context,
+      hostNamespace,
+      renderRuntime
+    );
   }
 
-  lifecycleEventBus.publish({ type: 'mounted', element });
+  lifecycleEventBus.publish({ type: 'mounted', element, renderRuntime });
 }
 
 export function mountFragment(
   element: SimpElement,
-  parentReference: Nullable<HostReference>,
-  nextReference: Nullable<HostReference>,
+  parentReference: HostReference,
+  nextReference: HostReference,
   context: unknown,
-  hostNamespace: Maybe<string>
+  hostNamespace: Maybe<string>,
+  renderRuntime: SimpRenderRuntime
 ): void {
-  // FRAGMENT element always has Maybe<Many<SimpElement>> children due to a normalization process.
-  if (Array.isArray(element.children)) {
-    mountArrayChildren(
-      element.children as SimpElement[],
-      parentReference,
-      nextReference,
-      context,
-      element,
-      hostNamespace
-    );
-  } else if (element.children) {
-    (element.children as SimpElement).parent = element;
-    mount(element.children as SimpElement, parentReference, nextReference, context, hostNamespace);
+  switch (element.childFlag) {
+    case SIMP_ELEMENT_CHILD_FLAG_LIST:
+      mountArrayChildren(
+        element.children as SimpElement[],
+        parentReference,
+        nextReference,
+        context,
+        element,
+        hostNamespace,
+        renderRuntime
+      );
+      break;
+    case SIMP_ELEMENT_CHILD_FLAG_ELEMENT:
+      (element.children as SimpElement).parent = element;
+      mount(element.children as SimpElement, parentReference, nextReference, context, hostNamespace, renderRuntime);
   }
 }
 
 export function mountArrayChildren(
   children: SimpElement[],
-  reference: Nullable<HostReference>,
-  nextReference: Nullable<HostReference>,
+  reference: HostReference,
+  nextReference: HostReference,
   context: unknown,
   parentElement: SimpElement,
-  hostNamespace: Maybe<string>
+  hostNamespace: Maybe<string>,
+  renderRuntime: SimpRenderRuntime
 ): void {
   for (const child of children) {
     child.parent = parentElement;
-    mount(child, reference, nextReference, context, hostNamespace);
+    mount(child, reference, nextReference, context, hostNamespace, renderRuntime);
   }
 }
 
 export function mountPortal(
   element: SimpElement,
-  parentReference: Nullable<HostReference>,
-  nextReference: Nullable<HostReference>,
-  context: unknown
+  parentReference: HostReference,
+  nextReference: HostReference,
+  context: unknown,
+  _hostNamespace: Maybe<string>,
+  renderRuntime: SimpRenderRuntime
 ): void {
   if (element.children) {
     (element.children as SimpElement).parent = element;
@@ -222,13 +245,14 @@ export function mountPortal(
       element.ref,
       null,
       context,
-      hostAdapter.getHostNamespaces(element.children as SimpElement, undefined)?.self
+      renderRuntime.hostAdapter.getHostNamespaces(element.children as SimpElement, undefined)?.self,
+      renderRuntime
     );
   }
 
   const placeHolderElement = createTextElement('');
 
-  mountTextElement(placeHolderElement, parentReference, nextReference);
+  mountTextElement(placeHolderElement, parentReference, nextReference, null, null, renderRuntime);
 
   element.reference = placeHolderElement.reference;
 }

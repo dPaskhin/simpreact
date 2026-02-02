@@ -9,4 +9,5 @@ export * from './patching.js';
 export * from './portal.js';
 export * from './ref.js';
 export * from './rerender.js';
+export * from './runtime.js';
 export * from './unmounting.js';

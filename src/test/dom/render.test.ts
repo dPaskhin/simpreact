@@ -1,18 +1,25 @@
-import { createRoot, render } from '@simpreact/dom';
-import { createElement, provideHostAdapter, SIMP_ELEMENT_FLAG_HOST } from '@simpreact/internal';
-import { Element } from 'flyweight-dom';
+import { createCreateRoot, createRenderer } from '@simpreact/dom';
+import { createElement, SIMP_ELEMENT_FLAG_HOST, type SimpRenderRuntime } from '@simpreact/internal';
+import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
-
 import { testHostAdapter } from '../test-host-adapter.js';
 
-provideHostAdapter(testHostAdapter);
+const renderRuntime: SimpRenderRuntime = {
+  hostAdapter: testHostAdapter,
+  renderer(type, element) {
+    return type(element.props || emptyObject);
+  },
+};
+
+const createRoot = createCreateRoot(renderRuntime);
+const render = createRenderer(renderRuntime);
 
 describe('render', () => {
   describe('render', () => {
     let container: Element;
 
     beforeEach(() => {
-      container = new Element('div');
+      container = document.createElement('div');
     });
 
     it('should mount a new root element if none exists', () => {
@@ -54,7 +61,7 @@ describe('render', () => {
     let container: Element;
 
     beforeEach(() => {
-      container = new Element('div');
+      container = document.createElement('div');
     });
 
     it('should mount new root element', () => {

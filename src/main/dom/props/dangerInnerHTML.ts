@@ -1,4 +1,4 @@
-import type { SimpElement } from '@simpreact/internal';
+import type { SimpElement, SimpRenderRuntime } from '@simpreact/internal';
 import { unmount } from '@simpreact/internal';
 import type { Many, Maybe } from '@simpreact/shared';
 
@@ -7,7 +7,8 @@ export function patchDangerInnerHTML(
   nextValue: Maybe<{ __html: string }>,
   prevElement: Maybe<SimpElement>,
   nextElement: SimpElement,
-  dom: Element
+  dom: Element,
+  renderRuntime: SimpRenderRuntime
 ): void {
   const prevHTML = prevValue?.__html || '';
   const nextHTML = nextValue?.__html || '';
@@ -22,7 +23,7 @@ export function patchDangerInnerHTML(
     if (nextHTML != null && !isSameInnerHTML(dom, nextHTML)) {
       if (prevElement != null) {
         if (prevElement.children) {
-          unmount(prevElement.children as Many<SimpElement>);
+          unmount(prevElement.children as Many<SimpElement>, renderRuntime);
           prevElement.children = undefined;
         }
       }

@@ -1,4 +1,4 @@
-import { createContext } from '@simpreact/context';
+import { createCreateContext } from '@simpreact/context';
 
 import {
   createElement,
@@ -18,8 +18,11 @@ import {
   SIMP_ELEMENT_FLAG_HOST,
   SIMP_ELEMENT_FLAG_TEXT,
   type SimpElement,
+  type SimpRenderRuntime,
 } from '@simpreact/internal';
+import { emptyObject } from '@simpreact/shared';
 import { describe, expect, it } from 'vitest';
+import { testHostAdapter } from './test-host-adapter.js';
 
 function createMockHostElement(): SimpElement {
   return createElement('div', null, '123');
@@ -28,6 +31,15 @@ function createMockHostElement(): SimpElement {
 const MockComponent: FC = props => {
   return createElement('div', props);
 };
+
+const renderRuntime: SimpRenderRuntime = {
+  hostAdapter: testHostAdapter,
+  renderer(type, element) {
+    return type(element.props || emptyObject);
+  },
+};
+
+const createContext = createCreateContext(renderRuntime);
 
 const TestContext = createContext('DEFAULT_VALUE');
 

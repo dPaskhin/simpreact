@@ -1,20 +1,20 @@
-import { SIMP_ELEMENT_FLAG_FC, type SimpElement, type SimpElementStore } from './createElement.js';
+import type { SimpElement, SimpElementStore } from './createElement.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
-import { isMemo } from './memo.js';
-import { findParentReferenceFromElement, updateFunctionalComponent } from './patching.js';
+import { findParentReferenceFromElement, patchFunctionalComponent } from './patching.js';
+import type { SimpRenderRuntime } from './runtime.js';
 
 lifecycleEventBus.subscribe(event => {
   if (event.type === 'afterRender' || event.type === 'errored' || event.type === 'unmounted') {
-    elementStoresToRerender.delete(event.element.store!);
-    syncRerenderLocker._untrack(event.element.store!);
+    elementStoresAsyncRerender.delete(event.element.store!);
+    elementStoresSyncRerender.delete(event.element.store!);
   }
 });
 
 let loopRunning = false;
 
-const elementStoresToRerender = new Set<SimpElementStore>();
+const elementStoresAsyncRerender = new Set<SimpElementStore>();
 
-function startScheduler() {
+function startScheduler(renderRuntime: SimpRenderRuntime) {
   if (loopRunning) {
     return;
   }
@@ -22,14 +22,23 @@ function startScheduler() {
   loopRunning = true;
 
   const process = () => {
-    if (elementStoresToRerender.size === 0) {
+    if (elementStoresAsyncRerender.size === 0) {
       loopRunning = false;
       return;
     }
 
-    for (const store of elementStoresToRerender) {
-      elementStoresToRerender.delete(store);
-      _rerender(store.latestElement!);
+    for (const store of elementStoresAsyncRerender) {
+      elementStoresAsyncRerender.delete(store);
+
+      patchFunctionalComponent(
+        store.latestElement!,
+        store.latestElement!,
+        store.latestElement!.context || null,
+        findParentReferenceFromElement(store.latestElement!),
+        store!.hostNamespace,
+        null,
+        renderRuntime
+      );
     }
 
     queueMicrotask(process);
@@ -38,61 +47,48 @@ function startScheduler() {
   queueMicrotask(process);
 }
 
-export function rerender(element: SimpElement) {
-  if ((element.flag & SIMP_ELEMENT_FLAG_FC) === 0) {
-    throw new TypeError('Re-rendering is only supported for FC elements.');
-  }
+export function rerender(element: SimpElement, renderRuntime: SimpRenderRuntime) {
   if (element.unmounted) {
     console.warn('The component is unmounted.');
   }
 
-  lifecycleEventBus.publish({ type: 'triedToRerender', element });
+  lifecycleEventBus.publish({ type: 'triedToRerender', element, renderRuntime });
 
-  if (syncRerenderLocker._isLocked) {
-    syncRerenderLocker._track(element.store!);
+  if (isSyncRenderingLocked) {
+    elementStoresSyncRerender.add(element.store!);
     return;
   }
 
-  elementStoresToRerender.add(element.store!);
-  startScheduler();
+  elementStoresAsyncRerender.add(element.store!);
+  startScheduler(renderRuntime);
 }
 
-export const syncRerenderLocker = {
-  _elementStores: new Set<SimpElementStore>(),
-  _isLocked: false,
-  _track(store: SimpElementStore): void {
-    this._elementStores.add(store);
-  },
-  _untrack(store: SimpElementStore): void {
-    this._elementStores.delete(store);
-  },
-  flush(): void {
-    this._isLocked = false;
+let isSyncRenderingLocked = false;
 
-    if (this._elementStores.size === 0) {
-      return;
-    }
+const elementStoresSyncRerender = new Set<SimpElementStore>();
 
-    for (const store of this._elementStores) {
-      this._untrack(store);
-      _rerender(store.latestElement!);
-    }
-  },
-  lock(): void {
-    this._isLocked = true;
-  },
-};
+export function lockSyncRendering() {
+  isSyncRenderingLocked = true;
+}
 
-function _rerender(element: SimpElement) {
-  if (isMemo(element.type)) {
-    element.type._forceRender = true;
+export function flushSyncRerender(renderRuntime: SimpRenderRuntime) {
+  isSyncRenderingLocked = false;
+
+  if (elementStoresSyncRerender.size === 0) {
+    return;
   }
 
-  updateFunctionalComponent(
-    element,
-    findParentReferenceFromElement(element),
-    null,
-    element.context || null,
-    element.store!.hostNamespace
-  );
+  for (const store of elementStoresSyncRerender) {
+    elementStoresSyncRerender.delete(store);
+
+    patchFunctionalComponent(
+      store.latestElement!,
+      store.latestElement!,
+      store.latestElement!.context || null,
+      findParentReferenceFromElement(store.latestElement!),
+      store!.hostNamespace,
+      null,
+      renderRuntime
+    );
+  }
 }

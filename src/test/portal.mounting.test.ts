@@ -1,10 +1,14 @@
-import { createElement, createPortal, mountPortal, provideHostAdapter } from '@simpreact/internal';
-
-import { Element } from 'flyweight-dom';
+import { createElement, createPortal, mountPortal, type SimpRenderRuntime } from '@simpreact/internal';
+import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { testHostAdapter } from './test-host-adapter.js';
 
-provideHostAdapter(testHostAdapter);
+const renderRuntime: SimpRenderRuntime = {
+  hostAdapter: testHostAdapter,
+  renderer(type, element) {
+    return type(element.props || emptyObject);
+  },
+};
 
 describe('mountPortal', () => {
   beforeEach(() => {
@@ -12,32 +16,29 @@ describe('mountPortal', () => {
   });
 
   it('mounts a portal with a single child', () => {
-    const container = new Element('div');
-    const parentReference = new Element('div');
+    const container = document.createElement('div');
+    const parentReference = document.createElement('div');
     const portal = createPortal(createElement('span'), container);
 
-    mountPortal(portal, parentReference, null, null);
+    mountPortal(portal, parentReference, null, null, null, renderRuntime);
 
-    expect(testHostAdapter.appendChild).toHaveBeenCalledWith(container, expect.objectContaining({ nodeName: 'span' }));
-    expect(testHostAdapter.appendChild).toHaveBeenCalledWith(
-      parentReference,
-      expect.objectContaining({ textContent: '' })
-    );
+    expect(testHostAdapter.appendChild).toHaveBeenCalledWith(container, document.createElement('span'));
+    expect(testHostAdapter.appendChild).toHaveBeenCalledWith(parentReference, document.createTextNode(''));
 
     expect(container.children.length).toBe(1);
-    expect(container.firstChild!.nodeName).toBe('span');
+    expect((container.firstChild as HTMLSpanElement)!.nodeName).toBe('SPAN');
 
     expect(parentReference.textContent).toBe('');
 
-    expect(portal.reference).toStrictEqual(expect.objectContaining({ textContent: '' }));
+    expect((portal.reference as Text).textContent).toStrictEqual('');
   });
 
   it('does not mount any nodes to container if portal has no children', () => {
-    const container = new Element('div');
-    const parentReference = new Element('div');
+    const container = document.createElement('div');
+    const parentReference = document.createElement('div');
     const portal = createPortal(null, container);
 
-    mountPortal(portal, parentReference, null, null);
+    mountPortal(portal, parentReference, null, null, null, renderRuntime);
 
     expect(testHostAdapter.appendChild).toHaveBeenCalledWith(
       parentReference,
@@ -48,6 +49,6 @@ describe('mountPortal', () => {
 
     expect(parentReference.textContent).toBe('');
 
-    expect(portal.reference).toStrictEqual(expect.objectContaining({ textContent: '' }));
+    expect((portal.reference as Text).textContent).toStrictEqual('');
   });
 });

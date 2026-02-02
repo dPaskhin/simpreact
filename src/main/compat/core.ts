@@ -1,5 +1,5 @@
-import * as SimpReactHooks from '@simpreact/hooks';
 import * as SimpReactInternal from '@simpreact/internal';
+import { useCatch, useState } from './hooks.js';
 
 export const Children = {
   map(
@@ -75,9 +75,9 @@ export function Suspense(props: {
   fallback: SimpReactInternal.SimpNode;
   children: SimpReactInternal.SimpNode;
 }): SimpReactInternal.SimpNode {
-  const [isSuspended, setIsSuspended] = SimpReactHooks.useState(false);
+  const [isSuspended, setIsSuspended] = useState(false);
 
-  SimpReactHooks.useCatch(error => {
+  useCatch(error => {
     if (!(error instanceof Promise)) {
       throw error;
     }

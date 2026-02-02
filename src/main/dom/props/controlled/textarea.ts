@@ -1,5 +1,5 @@
-import type { SimpElement } from '@simpreact/internal';
-import { syncRerenderLocker } from '@simpreact/internal';
+import type { SimpElement, SimpRenderRuntime } from '@simpreact/internal';
+import { flushSyncRerender, lockSyncRendering } from '@simpreact/internal';
 import type { Dict } from '@simpreact/shared';
 
 import { getElementFromDom } from '../../attach-element-to-dom.js';
@@ -8,52 +8,59 @@ export function isEventNameIgnored(eventName: string): boolean {
   return eventName === 'onChange' || eventName === 'onInput';
 }
 
-function onControlledTextareaChange(event: Event): void {
-  let element = getElementFromDom(event.target);
+function createControlledTextareaChangeHandler(renderRuntime: SimpRenderRuntime): (event: Event) => void {
+  return (event: Event) => {
+    let element = getElementFromDom(event.target);
 
-  if (!element || !element.props) {
-    return;
-  }
+    if (!element || !element.props) {
+      return;
+    }
 
-  if (element.props['onChange']) {
-    syncRerenderLocker.lock();
-    element.props['onChange'](event);
-    syncRerenderLocker.flush();
-    element = getElementFromDom(event.target);
-  }
+    if (element.props['onChange']) {
+      lockSyncRendering();
+      element.props['onChange'](event);
+      flushSyncRerender(renderRuntime);
+      element = getElementFromDom(event.target);
+    }
 
-  if (element) {
-    syncControlledTextareaProps(element, element.props);
-  }
+    if (element) {
+      syncControlledTextareaProps(element, element.props);
+    }
+  };
 }
 
-function onControlledTextareaInput(event: Event): void {
-  let element = getElementFromDom(event.target);
+function createControlledTextareaInputHandler(renderRuntime: SimpRenderRuntime): (event: Event) => void {
+  return event => {
+    let element = getElementFromDom(event.target);
 
-  if (!element || !element.props) {
-    return;
-  }
+    if (!element || !element.props) {
+      return;
+    }
 
-  if (element.props['onInput']) {
-    syncRerenderLocker.lock();
-    element.props['onInput'](event);
-    syncRerenderLocker.flush();
-    element = getElementFromDom(event.target);
-  }
+    if (element.props['onInput']) {
+      lockSyncRendering();
+      element.props['onInput'](event);
+      flushSyncRerender(renderRuntime);
+      element = getElementFromDom(event.target);
+    }
 
-  if (element) {
-    syncControlledTextareaProps(element, element.props);
-  }
+    if (element) {
+      syncControlledTextareaProps(element, element.props);
+    }
+  };
 }
 
-export function addControlledTextareaEventHandlers(dom: HTMLTextAreaElement): void {
-  dom.addEventListener('input', onControlledTextareaInput);
-  dom.addEventListener('change', onControlledTextareaChange);
+export function addControlledTextareaEventHandlers(dom: HTMLTextAreaElement, renderRuntime: SimpRenderRuntime): void {
+  dom.addEventListener('input', createControlledTextareaInputHandler(renderRuntime));
+  dom.addEventListener('change', createControlledTextareaChangeHandler(renderRuntime));
 }
 
-export function removeControlledTextareaEventHandlers(dom: HTMLTextAreaElement): void {
-  dom.removeEventListener('input', onControlledTextareaInput);
-  dom.removeEventListener('change', onControlledTextareaChange);
+export function removeControlledTextareaEventHandlers(
+  dom: HTMLTextAreaElement,
+  renderRuntime: SimpRenderRuntime
+): void {
+  dom.removeEventListener('input', createControlledTextareaInputHandler(renderRuntime));
+  dom.removeEventListener('change', createControlledTextareaChangeHandler(renderRuntime));
 }
 
 export function syncControlledTextareaProps(element: SimpElement, props: Dict, mounting = false): void {

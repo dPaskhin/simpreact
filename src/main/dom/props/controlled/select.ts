@@ -1,6 +1,11 @@
-import type { SimpElement } from '@simpreact/internal';
-import { syncRerenderLocker } from '@simpreact/internal';
-import type { Dict, Many, Maybe } from '@simpreact/shared';
+import type { SimpElement, SimpRenderRuntime } from '@simpreact/internal';
+import {
+  flushSyncRerender,
+  lockSyncRendering,
+  SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
+  SIMP_ELEMENT_CHILD_FLAG_LIST,
+} from '@simpreact/internal';
+import type { Dict } from '@simpreact/shared';
 import { emptyObject } from '@simpreact/shared';
 
 import { getElementFromDom } from '../../attach-element-to-dom.js';
@@ -9,32 +14,34 @@ export function isEventNameIgnored(eventName: string): boolean {
   return eventName === 'onChange';
 }
 
-function onControlledInputChange(event: Event): void {
-  let element = getElementFromDom(event.target);
+function createControlledInputChangeHandler(renderRuntime: SimpRenderRuntime): (event: Event) => void {
+  return (event: Event) => {
+    let element = getElementFromDom(event.target);
 
-  if (!element || !element.props) {
-    return;
-  }
+    if (!element || !element.props) {
+      return;
+    }
 
-  if (element.props['onChange']) {
-    syncRerenderLocker.lock();
-    element.props['onChange'](event);
-    syncRerenderLocker.flush();
+    if (element.props['onChange']) {
+      lockSyncRendering();
+      element.props['onChange'](event);
+      flushSyncRerender(renderRuntime);
 
-    element = getElementFromDom(event.target);
-  }
+      element = getElementFromDom(event.target);
+    }
 
-  if (element) {
-    syncControlledSelectProps(element, element.props);
-  }
+    if (element) {
+      syncControlledSelectProps(element, element.props);
+    }
+  };
 }
 
-export function addControlledSelectEventHandlers(dom: HTMLSelectElement): void {
-  dom.addEventListener('change', onControlledInputChange);
+export function addControlledSelectEventHandlers(dom: HTMLSelectElement, renderRuntime: SimpRenderRuntime): void {
+  dom.addEventListener('change', createControlledInputChangeHandler(renderRuntime));
 }
 
-export function removeControlledSelectEventHandlers(dom: HTMLSelectElement): void {
-  dom.removeEventListener('change', onControlledInputChange);
+export function removeControlledSelectEventHandlers(dom: HTMLSelectElement, renderRuntime: SimpRenderRuntime): void {
+  dom.removeEventListener('change', createControlledInputChangeHandler(renderRuntime));
 }
 
 export function syncControlledSelectProps(element: SimpElement, props: Dict, mounting = false): void {
@@ -67,14 +74,17 @@ function updateOptions(element: SimpElement, value: unknown): void {
     return;
   }
 
-  const children = element.children as Maybe<Many<SimpElement>>;
+  const children = element.children;
+  const childFlag = element.childFlag;
 
-  if (Array.isArray(children)) {
-    for (let i = 0, len = children.length; i < len; ++i) {
-      updateOptions(children[i]!, value);
-    }
-  } else if (children) {
-    updateOptions(children, value);
+  switch (childFlag) {
+    case SIMP_ELEMENT_CHILD_FLAG_LIST:
+      for (let i = 0, len = (children as SimpElement[]).length; i < len; ++i) {
+        updateOptions((children as SimpElement[])[i]!, value);
+      }
+      break;
+    case SIMP_ELEMENT_CHILD_FLAG_ELEMENT:
+      updateOptions(children as SimpElement, value);
   }
 }
 

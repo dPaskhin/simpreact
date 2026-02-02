@@ -1,7 +1,7 @@
-import { createRoot } from '@simpreact/dom';
-import { useEffect, useRef, useRerender } from '@simpreact/hooks';
-import { createElement, provideHostAdapter } from '@simpreact/internal';
-import { Element } from 'flyweight-dom';
+import { createCreateRoot } from '@simpreact/dom';
+import { createUseEffect, createUseRef, createUseRerender } from '@simpreact/hooks';
+import { createElement, type SimpRenderRuntime } from '@simpreact/internal';
+import { emptyObject } from '@simpreact/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   dispatchDelegatedEvent,
@@ -11,7 +11,18 @@ import {
 } from '../main/dom/events.js';
 import { testHostAdapter } from './test-host-adapter.js';
 
-provideHostAdapter(testHostAdapter);
+const renderRuntime: SimpRenderRuntime = {
+  hostAdapter: testHostAdapter,
+  renderer(type, element) {
+    return type(element.props || emptyObject);
+  },
+};
+
+const createRoot = createCreateRoot(renderRuntime);
+
+const useEffect = createUseEffect(renderRuntime);
+const useRef = createUseRef(renderRuntime);
+const useRerender = createUseRerender(renderRuntime);
 
 const createEventWithTarget = (simpElement: any, type: string) => {
   const nativeEvent = new Event(type);
@@ -287,7 +298,7 @@ describe('events', () => {
         );
       });
 
-      createRoot(new Element('div') as any).render(totalRoot);
+      createRoot(document.createElement('div')).render(totalRoot);
 
       expect(midHandler).toHaveBeenCalledOnce();
       expect(rootHandler).toHaveBeenCalledOnce();

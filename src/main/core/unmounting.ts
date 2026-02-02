@@ -1,6 +1,7 @@
 import type { Many, Maybe } from '@simpreact/shared';
-
 import {
+  SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
+  SIMP_ELEMENT_CHILD_FLAG_LIST,
   SIMP_ELEMENT_FLAG_FC,
   SIMP_ELEMENT_FLAG_FRAGMENT,
   SIMP_ELEMENT_FLAG_HOST,
@@ -9,14 +10,14 @@ import {
   type SimpElement,
 } from './createElement.js';
 import type { HostReference } from './hostAdapter.js';
-import { hostAdapter } from './hostAdapter.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
 import { unmountRef } from './ref.js';
+import type { SimpRenderRuntime } from './runtime.js';
 
-export function unmount(element: Many<SimpElement>): void {
+export function unmount(element: Many<SimpElement>, renderRuntime: SimpRenderRuntime): void {
   if (Array.isArray(element)) {
     for (const child of element) {
-      unmount(child);
+      unmount(child, renderRuntime);
     }
     return;
   }
@@ -29,10 +30,10 @@ export function unmount(element: Many<SimpElement>): void {
 
     // FC element always has Maybe<SimpElement> due to normalization.
     if (element.children) {
-      unmount(element.children as SimpElement);
+      unmount(element.children as SimpElement, renderRuntime);
     }
     element.unmounted = true;
-    lifecycleEventBus.publish({ type: 'unmounted', element });
+    lifecycleEventBus.publish({ type: 'unmounted', element, renderRuntime });
     return;
   }
 
@@ -41,52 +42,58 @@ export function unmount(element: Many<SimpElement>): void {
   }
 
   if ((element.flag & SIMP_ELEMENT_FLAG_PORTAL) !== 0) {
-    remove(element.children as SimpElement, element.ref as HostReference);
+    remove(element.children as SimpElement, element.ref, renderRuntime);
     return;
   }
 
   // Only FRAGMENT and HOST elements remain,
   // with Maybe<Many<SimpElement>> children due to normalization.
   if (element.children) {
-    unmount(element.children as Many<SimpElement>);
+    unmount(element.children as Many<SimpElement>, renderRuntime);
   }
 
   if ((element.flag & SIMP_ELEMENT_FLAG_HOST) !== 0) {
     unmountRef(element);
-    hostAdapter.unmountProps(element.reference, element);
+    renderRuntime.hostAdapter.unmountProps(element.reference, element);
   }
 }
 
-export function clearElementHostReference(element: Maybe<SimpElement>, parentHostReference: HostReference): void {
+export function clearElementHostReference(
+  element: Maybe<SimpElement>,
+  parentHostReference: HostReference,
+  renderRuntime: SimpRenderRuntime
+): void {
   while (element != null) {
     if (
       (element.flag & SIMP_ELEMENT_FLAG_HOST) !== 0 ||
       (element.flag & SIMP_ELEMENT_FLAG_TEXT) !== 0 ||
       (element.flag & SIMP_ELEMENT_FLAG_PORTAL) !== 0
     ) {
-      hostAdapter.removeChild(parentHostReference, element.reference!);
+      renderRuntime.hostAdapter.removeChild(parentHostReference, element.reference!);
       return;
     }
     const children = element.children;
+    const childFlag = element.childFlag;
 
     if ((element.flag & SIMP_ELEMENT_FLAG_FC) !== 0) {
       element = children as SimpElement;
       continue;
     }
     if ((element.flag & SIMP_ELEMENT_FLAG_FRAGMENT) !== 0) {
-      if (Array.isArray(children)) {
-        for (let i = 0, len = children.length; i < len; ++i) {
-          clearElementHostReference(children[i] as SimpElement, parentHostReference);
-        }
-        return;
-      } else if (children) {
-        element = children as SimpElement;
+      switch (childFlag) {
+        case SIMP_ELEMENT_CHILD_FLAG_LIST:
+          for (let i = 0, len = (children as SimpElement[]).length; i < len; ++i) {
+            clearElementHostReference((children as SimpElement[])[i], parentHostReference, renderRuntime);
+          }
+          return;
+        case SIMP_ELEMENT_CHILD_FLAG_ELEMENT:
+          element = children as SimpElement;
       }
     }
   }
 }
 
-export function remove(element: SimpElement, parentReference: HostReference): void {
-  unmount(element);
-  clearElementHostReference(element, parentReference);
+export function remove(element: SimpElement, parentReference: HostReference, renderRuntime: SimpRenderRuntime): void {
+  unmount(element, renderRuntime);
+  clearElementHostReference(element, parentReference, renderRuntime);
 }

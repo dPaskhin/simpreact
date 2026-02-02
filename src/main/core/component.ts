@@ -1,6 +1,5 @@
 import type { Dict, Maybe, Nullable } from '@simpreact/shared';
 import { shallowEqual } from '@simpreact/shared';
-
 import type { SimpElement } from './createElement.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
 import { rerender } from './rerender.js';
@@ -65,7 +64,11 @@ export function createState(onChange: () => void) {
 
 export function createComponentStore(element: SimpElement): ComponentStore {
   function _rerender() {
-    rerender(element);
+    rerender(
+      element,
+      // TODO
+      {} as any
+    );
   }
 
   element.store!.componentStore = {

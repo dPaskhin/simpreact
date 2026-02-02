@@ -1,3 +1,5 @@
+import type { SimpRenderRuntime } from '@simpreact/internal';
+import { emptyObject } from '@simpreact/shared';
 import { describe, expect, it, vi } from 'vitest';
 import {
   addControlledTextareaEventHandlers,
@@ -5,6 +7,14 @@ import {
   removeControlledTextareaEventHandlers,
   syncControlledTextareaProps,
 } from '../../main/dom/props/controlled/textarea.js';
+import { testHostAdapter } from '../test-host-adapter.js';
+
+const renderRuntime: SimpRenderRuntime = {
+  hostAdapter: testHostAdapter,
+  renderer(type, element) {
+    return type(element.props || emptyObject);
+  },
+};
 
 describe('textarea controlled', () => {
   describe('isEventNameIgnored', () => {
@@ -25,11 +35,11 @@ describe('textarea controlled', () => {
       const addSpy = vi.spyOn(textarea, 'addEventListener');
       const removeSpy = vi.spyOn(textarea, 'removeEventListener');
 
-      addControlledTextareaEventHandlers(textarea);
+      addControlledTextareaEventHandlers(textarea, renderRuntime);
       expect(addSpy).toHaveBeenCalledWith('input', expect.any(Function));
       expect(addSpy).toHaveBeenCalledWith('change', expect.any(Function));
 
-      removeControlledTextareaEventHandlers(textarea);
+      removeControlledTextareaEventHandlers(textarea, renderRuntime);
       expect(removeSpy).toHaveBeenCalledWith('input', expect.any(Function));
       expect(removeSpy).toHaveBeenCalledWith('change', expect.any(Function));
     });

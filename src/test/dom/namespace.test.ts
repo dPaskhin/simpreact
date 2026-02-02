@@ -1,14 +1,20 @@
-import { createElement, mount, provideHostAdapter } from '@simpreact/internal';
-import { Element } from 'flyweight-dom';
+import type { SimpRenderRuntime } from '@simpreact/internal';
+import { createElement, mount } from '@simpreact/internal';
+import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { domAdapter } from '../../main/dom/domAdapter.js';
 import { testHostAdapter } from '../test-host-adapter.js';
 
-provideHostAdapter(
-  Object.defineProperty(testHostAdapter, 'getHostNamespaces', {
-    value: vi.fn().mockImplementation(domAdapter.getHostNamespaces),
-  })
-);
+Object.defineProperty(testHostAdapter, 'getHostNamespaces', {
+  value: vi.fn().mockImplementation(domAdapter.getHostNamespaces),
+});
+
+const renderRuntime: SimpRenderRuntime = {
+  hostAdapter: testHostAdapter,
+  renderer(type, element) {
+    return type(element.props || emptyObject);
+  },
+};
 
 describe('namespace', () => {
   beforeEach(() => {
@@ -23,7 +29,7 @@ describe('namespace', () => {
       createElement(() => '')
     );
 
-    mount(root, new Element('div', { id: 'root' }), null, null, 'http://www.w3.org/1999/xhtml');
+    mount(root, document.createElement('div'), null, null, 'http://www.w3.org/1999/xhtml', renderRuntime);
 
     expect(testHostAdapter.createReference).toHaveBeenNthCalledWith(1, 'div', undefined);
     expect(testHostAdapter.createReference).toHaveBeenNthCalledWith(2, 'span', undefined);
@@ -40,7 +46,7 @@ describe('namespace', () => {
       createElement('b')
     );
 
-    mount(root, new Element('div', { id: 'root' }), null, null, 'http://www.w3.org/1999/xhtml');
+    mount(root, document.createElement('div'), null, null, 'http://www.w3.org/1999/xhtml', renderRuntime);
 
     expect(testHostAdapter.createReference).toHaveBeenNthCalledWith(1, 'div', undefined);
     expect(testHostAdapter.createReference).toHaveBeenNthCalledWith(2, 'span', undefined);
@@ -65,7 +71,7 @@ describe('namespace', () => {
       createElement('b')
     );
 
-    mount(root, new Element('div', { id: 'root' }), null, null, undefined);
+    mount(root, document.createElement('div'), null, null, undefined, renderRuntime);
 
     expect(testHostAdapter.createReference).toHaveBeenNthCalledWith(1, 'div', undefined);
     expect(testHostAdapter.createReference).toHaveBeenNthCalledWith(2, 'span', undefined);

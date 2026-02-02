@@ -1,14 +1,22 @@
 import { createElement } from '@simpreact/core';
-import { unmount } from '@simpreact/internal';
+import { type SimpRenderRuntime, unmount } from '@simpreact/internal';
+import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import { patchDangerInnerHTML } from '../../main/dom/props/dangerInnerHTML.js';
+import { testHostAdapter } from '../test-host-adapter.js';
 
 vi.mock('@simpreact/internal', () => ({
   unmount: vi.fn(),
 }));
 
 const createDomElement = () => document.createElement('div');
+
+const renderRuntime: SimpRenderRuntime = {
+  hostAdapter: testHostAdapter,
+  renderer(type, element) {
+    return type(element.props || emptyObject);
+  },
+};
 
 describe('patchDangerInnerHTML', () => {
   beforeEach(() => {
@@ -21,7 +29,7 @@ describe('patchDangerInnerHTML', () => {
     const nextElement = createElement('div', null, createElement('span'));
 
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    patchDangerInnerHTML(null, nextValue, null, nextElement, dom);
+    patchDangerInnerHTML(null, nextValue, null, nextElement, dom, renderRuntime);
 
     expect(dom.innerHTML).toBe('<b>Hello</b>');
     expect(warn).toHaveBeenCalledWith(
@@ -33,14 +41,21 @@ describe('patchDangerInnerHTML', () => {
   it('should do nothing if no nextValue and nextElement exists', () => {
     const dom = createDomElement();
     const nextElement = createElement('div');
-    patchDangerInnerHTML(null, null, null, nextElement, dom);
+    patchDangerInnerHTML(null, null, null, nextElement, dom, renderRuntime);
     expect(dom.innerHTML).toBe('');
   });
 
   it('should clear innerHTML if nextValue is null and prevValue exists', () => {
     const dom = createDomElement();
     dom.innerHTML = '<p>Test</p>';
-    patchDangerInnerHTML({ __html: '<p>Test</p>' }, null, createElement('div'), createElement('div'), dom);
+    patchDangerInnerHTML(
+      { __html: '<p>Test</p>' },
+      null,
+      createElement('div'),
+      createElement('div'),
+      dom,
+      renderRuntime
+    );
     expect(dom.innerHTML).toBe('');
   });
 
@@ -51,9 +66,9 @@ describe('patchDangerInnerHTML', () => {
     const prevElementChildren = prevElement.children;
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    patchDangerInnerHTML(null, { __html: '<i>Updated</i>' }, prevElement, nextElement, dom);
+    patchDangerInnerHTML(null, { __html: '<i>Updated</i>' }, prevElement, nextElement, dom, renderRuntime);
 
-    expect(unmount).toHaveBeenCalledWith(prevElementChildren);
+    expect(unmount).toHaveBeenCalledWith(prevElementChildren, renderRuntime);
     expect(dom.innerHTML).toBe('<i>Updated</i>');
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
@@ -66,9 +81,9 @@ describe('patchDangerInnerHTML', () => {
     const prevElementChildren = prevElement.children;
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    patchDangerInnerHTML(null, { __html: '<i>Updated</i>' }, prevElement, nextElement, dom);
+    patchDangerInnerHTML(null, { __html: '<i>Updated</i>' }, prevElement, nextElement, dom, renderRuntime);
 
-    expect(unmount).toHaveBeenCalledWith(prevElementChildren);
+    expect(unmount).toHaveBeenCalledWith(prevElementChildren, renderRuntime);
     expect(dom.innerHTML).toBe('<i>Updated</i>');
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
@@ -82,9 +97,9 @@ describe('patchDangerInnerHTML', () => {
 
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    patchDangerInnerHTML({ __html: 'old' }, { __html: 'new' }, prevElement, nextElement, dom);
+    patchDangerInnerHTML({ __html: 'old' }, { __html: 'new' }, prevElement, nextElement, dom, renderRuntime);
 
-    expect(unmount).toHaveBeenCalledWith(prevElementChildren);
+    expect(unmount).toHaveBeenCalledWith(prevElementChildren, renderRuntime);
     expect(dom.innerHTML).toBe('new');
     expect(prevElement.children).toBeUndefined();
     expect(warn).toHaveBeenCalled();
@@ -99,9 +114,9 @@ describe('patchDangerInnerHTML', () => {
 
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    patchDangerInnerHTML({ __html: 'old' }, { __html: 'new' }, prevElement, nextElement, dom);
+    patchDangerInnerHTML({ __html: 'old' }, { __html: 'new' }, prevElement, nextElement, dom, renderRuntime);
 
-    expect(unmount).toHaveBeenCalledWith(prevElementChildren);
+    expect(unmount).toHaveBeenCalledWith(prevElementChildren, renderRuntime);
     expect(dom.innerHTML).toBe('new');
     expect(prevElement.children).toBeUndefined();
     expect(warn).toHaveBeenCalled();
@@ -114,7 +129,7 @@ describe('patchDangerInnerHTML', () => {
     const prevElement = createElement('div');
     const nextElement = createElement('div');
 
-    patchDangerInnerHTML({ __html: 'same' }, { __html: 'same' }, prevElement, nextElement, dom);
+    patchDangerInnerHTML({ __html: 'same' }, { __html: 'same' }, prevElement, nextElement, dom, renderRuntime);
 
     expect(dom.innerHTML).toBe('same');
     expect(unmount).not.toHaveBeenCalled();

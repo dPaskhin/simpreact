@@ -1,6 +1,12 @@
-import { rerender as _rerender, lifecycleEventBus, type RefObject, type SimpElement } from '@simpreact/internal';
+import {
+  rerender as _rerender,
+  lifecycleEventBus,
+  type RefObject,
+  type SimpElement,
+  type SimpRenderRuntime,
+} from '@simpreact/internal';
 import type { Maybe, Nullable } from '@simpreact/shared';
-import { callOrGet, noop, shallowEqual } from '@simpreact/shared';
+import { callOrGet, shallowEqual } from '@simpreact/shared';
 
 export type Cleanup = () => void;
 export type Effect = () => void | Cleanup;
@@ -25,6 +31,12 @@ type StateHookState<S = any> = [S, Dispatch<SetStateAction<S>>];
 
 type HookState = EffectHookState | RerenderHookState | RefHookState | StateHookState;
 
+interface HooksSimpRenderRuntime extends SimpRenderRuntime {
+  currentIndex: number;
+  // In runtime this is a nullable variable.
+  currentElement: HooksSimpElement;
+}
+
 interface HooksSimpElement extends SimpElement {
   store: SimpElement['store'] &
     Nullable<{
@@ -34,24 +46,23 @@ interface HooksSimpElement extends SimpElement {
     }>;
 }
 
-let currentIndex = 0;
-// In runtime this is a nullable variable.
-let currentElement: HooksSimpElement;
-
 lifecycleEventBus.subscribe(event => {
-  if (event.type === 'beforeRender') {
-    currentElement = event.element as HooksSimpElement;
+  const renderRuntime = event.renderRuntime as HooksSimpRenderRuntime;
 
-    if (currentElement.store?.catchHandlers) {
-      currentElement.store.catchHandlers = null;
+  if (event.type === 'beforeRender') {
+    renderRuntime.currentIndex = 0;
+    renderRuntime.currentElement = event.element as HooksSimpElement;
+
+    if (renderRuntime.currentElement.store?.catchHandlers) {
+      renderRuntime.currentElement.store.catchHandlers = null;
     }
-    if (currentElement.store?.effectsHookStates) {
-      currentElement.store.effectsHookStates = null;
+    if (renderRuntime.currentElement.store?.effectsHookStates) {
+      renderRuntime.currentElement.store.effectsHookStates = null;
     }
   }
   if (event.type === 'afterRender' || event.type === 'errored') {
-    currentElement = null!;
-    currentIndex = 0;
+    renderRuntime.currentElement = null!;
+    renderRuntime.currentIndex = 0;
   }
   if (event.type === 'mounted') {
     const element = event.element as HooksSimpElement;
@@ -119,102 +130,107 @@ lifecycleEventBus.subscribe(event => {
   }
 });
 
-export function useRef<T>(initialValue: T): RefObject<T>;
-export function useRef<T>(initialValue: T | null): RefObject<T | null>;
-export function useRef<T>(initialValue: T | undefined): RefObject<T | undefined>;
-export function useRef<T>(initialValue: Maybe<T>): RefObject<Maybe<T>> {
-  const hookStates = getOrCreateHookStates(currentElement);
+export interface UseRef {
+  <T>(initialValue: T): RefObject<T>;
+  <T>(initialValue: T | null): RefObject<T | null>;
+  <T = undefined>(initialValue?: T): RefObject<T | undefined>;
+}
+export function createUseRef(renderRuntime: SimpRenderRuntime): UseRef {
+  return initialValue => {
+    const hookStates = getOrCreateHookStates((renderRuntime as HooksSimpRenderRuntime).currentElement);
 
-  if (!hookStates[currentIndex]) {
-    hookStates[currentIndex] = { current: initialValue };
-  }
+    if (!hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex]) {
+      hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex] = { current: initialValue };
+    }
 
-  return hookStates[currentIndex++] as RefObject<T>;
+    return hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex++] as RefObject<typeof initialValue>;
+  };
 }
 
-export function useRerender(): () => void {
-  const hookStates = getOrCreateHookStates(currentElement);
+export function createUseRerender(renderRuntime: SimpRenderRuntime): () => RerenderHookState {
+  return () => {
+    const hookStates = getOrCreateHookStates((renderRuntime as HooksSimpRenderRuntime).currentElement);
 
-  if (!hookStates[currentIndex]) {
-    const elementStore = currentElement.store;
-    hookStates[currentIndex] = function rerender() {
-      _rerender(elementStore!.latestElement!);
-    };
-  }
+    if (!hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex]) {
+      const elementStore = (renderRuntime as HooksSimpRenderRuntime).currentElement.store;
+      hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex] = function rerender() {
+        _rerender(elementStore!.latestElement!, renderRuntime);
+      };
+    }
 
-  return hookStates[currentIndex++] as RerenderHookState;
+    return hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex++] as RerenderHookState;
+  };
 }
 
-export function useState<S>(initialState: S | (() => S)): [S, Dispatch<SetStateAction<S>>];
-export function useState<S = undefined>(): [S | undefined, Dispatch<SetStateAction<S | undefined>>];
-export function useState<S>(initialState?: S | (() => S)) {
-  const hookStates = getOrCreateHookStates(currentElement);
+export interface UseState {
+  <S>(initialState: S | (() => S)): [S, Dispatch<SetStateAction<S>>];
+  <S = undefined>(): [S | undefined, Dispatch<SetStateAction<S | undefined>>];
+  <S = undefined>(
+    initialState: undefined | (() => undefined)
+  ): [S | undefined, Dispatch<SetStateAction<S | undefined>>];
+}
+export function createUseState(renderRuntime: SimpRenderRuntime): UseState {
+  return (initialState => {
+    const hookStates = getOrCreateHookStates((renderRuntime as HooksSimpRenderRuntime).currentElement);
 
-  if (!hookStates[currentIndex]) {
-    const elementStore = currentElement.store;
-    const state: StateHookState<S> = (hookStates[currentIndex] = [undefined!, undefined!]);
+    if (!hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex]) {
+      const elementStore = (renderRuntime as HooksSimpRenderRuntime).currentElement.store;
+      const state: StateHookState = (hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex] = [
+        undefined!,
+        undefined!,
+      ]);
 
-    state[0] = callOrGet(initialState)!;
-    state[1] = function dispatch(action) {
-      const nextValue = callOrGet(action, state[0]);
+      state[0] = callOrGet(initialState)!;
+      state[1] = function dispatch(action) {
+        const nextValue = callOrGet(action, state[0]);
 
-      if (Object.is(state[0], nextValue)) {
-        return;
-      }
+        if (Object.is(state[0], nextValue)) {
+          return;
+        }
 
-      state[0] = nextValue;
-      _rerender(elementStore!.latestElement!);
-    };
-  }
+        state[0] = nextValue;
+        _rerender(elementStore!.latestElement!, renderRuntime);
+      };
+    }
 
-  return hookStates[currentIndex++] as StateHookState<S>;
+    return hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex++];
+  }) as UseState;
 }
 
-export function useEffect(effect: Effect, deps?: DependencyList): void {
-  const hookStates = getOrCreateHookStates(currentElement);
+export function createUseEffect(renderRuntime: SimpRenderRuntime): (effect: Effect, deps?: DependencyList) => void {
+  return (effect, deps) => {
+    const hookStates = getOrCreateHookStates((renderRuntime as HooksSimpRenderRuntime).currentElement);
 
-  let state = hookStates[currentIndex] as EffectHookState | undefined;
+    let state = hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex] as EffectHookState | undefined;
 
-  if (!state) {
-    state = hookStates[currentIndex] = { effect, deps: null, cleanup: null };
-  }
+    if (!state) {
+      state = hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex] = {
+        effect,
+        deps: null,
+        cleanup: null,
+      };
+    }
 
-  if (!shallowEqual(deps, state.deps)) {
-    state.effect = effect;
-    state.deps = deps || null;
-    getOrCreateEffectHookStates(currentElement).push(state);
-  }
+    if (!shallowEqual(deps, state.deps)) {
+      state.effect = effect;
+      state.deps = deps || null;
+      getOrCreateEffectHookStates((renderRuntime as HooksSimpRenderRuntime).currentElement).push(state);
+    }
 
-  currentIndex++;
+    (renderRuntime as HooksSimpRenderRuntime).currentIndex++;
+  };
 }
 
-export function useMounted(effect: Effect): void {
-  const hookStates = getOrCreateHookStates(currentElement);
+export function createUseCatch(renderRuntime: SimpRenderRuntime): (cb: (error: any) => void) => void {
+  return cb => {
+    const currentElement = (renderRuntime as HooksSimpRenderRuntime).currentElement;
 
-  if (!hookStates[currentIndex]) {
-    hookStates[currentIndex] = { effect, deps: null, cleanup: null };
-    getOrCreateEffectHookStates(currentElement).push(hookStates[currentIndex] as EffectHookState);
-  }
+    if (!currentElement.store!.catchHandlers) {
+      currentElement.store!.catchHandlers = [];
+    }
 
-  currentIndex++;
-}
-
-export function useUnmounted(cleanup: Cleanup): void {
-  const hookStates = getOrCreateHookStates(currentElement);
-
-  if (!hookStates[currentIndex]) {
-    hookStates[currentIndex] = { effect: noop, deps: null, cleanup };
-  }
-
-  currentIndex++;
-}
-
-export function useCatch(cb: (error: any) => void): void {
-  if (!currentElement.store!.catchHandlers) {
-    currentElement.store!.catchHandlers = [];
-  }
-
-  currentElement.store!.catchHandlers.push(cb);
+    currentElement.store!.catchHandlers!.push(cb);
+  };
 }
 
 function getOrCreateHookStates(element: HooksSimpElement) {
@@ -234,13 +250,11 @@ function getOrCreateEffectHookStates(element: HooksSimpElement) {
 }
 
 export default {
-  useRef,
-  useRerender,
-  useState,
-  useEffect,
-  useMounted,
-  useUnmounted,
-  useCatch,
+  createUseRef,
+  createUseRerender,
+  createUseState,
+  createUseEffect,
+  createUseCatch,
 };
 
 export type * from './public.js';

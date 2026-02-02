@@ -1,4 +1,4 @@
-import type { SimpElement } from '@simpreact/internal';
+import type { SimpElement, SimpRenderRuntime } from '@simpreact/internal';
 import { emptyObject, type Maybe } from '@simpreact/shared';
 import { isPropNameEventName, patchEvent } from '../events.js';
 import type { Namespace } from '../namespace.js';
@@ -13,10 +13,24 @@ import {
 import { patchDangerInnerHTML } from './dangerInnerHTML.js';
 import { patchStyle } from './style.js';
 
-export function mountProps(dom: HTMLElement | SVGElement, element: SimpElement, namespace: Namespace): void {
+export function mountProps(
+  dom: HTMLElement | SVGElement,
+  element: SimpElement,
+  namespace: Namespace,
+  renderRuntime: SimpRenderRuntime
+): void {
   if (!isFormElement(element)) {
     for (const propName in element.props) {
-      patchDefaultElementPropAndAttrs(propName, dom, null, element, null, element.props[propName], namespace);
+      patchDefaultElementPropAndAttrs(
+        propName,
+        dom,
+        null,
+        element,
+        null,
+        element.props[propName],
+        namespace,
+        renderRuntime
+      );
     }
     return;
   }
@@ -28,7 +42,7 @@ export function mountProps(dom: HTMLElement | SVGElement, element: SimpElement, 
   }
 
   if (isControlled) {
-    addControlledFormElementEventHandlers(element);
+    addControlledFormElementEventHandlers(element, renderRuntime);
     syncControlledFormElementPropsWithAttrs(element, element.props, true);
   }
 }
@@ -49,7 +63,8 @@ export function patchProps(
   dom: HTMLElement | SVGElement,
   prevElement: SimpElement,
   nextElement: SimpElement,
-  namespace: Namespace
+  namespace: Namespace,
+  renderRuntime: SimpRenderRuntime
 ): void {
   const prevProps = prevElement.props || emptyObject;
   const nextProps = nextElement.props || emptyObject;
@@ -60,13 +75,31 @@ export function patchProps(
       const nextValue = nextProps[propName];
 
       if (prevValue !== nextValue) {
-        patchDefaultElementPropAndAttrs(propName, dom, prevElement, nextElement, prevValue, nextValue, namespace);
+        patchDefaultElementPropAndAttrs(
+          propName,
+          dom,
+          prevElement,
+          nextElement,
+          prevValue,
+          nextValue,
+          namespace,
+          renderRuntime
+        );
       }
     }
 
     for (const propName in prevProps) {
       if (nextProps[propName] == null && prevProps[propName] != null) {
-        patchDefaultElementPropAndAttrs(propName, dom, prevElement, nextElement, prevProps[propName], null, namespace);
+        patchDefaultElementPropAndAttrs(
+          propName,
+          dom,
+          prevElement,
+          nextElement,
+          prevProps[propName],
+          null,
+          namespace,
+          renderRuntime
+        );
       }
     }
 
@@ -106,9 +139,9 @@ export function patchProps(
   }
 
   if (!isPrevElementControlled && isNextElementControlled) {
-    addControlledFormElementEventHandlers(nextElement);
+    addControlledFormElementEventHandlers(nextElement, renderRuntime);
   } else if (isPrevElementControlled && !isNextElementControlled) {
-    removeControlledFormElementEventHandlers(prevElement);
+    removeControlledFormElementEventHandlers(prevElement, renderRuntime);
   }
   if (isNextElementControlled) {
     syncControlledFormElementPropsWithAttrs(nextElement, nextProps);
@@ -183,7 +216,8 @@ function patchDefaultElementPropAndAttrs(
   nextElement: SimpElement,
   prevValue: any,
   nextValue: any,
-  namespace: Namespace
+  namespace: Namespace,
+  renderRuntime: SimpRenderRuntime
 ): void {
   switch (propName) {
     case 'children':
@@ -220,7 +254,7 @@ function patchDefaultElementPropAndAttrs(
       break;
 
     case 'dangerouslySetInnerHTML':
-      patchDangerInnerHTML(prevValue, nextValue, prevElement, nextElement, dom);
+      patchDangerInnerHTML(prevValue, nextValue, prevElement, nextElement, dom, renderRuntime);
       break;
 
     default:
