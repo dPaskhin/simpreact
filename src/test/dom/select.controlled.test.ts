@@ -1,5 +1,5 @@
 import type { SimpElement, SimpRenderRuntime } from '@simpreact/internal';
-import { createElement } from '@simpreact/internal';
+import { createElement, SIMP_ELEMENT_CHILD_FLAG_LIST } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -106,11 +106,12 @@ describe('select controlled', () => {
       element.reference = select;
       // Simulate SimpElement children
       element.children = [createElement('option', { value: 'a' }), createElement('option', { value: 'b' })];
-      if (element.children) {
-        (element.children as any[])[0].reference = opt1;
-        (element.children as any[])[1].reference = opt2;
-      }
+      element.childFlag = SIMP_ELEMENT_CHILD_FLAG_LIST;
+      (element.children as any[])[0].reference = opt1;
+      (element.children as any[])[1].reference = opt2;
+
       syncControlledSelectProps(element, props);
+
       expect(opt1.selected).toBe(false);
       expect(opt2.selected).toBe(true);
     });
@@ -123,11 +124,12 @@ describe('select controlled', () => {
       const element = createElement('select', props);
       element.reference = select;
       element.children = [createElement('option', { value: 'a' }), createElement('option', { value: 'b' })];
-      if (element.children) {
-        (element.children as any[])[0].reference = opt1;
-        (element.children as any[])[1].reference = opt2;
-      }
+      element.childFlag = SIMP_ELEMENT_CHILD_FLAG_LIST;
+      (element.children as any[])[0].reference = opt1;
+      (element.children as any[])[1].reference = opt2;
+
       syncControlledSelectProps(element, props);
+
       expect(opt1.selected).toBe(true);
       expect(opt2.selected).toBe(true);
     });

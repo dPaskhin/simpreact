@@ -25,4 +25,7 @@ export interface CreateContext {
 
 declare function createCreateContext(renderRuntime: SimpRenderRuntime): CreateContext;
 
-declare function useContext<T>(context: SimpContext<T>): T;
+export interface UseContext {
+  <T>(context: SimpContext<T>): T;
+}
+declare function createUseContext(renderRuntime: SimpRenderRuntime): UseContext;

@@ -259,7 +259,7 @@ describe('mounting', () => {
       const element = createElement(context.Consumer as any, consumerProps);
 
       const contextMap = new Map();
-      contextMap.set(context, { value: 'PROVIDED_VALUE' });
+      contextMap.set(context, { value: 'PROVIDED_VALUE', subs: new Set() });
 
       mount(element, testHostAdapter.createReference('div'), null, contextMap, null, renderRuntime);
 

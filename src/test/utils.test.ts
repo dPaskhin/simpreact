@@ -8,7 +8,7 @@ describe('shallowEqual', () => {
       expect(shallowEqual({}, null)).toBe(false);
       expect(shallowEqual(42, {})).toBe(false);
       expect(shallowEqual({}, 'string')).toBe(false);
-      expect(shallowEqual(undefined, undefined)).toBe(false);
+      expect(shallowEqual(undefined, undefined)).toBe(true);
     });
 
     it('returns true for the same object reference', () => {

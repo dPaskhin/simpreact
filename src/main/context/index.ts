@@ -1,16 +1,19 @@
 import type { SimpElement, SimpElementStore, SimpNode, SimpRenderRuntime } from '@simpreact/internal';
 import { lifecycleEventBus, rerender } from '@simpreact/internal';
-import type { Maybe, Nullable } from '@simpreact/shared';
+import type { Maybe } from '@simpreact/shared';
+
+interface ContextSimpRenderRuntime extends SimpRenderRuntime {
+  renderPhase: 'mounting' | 'updating';
+  // In runtime this is a nullable variable.
+  currentElement: ContextSimpElement;
+}
 
 type SimpContextEntry = { value: any; subs: Set<SimpElementStore> };
 
 type SimpContextMap = Map<SimpContext, SimpContextEntry>;
 
 type Provider<T = any> = (props: { value: T; children: SimpNode }) => SimpNode;
-type Consumer<T = any> = (
-  props: { children: (value: T) => SimpNode },
-  contextMap: Nullable<SimpContextMap>
-) => SimpNode;
+type Consumer<T = any> = (props: { children: (value: T) => SimpNode }) => SimpNode;
 
 interface SimpContext<T = any> {
   defaultValue: T;
@@ -22,21 +25,19 @@ type ContextSimpElement = Omit<SimpElement, 'context'> & {
   context?: Maybe<SimpContextMap>;
 };
 
-// In runtime these variables are nullable.
-let currentElement: ContextSimpElement;
-let phase: 'mounting' | 'updating';
-
 lifecycleEventBus.subscribe(event => {
+  const renderRuntime = event.renderRuntime as ContextSimpRenderRuntime;
+
   if (event.type === 'beforeRender') {
-    currentElement = event.element as ContextSimpElement;
-    phase = event.phase;
+    renderRuntime.currentElement = event.element as ContextSimpElement;
+    renderRuntime.renderPhase = event.phase;
   }
   if (event.type === 'afterRender') {
-    currentElement = null!;
-    phase = null!;
+    renderRuntime.currentElement = null!;
+    renderRuntime.renderPhase = null!;
   }
-  if (event.type === 'unmounted') {
-    (event.element as ContextSimpElement).context?.forEach(value => value.subs.delete(event.element.store!));
+  if (event.type === 'unmounted' && (event.element as ContextSimpElement).context) {
+    (event.element as ContextSimpElement).context!.forEach(value => value.subs.delete(event.element.store!));
   }
 });
 
@@ -50,6 +51,9 @@ export function createCreateContext(renderRuntime: SimpRenderRuntime): CreateCon
       defaultValue,
 
       Provider(props) {
+        const currentElement = (renderRuntime as ContextSimpRenderRuntime).currentElement!;
+        const phase = renderRuntime.renderPhase!;
+
         if (!currentElement.context) {
           currentElement.context = new Map();
         } else if (phase === 'mounting') {
@@ -86,7 +90,19 @@ export function createCreateContext(renderRuntime: SimpRenderRuntime): CreateCon
       },
 
       Consumer(props) {
-        return props.children((currentElement as ContextSimpElement).context?.get(context)?.value ?? defaultValue);
+        const contextEntry = (renderRuntime as ContextSimpRenderRuntime).currentElement.context?.get(context);
+        const currentElement = renderRuntime.currentElement as ContextSimpElement;
+
+        if (!contextEntry) {
+          // No provider above: just use the default value, don't subscribe
+          return props.children(defaultValue);
+        }
+
+        if (!contextEntry.subs.has(currentElement.store!)) {
+          contextEntry.subs.add(currentElement.store!);
+        }
+
+        return props.children(contextEntry.value);
       },
     };
 
@@ -94,17 +110,24 @@ export function createCreateContext(renderRuntime: SimpRenderRuntime): CreateCon
   };
 }
 
-export function useContext<T>(context: SimpContext<T>): T {
-  const contextEntry = (currentElement as ContextSimpElement).context?.get(context);
+export interface UseContext {
+  <T>(context: SimpContext<T>): T;
+}
 
-  if (!contextEntry) {
-    // No provider above: just return the default value, don't subscribe
-    return context.defaultValue;
-  }
+export function createUseContext(renderRuntime: SimpRenderRuntime): UseContext {
+  return <T>(context: SimpContext<T>): T => {
+    const contextEntry = (renderRuntime as ContextSimpRenderRuntime).currentElement.context?.get(context);
+    const currentElement = renderRuntime.currentElement as ContextSimpElement;
 
-  if (!contextEntry.subs.has(currentElement.store!)) {
-    contextEntry.subs.add(currentElement.store!);
-  }
+    if (!contextEntry) {
+      // No provider above: just return the default value, don't subscribe
+      return context.defaultValue;
+    }
 
-  return contextEntry.value;
+    if (!contextEntry.subs.has(currentElement.store!)) {
+      contextEntry.subs.add(currentElement.store!);
+    }
+
+    return contextEntry.value;
+  };
 }
