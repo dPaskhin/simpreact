@@ -16,6 +16,16 @@ declare class EventBus<Event = void> {
   public subscribe(subscriber: Subscriber<Event>): () => void;
 }
 
+export type Cleanup = () => void;
+export type Effect = () => void | Cleanup;
+export type DependencyList = readonly unknown[];
+
+export interface EffectState {
+  effect: Effect;
+  cleanup: Nullable<Cleanup>;
+  deps: Nullable<DependencyList>;
+}
+
 declare function isSimpText(value: unknown): value is SimpText;
 
 declare function noop(): void;

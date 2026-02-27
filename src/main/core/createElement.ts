@@ -1,6 +1,5 @@
 import type { Nullable, SimpText } from '@simpreact/shared';
 import { isSimpText } from '@simpreact/shared';
-import type { ComponentStore } from './component.js';
 import { Fragment } from './fragment.js';
 import type { HostReference } from './hostAdapter.js';
 
@@ -25,8 +24,6 @@ export const SIMP_ELEMENT_CHILD_FLAG_TEXT = 1 << 4;
 // This object also serves as a persistent identity for elements, making it useful
 // for tracking them consistently across rerenders.
 export interface SimpElementStore {
-  componentStore: Nullable<ComponentStore>;
-
   latestElement: Nullable<SimpElement>;
 
   hostNamespace: Nullable<string>;
@@ -35,7 +32,7 @@ export interface SimpElementStore {
 }
 
 export function createElementStore(): SimpElementStore {
-  return { componentStore: null, latestElement: null, hostNamespace: null };
+  return { latestElement: null, hostNamespace: null };
 }
 
 export interface SimpElement {
@@ -85,6 +82,8 @@ export function createElement(type: string | FC, props?: any): SimpElement {
 
   definedChildren = definedChildren === undefined ? props?.children : definedChildren;
 
+  const key = props?.key == null ? null : props.key.toString();
+
   switch (typeof type) {
     case 'string': {
       if (!isSimpText(definedChildren)) {
@@ -93,7 +92,7 @@ export function createElement(type: string | FC, props?: any): SimpElement {
             flag: SIMP_ELEMENT_FLAG_HOST,
             childFlag: SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
             parent: null,
-            key: props?.key || null,
+            key,
             type,
             props: props || null,
             children: null,
@@ -121,7 +120,7 @@ export function createElement(type: string | FC, props?: any): SimpElement {
         flag: SIMP_ELEMENT_FLAG_HOST,
         childFlag,
         parent: null,
-        key: props?.key || null,
+        key,
         type,
         props: props || null,
         children: null,
@@ -142,7 +141,7 @@ export function createElement(type: string | FC, props?: any): SimpElement {
         flag: SIMP_ELEMENT_FLAG_FC,
         childFlag: SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
         parent: null,
-        key: props?.key || null,
+        key,
         type,
         props: props || null,
         children: null,
@@ -160,7 +159,7 @@ export function createElement(type: string | FC, props?: any): SimpElement {
           flag: SIMP_ELEMENT_FLAG_FRAGMENT,
           childFlag: SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
           parent: null,
-          key: props?.key || null,
+          key,
           type: null,
           props: null,
           children: null,
@@ -246,13 +245,14 @@ function normalizeNode(child: SimpNode, result: SimpElement[], currentKey = '', 
     return;
   }
 
-  if ((child as SimpElement).key) {
+  if ((child as SimpElement).key != null) {
     currentKey = currentKey.slice(0, -2) + (child as SimpElement).key;
   }
   (child as SimpElement).key =
-    currentKey ||
-    // Hack to treat a single child as a one-item list for more consistent reconciliation.
-    '.0';
+    currentKey != null
+      ? currentKey
+      : // Hack to treat a single child as a one-item list for more consistent reconciliation.
+        '.0';
   result.push(child as SimpElement);
 }
 

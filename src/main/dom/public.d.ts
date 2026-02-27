@@ -1,4 +1,5 @@
 import type { RefAttributes, SimpElement, SimpNode, SimpRenderRuntime } from '@simpreact/core';
+import type { HostAdapter } from '@simpreact/internal';
 import type { Nullable } from '@simpreact/shared';
 
 import type { PropertiesHyphen } from 'csstype';
@@ -23,6 +24,8 @@ declare function createCreateRoot(
 declare function createRenderer(
   renderRuntime: SimpRenderRuntime
 ): (element: SimpElement, parentReference: Nullable<HTMLElement>) => void;
+
+declare const domAdapter: HostAdapter;
 
 export interface SimpReactHTMLElement<T extends HTMLElement>
   extends DetailedSimpReactHTMLElement<AllHTMLAttributes<T>, T> {}

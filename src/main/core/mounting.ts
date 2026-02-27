@@ -144,9 +144,6 @@ export function mountFunctionalElement(
         phase: 'mounting',
         renderRuntime,
       });
-      // children = isComponentElement(element)
-      //   ? (element.type as any)(element.props || emptyObject, element.store.componentStore?.renderContext)
-      //   : (element.type as any)(element.props || emptyObject);
 
       children = renderRuntime.renderer(element.type as FC, element);
 

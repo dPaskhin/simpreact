@@ -1,25 +1,23 @@
-import type { Maybe, Nullable } from '@simpreact/shared';
+import type { Maybe } from '@simpreact/shared';
 import {
   createElementStore,
   type FC,
-  type Key,
   normalizeRoot,
   SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
+  SIMP_ELEMENT_CHILD_FLAG_EMPTY,
   SIMP_ELEMENT_CHILD_FLAG_LIST,
-  SIMP_ELEMENT_CHILD_FLAG_TEXT,
   SIMP_ELEMENT_FLAG_HOST,
-  SIMP_ELEMENT_FLAG_PORTAL,
-  SIMP_ELEMENT_FLAG_TEXT,
   type SimpElement,
-  type SimpNode,
 } from './createElement.js';
 import type { HostReference } from './hostAdapter.js';
 import { type LifecycleEvent, lifecycleEventBus } from './lifecycleEventBus.js';
 import { isMemo } from './memo.js';
-import { mount, mountArrayChildren, mountFunctionalElement } from './mounting.js';
+import { mount, mountFunctionalElement } from './mounting.js';
+import { patchChildren } from './patchingChildren.js';
 import { applyRef } from './ref.js';
 import type { SimpRenderRuntime } from './runtime.js';
 import { clearElementHostReference, remove, unmount } from './unmounting.js';
+import { findHostReferenceFromElement } from './utils.js';
 
 const patchHandlers = [patchHostElement, patchFunctionalComponent, patchTextElement, patchPortal, patchFragment];
 
@@ -138,7 +136,7 @@ export function patchFunctionalComponent(
 
   if (
     isMemo(nextElement.type) &&
-    // Only when the elements are the same we need to rerender the component it means that the element rerenders itself.
+    // Only when the elements are the same, we need to rerender the component it means that the element rerenders itself.
     prevElement !== nextElement &&
     nextElement.type._compare(prevElement.props, nextElement.props)
   ) {
@@ -175,9 +173,6 @@ export function patchFunctionalComponent(
         phase: 'updating',
         renderRuntime,
       });
-      // nextChildren = isComponentElement(nextElement)
-      //   ? (nextElement.type as any)(nextElement.props || emptyObject, nextElement.store.componentStore?.renderContext)
-      //   : (nextElement.type as any)(nextElement.props || emptyObject);
 
       nextChildren = renderRuntime.renderer(nextElement.type as FC, nextElement);
 
@@ -195,7 +190,13 @@ export function patchFunctionalComponent(
 
     if (prevElement.parent?.childFlag === SIMP_ELEMENT_CHILD_FLAG_LIST) {
       (parentChildren as SimpElement[]).splice((parentChildren as SimpElement[]).indexOf(prevElement), 1);
+
+      if ((parentChildren as SimpElement[]).length === 1) {
+        prevElement.parent.children = (parentChildren as SimpElement[])[0];
+        prevElement.parent.childFlag = SIMP_ELEMENT_CHILD_FLAG_ELEMENT;
+      }
     } else if (prevElement.parent) {
+      prevElement.parent.childFlag = SIMP_ELEMENT_CHILD_FLAG_EMPTY;
       prevElement.parent.children = null;
     }
 
@@ -258,19 +259,16 @@ function patchFragment(
   context: unknown,
   parentReference: HostReference,
   hostNamespace: Maybe<string>,
-  _nextReference: HostReference,
+  nextReference: HostReference,
   renderRuntime: SimpRenderRuntime
 ): void {
-  let nextReference: HostReference = null;
+  nextReference ||= renderRuntime.hostAdapter.findNextSiblingReference(
+    findHostReferenceFromElement(prevElement, false)
+  );
 
-  if (
-    prevElement.childFlag === SIMP_ELEMENT_CHILD_FLAG_LIST &&
-    nextElement.childFlag === SIMP_ELEMENT_CHILD_FLAG_ELEMENT
-  ) {
-    nextReference = renderRuntime.hostAdapter.findNextSiblingReference(
-      findHostReferenceFromElement((prevElement.children as SimpElement[]).at(-1)!)
-    );
-  }
+  // if (nextReference == null) {
+  //   const elementReference = findHostReferenceFromElement(prevElement, false);
+  // }
 
   patchChildren(
     prevElement.childFlag,
@@ -320,294 +318,359 @@ export function patchPortal(
   }
 }
 
-function patchChildren(
-  prevChildFlag: number,
-  nextChildFlag: number,
-  prevChildren: SimpNode,
-  nextChildren: SimpNode,
-  nextReference: HostReference,
-  parentElement: SimpElement,
-  parentReference: HostReference,
-  context: unknown,
-  hostNamespace: Maybe<string>,
-  renderRuntime: SimpRenderRuntime
-): void {
-  switch (prevChildFlag) {
-    case SIMP_ELEMENT_CHILD_FLAG_LIST: {
-      switch (nextChildFlag) {
-        case SIMP_ELEMENT_CHILD_FLAG_LIST: {
-          for (const child of nextChildren as SimpElement[]) {
-            (child as SimpElement).parent = parentElement;
-          }
-          patchKeyedChildren(
-            prevChildren as SimpElement[],
-            nextChildren as SimpElement[],
-            parentReference,
-            nextReference,
-            context,
-            hostNamespace,
-            renderRuntime
-          );
-          break;
-        }
-        case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
-          patchKeyedChildren(
-            prevChildren as SimpElement[],
-            [nextChildren] as SimpElement[],
-            parentReference,
-            nextReference,
-            context,
-            hostNamespace,
-            renderRuntime
-          );
-          break;
-        }
-        case SIMP_ELEMENT_CHILD_FLAG_TEXT: {
-          unmount(prevChildren as SimpElement[], renderRuntime);
-          renderRuntime.hostAdapter.setTextContent(parentReference, nextChildren as string);
-          break;
-        }
-        default: {
-          unmount(prevChildren as SimpElement[], renderRuntime);
-          renderRuntime.hostAdapter.clearNode(parentReference);
-        }
-      }
-      break;
-    }
-    case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
-      switch (nextChildFlag) {
-        case SIMP_ELEMENT_CHILD_FLAG_LIST: {
-          patchKeyedChildren(
-            [prevChildren] as SimpElement[],
-            nextChildren as SimpElement[],
-            parentReference,
-            nextReference,
-            context,
-            hostNamespace,
-            renderRuntime
-          );
-          break;
-        }
-        case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
-          (nextChildren as SimpElement).parent = parentElement;
-          patch(
-            prevChildren as SimpElement,
-            nextChildren as SimpElement,
-            parentReference,
-            nextReference,
-            context,
-            hostNamespace,
-            renderRuntime
-          );
-          break;
-        }
-        case SIMP_ELEMENT_CHILD_FLAG_TEXT: {
-          unmount(prevChildren as SimpElement[], renderRuntime);
-          renderRuntime.hostAdapter.setTextContent(parentReference, nextChildren as string);
-          break;
-        }
-        default: {
-          remove(prevChildren as SimpElement, parentReference, renderRuntime);
-        }
-      }
-      break;
-    }
-    case SIMP_ELEMENT_CHILD_FLAG_TEXT: {
-      if (nextChildFlag === SIMP_ELEMENT_CHILD_FLAG_LIST) {
-        renderRuntime.hostAdapter.clearNode(parentReference);
-        mountArrayChildren(
-          nextChildren as SimpElement[],
-          parentReference,
-          nextReference,
-          context,
-          parentElement,
-          hostNamespace,
-          renderRuntime
-        );
-        break;
-      } else if (nextChildFlag === SIMP_ELEMENT_CHILD_FLAG_ELEMENT) {
-        renderRuntime.hostAdapter.clearNode(parentReference);
-        (nextChildren as SimpElement).parent = parentElement;
-        mount(nextChildren as SimpElement, parentReference, nextReference, context, hostNamespace, renderRuntime);
-      } else if (nextChildFlag === SIMP_ELEMENT_CHILD_FLAG_TEXT) {
-        if (prevChildren !== nextChildren) {
-          renderRuntime.hostAdapter.setTextContent(parentReference, nextChildren as string, true);
-        }
-      }
-      break;
-    }
-    default: {
-      switch (nextChildFlag) {
-        case SIMP_ELEMENT_CHILD_FLAG_LIST: {
-          mountArrayChildren(
-            nextChildren as SimpElement[],
-            parentReference,
-            nextReference,
-            context,
-            parentElement,
-            hostNamespace,
-            renderRuntime
-          );
-          break;
-        }
-        case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
-          (nextChildren as SimpElement).parent = parentElement;
-          mount(nextChildren as SimpElement, parentReference, nextReference, context, hostNamespace, renderRuntime);
-          break;
-        }
-        case SIMP_ELEMENT_CHILD_FLAG_TEXT: {
-          renderRuntime.hostAdapter.setTextContent(parentReference, nextChildren as string);
-        }
-      }
-    }
-  }
-}
+// export function patchKeyedChildrenNew(
+//   a: SimpElement[],
+//   b: SimpElement[],
+//   dom: any,
+//   context: any,
+//   hostNamespace: Maybe<string>,
+//   aLength: number,
+//   bLength: number,
+//   outerEdge: HostReference,
+//   parentVNode: SimpElement,
+//   renderRuntime: SimpRenderRuntime
+// ): void {
+//   let aEnd = aLength - 1;
+//   let bEnd = bLength - 1;
+//   let j: number = 0;
+//   let aNode: SimpElement = a[j]!;
+//   let bNode: SimpElement = b[j]!;
+//   let nextPos: number;
+//   let nextNode;
+//
+//   // Step 1
+//   outer: {
+//     // Sync nodes with the same key at the beginning.
+//     while (aNode.key === bNode.key) {
+//       patch(aNode, bNode, dom, outerEdge, context, hostNamespace, renderRuntime);
+//       a[j] = bNode;
+//       ++j;
+//       if (j > aEnd || j > bEnd) {
+//         break outer;
+//       }
+//       aNode = a[j]!;
+//       bNode = b[j]!;
+//     }
+//
+//     aNode = a[aEnd]!;
+//     bNode = b[bEnd]!;
+//
+//     // Sync nodes with the same key at the end.
+//     while (aNode.key === bNode.key) {
+//       patch(aNode, bNode, dom, outerEdge, context, hostNamespace, renderRuntime);
+//       a[aEnd] = bNode;
+//       aEnd--;
+//       bEnd--;
+//       if (j > aEnd || j > bEnd) {
+//         break outer;
+//       }
+//       aNode = a[aEnd]!;
+//       bNode = b[bEnd]!;
+//     }
+//   }
+//
+//   if (j > aEnd) {
+//     if (j <= bEnd) {
+//       nextPos = bEnd + 1;
+//       nextNode = nextPos < bLength ? findHostReferenceFromElement(b[nextPos]!) : outerEdge;
+//
+//       while (j <= bEnd) {
+//         bNode = b[j]!;
+//         ++j;
+//         mount(bNode, dom, nextNode, context, hostNamespace, renderRuntime);
+//       }
+//     }
+//   } else if (j > bEnd) {
+//     while (j <= aEnd) {
+//       remove(a[j++]!, dom, renderRuntime);
+//     }
+//   } else {
+//     patchKeyedChildrenComplex(
+//       a,
+//       b,
+//       context,
+//       aLength,
+//       bLength,
+//       aEnd,
+//       bEnd,
+//       j,
+//       dom,
+//       hostNamespace,
+//       outerEdge,
+//       parentVNode,
+//       renderRuntime
+//     );
+//   }
+// }
+//
+// export function patchKeyedChildrenComplex(
+//   a: SimpElement[],
+//   b: SimpElement[],
+//   context: any,
+//   aLength: number,
+//   bLength: number,
+//   aEnd: number,
+//   bEnd: number,
+//   j: number,
+//   parentReference: Element,
+//   hostNamespace: Maybe<string>,
+//   outerEdge: HostReference,
+//   parentVNode: SimpElement,
+//   renderRuntime: SimpRenderRuntime
+// ): void {
+//   let aNode: SimpElement;
+//   let bNode: SimpElement;
+//   let nextPos = 0;
+//   let i;
+//   let aStart: number = j;
+//   const bStart: number = j;
+//   const aLeft: number = aEnd - j + 1;
+//   const bLeft: number = bEnd - j + 1;
+//   const sources = new Int32Array(bLeft + 1);
+//   // Keep track if it is possible to remove the whole DOM using textContent = '';
+//   let canRemoveWholeContent: boolean = aLeft === aLength;
+//   let moved: boolean = false;
+//   let pos: number = 0;
+//   let patched: number = 0;
+//
+//   // When sizes are small, just loop them through
+//   if (bLength < 4 || (aLeft | bLeft) < 32) {
+//     for (i = aStart; i <= aEnd; ++i) {
+//       aNode = a[i]!;
+//       if (patched < bLeft) {
+//         for (j = bStart; j <= bEnd; j++) {
+//           bNode = b[j]!;
+//           if (aNode.key === bNode.key) {
+//             sources[j - bStart] = i + 1;
+//             if (canRemoveWholeContent) {
+//               canRemoveWholeContent = false;
+//               while (aStart < i) {
+//                 remove(a[aStart++]!, parentReference, renderRuntime);
+//               }
+//             }
+//             if (pos > j) {
+//               moved = true;
+//             } else {
+//               pos = j;
+//             }
+//             patch(aNode, bNode, parentReference, outerEdge, context, hostNamespace, renderRuntime);
+//             ++patched;
+//             break;
+//           }
+//         }
+//         if (!canRemoveWholeContent && j > bEnd) {
+//           remove(aNode, parentReference, renderRuntime);
+//         }
+//       } else if (!canRemoveWholeContent) {
+//         remove(aNode, parentReference, renderRuntime);
+//       }
+//     }
+//   } else {
+//     const keyIndex: Record<string, number> = {};
+//
+//     // Map keys by their index
+//     for (i = bStart; i <= bEnd; ++i) {
+//       keyIndex[b[i]!.key as string | number] = i;
+//     }
+//
+//     // Try to patch the same keys
+//     for (i = aStart; i <= aEnd; ++i) {
+//       aNode = a[i]!;
+//
+//       if (patched < bLeft) {
+//         j = keyIndex[aNode.key as string | number]!;
+//
+//         if (j !== void 0) {
+//           if (canRemoveWholeContent) {
+//             canRemoveWholeContent = false;
+//             while (i > aStart) {
+//               remove(a[aStart++]!, parentReference, renderRuntime);
+//             }
+//           }
+//           sources[j - bStart] = i + 1;
+//           if (pos > j) {
+//             moved = true;
+//           } else {
+//             pos = j;
+//           }
+//           bNode = b[j]!;
+//           patch(aNode, bNode, parentReference, outerEdge, context, hostNamespace, renderRuntime);
+//           ++patched;
+//         } else if (!canRemoveWholeContent) {
+//           remove(aNode, parentReference, renderRuntime);
+//         }
+//       } else if (!canRemoveWholeContent) {
+//         remove(aNode, parentReference, renderRuntime);
+//       }
+//     }
+//   }
+//   // fast-path: if nothing patched remove all old and add all new
+//   if (canRemoveWholeContent) {
+// if ((parentVNode.flag & SIMP_ELEMENT_FLAG_FRAGMENT) !== 1) {
+//       clearElementHostReference(parentVNode, parentReference, renderRuntime);
+//     } else {
+//       renderRuntime.hostAdapter.clearNode(parentReference);
+//     }
+//
+//     mountArrayChildren(a, parentReference, outerEdge, context, parentVNode, hostNamespace, renderRuntime);
+//   } else if (moved) {
+//     const seq = lisAlgorithm(sources);
+//     j = seq.length - 1;
+//     for (i = bLeft - 1; i >= 0; i--) {
+//       if (sources[i] === 0) {
+//         pos = i + bStart;
+//         bNode = b[pos]!;
+//         nextPos = pos + 1;
+//         mount(
+//           bNode,
+//           parentReference,
+//           nextPos < bLength ? findHostReferenceFromElement(b[nextPos]!) : outerEdge,
+//           context,
+//           hostNamespace,
+//           renderRuntime
+//         );
+//       } else if (j < 0 || i !== seq[j]) {
+//         pos = i + bStart;
+//         bNode = b[pos]!;
+//         nextPos = pos + 1;
+//
+//         // --- the DOM node is moved by a call to insertAppend
+//         moveReference(
+//           parentVNode,
+//           bNode,
+//           parentReference,
+//           nextPos < bLength ? findHostReferenceFromElement(b[nextPos]!) : outerEdge,
+//           renderRuntime
+//         );
+//       } else {
+//         j--;
+//       }
+//     }
+//   } else if (patched !== bLeft) {
+//     // when patched count doesn't match b length we need to insert those new ones
+//     // loop backwards so we can use insertBefore
+//     for (i = bLeft - 1; i >= 0; i--) {
+//       if (sources[i] === 0) {
+//         pos = i + bStart;
+//         bNode = b[pos]!;
+//         nextPos = pos + 1;
+//         mount(
+//           bNode,
+//           parentReference,
+//           nextPos < bLength ? findHostReferenceFromElement(b[nextPos]!) : outerEdge,
+//           context,
+//           hostNamespace,
+//           renderRuntime
+//         );
+//       }
+//     }
+//   }
+// }
+//
+// export function moveReference(
+//   parentElement: SimpElement,
+//   element: SimpElement,
+//   parentReference: HostReference,
+//   nextReference: HostReference,
+//   renderRuntime: SimpRenderRuntime
+// ): void {
+//   while (element != null) {
+//     const flags = element.flag;
+//
+//     if (
+//       (flags & SIMP_ELEMENT_FLAG_HOST) !== 0 ||
+//       (flags & SIMP_ELEMENT_FLAG_TEXT) !== 0 ||
+//       (flags & SIMP_ELEMENT_FLAG_PORTAL) !== 0
+//     ) {
+//       renderRuntime.hostAdapter.insertOrAppend(parentReference, element.reference, nextReference);
+//       return;
+//     }
+//
+//     const children = element.children;
+//
+//     if ((flags & SIMP_ELEMENT_FLAG_FC) !== 0) {
+//       element = children as SimpElement;
+//     } else if ((flags & SIMP_ELEMENT_FLAG_FRAGMENT) !== 0) {
+//       if (element.childFlag === SIMP_ELEMENT_CHILD_FLAG_ELEMENT) {
+//         element = children as SimpElement;
+//       } else {
+//         for (let i = 0, len = (children as SimpElement[]).length; i < len; ++i) {
+//           moveReference(
+//             parentElement,
+//             (children as SimpElement[])[i] as SimpElement,
+//             parentReference,
+//             nextReference,
+//             renderRuntime
+//           );
+//         }
+//         return;
+//       }
+//     }
+//   }
+// }
 
-export function patchKeyedChildren(
-  prevChildren: SimpElement[],
-  nextChildren: SimpElement[],
-  parentReference: HostReference,
-  nextReference: HostReference,
-  context: unknown,
-  hostNamespace: Maybe<string>,
-  renderRuntime: SimpRenderRuntime
-): void {
-  let prevStart = 0;
-  let nextStart = 0;
-  let prevEnd = prevChildren.length - 1;
-  let nextEnd = nextChildren.length - 1;
-
-  // Step 1: Sync from start
-  while (
-    prevStart <= prevEnd &&
-    nextStart <= nextEnd &&
-    prevChildren[prevStart]!.key === nextChildren[nextStart]!.key
-  ) {
-    patch(
-      prevChildren[prevStart]!,
-      nextChildren[nextStart]!,
-      parentReference,
-      null,
-      context,
-      hostNamespace,
-      renderRuntime
-    );
-    prevStart++;
-    nextStart++;
-  }
-
-  // Step 2: Sync from end
-  while (prevStart <= prevEnd && nextStart <= nextEnd && prevChildren[prevEnd]!.key === nextChildren[nextEnd]!.key) {
-    patch(prevChildren[prevEnd]!, nextChildren[nextEnd]!, parentReference, null, context, hostNamespace, renderRuntime);
-    prevEnd--;
-    nextEnd--;
-  }
-
-  // Step 3: Mount new nodes if prev list is exhausted
-  if (prevStart > prevEnd) {
-    const before = findHostReferenceFromElement(nextChildren[nextEnd + 1]!) || nextReference;
-    for (let i = nextStart; i <= nextEnd; i++) {
-      mount(nextChildren[i]!, parentReference, before, context, hostNamespace, renderRuntime);
-    }
-    // Step 4: Remove prev nodes if next list is exhausted
-  } else if (nextStart > nextEnd) {
-    for (let i = prevStart; i <= prevEnd; i++) {
-      remove(prevChildren[i]!, parentReference, renderRuntime);
-    }
-  }
-
-  // Step 5: Full diff with keyed lookup and movement
-  else {
-    // Create map of keys to indices for prev children
-    const keyToPrevIndexMap = new Map<Key, number>();
-    for (let i = prevStart; i <= prevEnd; i++) {
-      const key = prevChildren[i]!.key;
-      if (key != null) {
-        keyToPrevIndexMap.set(key, i);
-      }
-    }
-
-    // Track reused indices and move plan
-    const toMove = new Array(nextEnd - nextStart + 1);
-    const usedIndices = new Set<number>();
-
-    // Match and patch/mount
-    for (let i = nextStart; i <= nextEnd; i++) {
-      const nextChild = nextChildren[i];
-      const prevIndex = keyToPrevIndexMap.get(nextChild!.key!);
-      if (prevIndex != null) {
-        const prevElement = prevChildren[prevIndex];
-        patch(prevElement!, nextChild!, parentReference, null, context, hostNamespace, renderRuntime);
-        toMove[i - nextStart] = prevIndex;
-        usedIndices.add(prevIndex);
-      } else {
-        mount(
-          nextChild!,
-          parentReference,
-          findHostReferenceFromElement(nextChildren[i + 1]!) || nextReference,
-          context,
-          hostNamespace,
-          renderRuntime
-        );
-        toMove[i - nextStart] = -1;
-      }
-    }
-
-    // Remove nodes not matched
-    for (let i = prevStart; i <= prevEnd; i++) {
-      if (!usedIndices.has(i)) {
-        remove(prevChildren[i]!, parentReference, renderRuntime);
-      }
-    }
-
-    // Insert in correct order
-    for (let i = nextEnd; i >= nextStart; i--) {
-      const currentChild = nextChildren[i]!;
-      const reference = findHostReferenceFromElement(nextChildren[i + 1]!) || nextReference;
-      if (toMove[i - nextStart] !== -1) {
-        renderRuntime.hostAdapter.insertBefore(parentReference, currentChild.reference!, reference!);
-      }
-    }
-  }
-}
-
-export function findParentReferenceFromElement(element: SimpElement): HostReference {
-  let flag: number;
-  let temp: Nullable<SimpElement> = element;
-
-  while (temp != null) {
-    flag = temp.flag;
-
-    if ((flag & SIMP_ELEMENT_FLAG_HOST) !== 0) {
-      return temp.reference;
-    }
-
-    temp = temp.parent;
-  }
-
-  return null;
-}
-
-export function findHostReferenceFromElement(element: SimpElement): HostReference {
-  let flag: number;
-  let temp: Nullable<SimpElement> = element;
-
-  while (temp != null) {
-    flag = temp.flag;
-
-    if (
-      (flag & SIMP_ELEMENT_FLAG_HOST) !== 0 ||
-      (flag & SIMP_ELEMENT_FLAG_TEXT) !== 0 ||
-      (flag & SIMP_ELEMENT_FLAG_PORTAL) !== 0
-    ) {
-      return temp.reference as HostReference;
-    }
-
-    temp =
-      temp.childFlag === SIMP_ELEMENT_CHILD_FLAG_LIST
-        ? (temp.children as SimpElement[])[0]!
-        : (temp.children as SimpElement);
-  }
-
-  return null;
-}
+// let result: Int32Array;
+// let p: Int32Array;
+// let maxLen = 0;
+// // https://en.wikipedia.org/wiki/Longest_increasing_subsequence
+//
+// function lisAlgorithm(arr: Int32Array): Int32Array {
+//   let arrI = 0;
+//   let i = 0;
+//   let j = 0;
+//   let k = 0;
+//   let u = 0;
+//   let v = 0;
+//   let c = 0;
+//   const len = arr.length;
+//
+//   if (len > maxLen) {
+//     maxLen = len;
+//     result = new Int32Array(len);
+//     p = new Int32Array(len);
+//   }
+//
+//   for (; i < len; ++i) {
+//     arrI = arr[i]!;
+//
+//     if (arrI !== 0) {
+//       j = result[k]!;
+//       if (arr[j]! < arrI) {
+//         p[i] = j;
+//         result[++k] = i;
+//         continue;
+//       }
+//
+//       u = 0;
+//       v = k;
+//
+//       while (u < v) {
+//         c = (u + v) >> 1;
+//         if (arr[result[c]!]! < arrI) {
+//           u = c + 1;
+//         } else {
+//           v = c;
+//         }
+//       }
+//
+//       if (arrI < arr[result[u]!]!) {
+//         if (u > 0) {
+//           p[i] = result[u - 1]!;
+//         }
+//         result[u] = i;
+//       }
+//     }
+//   }
+//
+//   u = k + 1;
+//   const seq = new Int32Array(u);
+//   v = result[u - 1]!;
+//
+//   while (u-- > 0) {
+//     seq[u] = v;
+//     v = p[v]!;
+//     result[u] = 0;
+//   }
+//
+//   return seq;
+// }

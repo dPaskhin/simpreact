@@ -17,6 +17,14 @@
     "./compat/*": {
       "import": "./compat/index.js"
     },
+    "./component": {
+      "import": "./component/index.js",
+      "types": "./component/index.d.ts"
+    },
+    "./context/*": {
+      "import": "./context/index.js",
+      "types": "./context/index.d.ts"
+    },
     "./internal": {
       "import": "./core/internal.js",
       "types": "./core/internal.d.ts"

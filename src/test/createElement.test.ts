@@ -380,6 +380,21 @@ describe('createElement and utils', () => {
       normalizeChildren(parent, [el1, el2], true);
       expect(parent.children).toEqual([el1, el2]);
     });
+
+    it('handles key corner cases normalization', () => {
+      const parent = createElement('div', null, 'parent');
+      const el1 = createElement('div', null, '1');
+      const el2 = createElement('div', { key: 0 }, '2');
+
+      normalizeChildren(parent, [el1, el2], true);
+
+      expect(parent.children).toEqual([el1, { ...el2, key: '0' }]);
+
+      expect(normalizeChildren(parent, createElement('div', { key: '' }, '2'), true).children).toEqual({
+        ...createElement('div', { key: '' }, '2'),
+        key: '',
+      });
+    });
   });
 
   describe('createTextElement', () => {
@@ -1124,7 +1139,7 @@ describe('createElement and utils', () => {
           type: 'div',
           props: { children: '123' },
           parent: null,
-          key: '.0',
+          key: '',
           children: null,
           className: null,
           reference: null,
@@ -1268,7 +1283,6 @@ describe('createElement and utils', () => {
         unmounted: null,
       });
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
       expect(createElement(TestContext.Consumer, { children: MockComponent })).toEqual({
         flag: SIMP_ELEMENT_FLAG_FC,
         childFlag: SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
@@ -1288,7 +1302,6 @@ describe('createElement and utils', () => {
       expect(
         createElement(
           // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-expect-error
           TestContext.Consumer,
           {
             key: '123',
@@ -1311,7 +1324,6 @@ describe('createElement and utils', () => {
         unmounted: null,
       });
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
       expect(createElement(TestContext.Consumer)).toEqual({
         flag: SIMP_ELEMENT_FLAG_FC,
         type: TestContext.Consumer,

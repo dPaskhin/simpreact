@@ -1,7 +1,8 @@
 import type { SimpElement, SimpElementStore } from './createElement.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
-import { findParentReferenceFromElement, patchFunctionalComponent } from './patching.js';
+import { patchFunctionalComponent } from './patching.js';
 import type { SimpRenderRuntime } from './runtime.js';
+import { findParentReferenceFromElement } from './utils.js';
 
 lifecycleEventBus.subscribe(event => {
   if (event.type === 'afterRender' || event.type === 'errored' || event.type === 'unmounted') {
@@ -30,15 +31,7 @@ function startScheduler(renderRuntime: SimpRenderRuntime) {
     for (const store of elementStoresAsyncRerender) {
       elementStoresAsyncRerender.delete(store);
 
-      patchFunctionalComponent(
-        store.latestElement!,
-        store.latestElement!,
-        store.latestElement!.context || null,
-        findParentReferenceFromElement(store.latestElement!),
-        store!.hostNamespace,
-        null,
-        renderRuntime
-      );
+      _rerender(store.latestElement!, renderRuntime);
     }
 
     queueMicrotask(process);
@@ -81,14 +74,18 @@ export function flushSyncRerender(renderRuntime: SimpRenderRuntime) {
   for (const store of elementStoresSyncRerender) {
     elementStoresSyncRerender.delete(store);
 
-    patchFunctionalComponent(
-      store.latestElement!,
-      store.latestElement!,
-      store.latestElement!.context || null,
-      findParentReferenceFromElement(store.latestElement!),
-      store!.hostNamespace,
-      null,
-      renderRuntime
-    );
+    _rerender(store.latestElement!, renderRuntime);
   }
+}
+
+function _rerender(element: SimpElement, renderRuntime: SimpRenderRuntime) {
+  patchFunctionalComponent(
+    element,
+    element,
+    element.context || null,
+    findParentReferenceFromElement(element),
+    element.store!.hostNamespace,
+    null,
+    renderRuntime
+  );
 }

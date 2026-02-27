@@ -6,6 +6,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   resolve: {
     alias: {
+      '@simpreact/component': path.resolve(process.cwd(), './src/main/component/index.js'),
       '@simpreact/context': path.resolve(process.cwd(), './src/main/context/index.js'),
       '@simpreact/core': path.resolve(process.cwd(), './src/main/core/index.js'),
       '@simpreact/internal': path.resolve(process.cwd(), './src/main/core/internal.js'),

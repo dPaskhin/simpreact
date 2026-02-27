@@ -5,21 +5,11 @@ import {
   type SimpElement,
   type SimpRenderRuntime,
 } from '@simpreact/internal';
-import type { Maybe, Nullable } from '@simpreact/shared';
+import type { DependencyList, Effect, EffectState, Maybe, Nullable } from '@simpreact/shared';
 import { callOrGet, shallowEqual } from '@simpreact/shared';
-
-export type Cleanup = () => void;
-export type Effect = () => void | Cleanup;
-export type DependencyList = readonly unknown[];
 
 export type Dispatch<A> = (value: A) => void;
 export type SetStateAction<S> = S | ((prevState: S) => S);
-
-type EffectHookState = {
-  effect: Effect;
-  cleanup: Nullable<Cleanup>;
-  deps: Nullable<DependencyList>;
-};
 
 type RerenderHookState = () => void;
 
@@ -29,7 +19,7 @@ type RefHookState<T = unknown> = {
 
 type StateHookState<S = any> = [S, Dispatch<SetStateAction<S>>];
 
-type HookState = EffectHookState | RerenderHookState | RefHookState | StateHookState;
+type HookState = EffectState | RerenderHookState | RefHookState | StateHookState;
 
 interface HooksSimpRenderRuntime extends SimpRenderRuntime {
   currentIndex: number;
@@ -41,7 +31,7 @@ interface HooksSimpElement extends SimpElement {
   store: SimpElement['store'] &
     Nullable<{
       hookStates: Nullable<HookState[]>;
-      effectsHookStates: Nullable<EffectHookState[]>;
+      effectsHookStates: Nullable<EffectState[]>;
       catchHandlers: Nullable<Array<(error: any) => void>>;
     }>;
 }
@@ -201,7 +191,7 @@ export function createUseEffect(renderRuntime: SimpRenderRuntime): (effect: Effe
   return (effect, deps) => {
     const hookStates = getOrCreateHookStates((renderRuntime as HooksSimpRenderRuntime).currentElement);
 
-    let state = hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex] as EffectHookState | undefined;
+    let state = hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex] as EffectState | undefined;
 
     if (!state) {
       state = hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex] = {
