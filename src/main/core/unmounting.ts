@@ -97,3 +97,18 @@ export function remove(element: SimpElement, parentReference: HostReference, ren
   unmount(element, renderRuntime);
   clearElementHostReference(element, parentReference, renderRuntime);
 }
+
+export function removeAllChildren(
+  element: SimpElement,
+  children: SimpElement[],
+  parentReference: HostReference,
+  renderRuntime: SimpRenderRuntime
+): void {
+  unmount(children, renderRuntime);
+
+  if (element.flag & SIMP_ELEMENT_FLAG_FRAGMENT) {
+    clearElementHostReference(element, parentReference, renderRuntime);
+  } else {
+    renderRuntime.hostAdapter.clearNode(parentReference);
+  }
+}

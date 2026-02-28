@@ -25,7 +25,7 @@ function BadComponent() {
       setCount(c => c + 1);
     }, 0);
 
-    // no cleanup → will cause update after unmount
+    // no cleanup → will cause an update after unmounting
   }, []);
 
   return createElement('div', null, `Count: ${count}`);
@@ -39,7 +39,7 @@ describe('BadComponent', () => {
     root.render(createElement(BadComponent));
     root.unmount(); // unmount immediately
 
-    // wait for timer to trigger
+    // wait for the timer to trigger
     await new Promise(resolve => setTimeout(resolve, 1));
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(expect.stringContaining('The component is unmounted.'));

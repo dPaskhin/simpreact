@@ -14,7 +14,7 @@ import type { HostReference } from './hostAdapter.js';
 import { mount, mountArrayChildren } from './mounting.js';
 import { patch } from './patching.js';
 import type { SimpRenderRuntime } from './runtime.js';
-import { remove, unmount } from './unmounting.js';
+import { clearElementHostReference, remove, removeAllChildren, unmount } from './unmounting.js';
 import { findHostReferenceFromElement } from './utils.js';
 
 export function patchChildren(
@@ -50,27 +50,8 @@ export function patchChildren(
           break;
         }
         case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
-          // TODO
-          // removeAllChildren(parentDOM, parentVNode, lastChildren, animations);
-          // mount(
-          //   nextChildren,
-          //   parentDOM,
-          //   context,
-          //   isSVG,
-          //   nextNode,
-          //   lifecycle,
-          //   animations,
-          // );
-
-          patchKeyedChildren(
-            prevChildren as SimpElement[],
-            [nextChildren] as SimpElement[],
-            parentReference,
-            nextReference,
-            context,
-            hostNamespace,
-            renderRuntime
-          );
+          removeAllChildren(parentElement, prevChildren as SimpElement[], parentReference, renderRuntime);
+          mount(nextChildren as SimpElement, parentReference, nextReference, context, hostNamespace, renderRuntime);
 
           break;
         }
@@ -89,30 +70,17 @@ export function patchChildren(
     case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
       switch (nextChildFlag) {
         case SIMP_ELEMENT_CHILD_FLAG_LIST: {
-          // TODO
-          // unmount(lastChildren, animations);
-          //
-          // mountArrayChildren(
-          //   nextChildren,
-          //   parentDOM,
-          //   context,
-          //   isSVG,
-          //   findDOMFromVNode(lastChildren, true),
-          //   lifecycle,
-          //   animations,
-          // );
-          //
-          // removeVNodeDOM(lastChildren, parentDOM, animations);
-
-          patchKeyedChildren(
-            [prevChildren] as SimpElement[],
+          unmount(prevChildren as SimpElement, renderRuntime);
+          mountArrayChildren(
             nextChildren as SimpElement[],
             parentReference,
             nextReference,
             context,
+            parentElement,
             hostNamespace,
             renderRuntime
           );
+          clearElementHostReference(prevChildren as SimpElement, parentReference, renderRuntime);
 
           break;
         }
