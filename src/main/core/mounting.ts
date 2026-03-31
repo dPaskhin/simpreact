@@ -1,6 +1,5 @@
-import type { Maybe } from '@simpreact/shared';
+import type { Maybe, Nullable } from '@simpreact/shared';
 import {
-  createElementStore,
   createTextElement,
   type FC,
   normalizeRoot,
@@ -11,99 +10,196 @@ import {
 } from './createElement.js';
 import type { HostReference } from './hostAdapter.js';
 import { type LifecycleEvent, lifecycleEventBus } from './lifecycleEventBus.js';
+import {
+  HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR,
+  MOUNT_ENTER,
+  MOUNT_EXIT,
+  processStack,
+  type RenderFrame,
+} from './processStack.js';
 import { applyRef } from './ref.js';
 import type { SimpRenderRuntime } from './runtime.js';
+import { bitScanForwardIndex } from './utils.js';
 
-const mountHandlers = [mountHostElement, mountFunctionalElement, mountTextElement, mountPortal, mountFragment];
+const mountHandlers = [_mountHostElement, _mountFunctionalElement, _mountTextElement, _mountPortal, _mountFragment];
 
 export function mount(
   element: SimpElement,
   parentReference: HostReference,
-  nextReference: HostReference,
+  parentAnchorReference: HostReference,
+  rightSibling: Nullable<SimpElement>,
   context: unknown,
   hostNamespace: Maybe<string>,
   renderRuntime: SimpRenderRuntime
 ): void {
-  const index = Math.log2(element.flag & -element.flag);
+  if (renderRuntime.renderStack.size !== 0) {
+    throw new Error('Cannot mount while rendering.');
+  }
 
-  mountHandlers[index]!(element, parentReference, nextReference, context, hostNamespace, renderRuntime);
+  _pushMountFrame({
+    node: element,
+    phase: MOUNT_ENTER,
+    meta: {
+      parentReference,
+      renderRuntime,
+      parentAnchorReference,
+      rightSibling,
+      context,
+      hostNamespace,
+      prevElement: null,
+      placeHolderElement: null,
+    },
+  });
+
+  processStack(renderRuntime);
 }
 
-export function mountTextElement(
-  element: SimpElement,
-  parentReference: HostReference,
-  nextReference: HostReference,
-  _context: unknown,
-  _hostNamespace: Maybe<string>,
-  renderRuntime: SimpRenderRuntime
-): void {
-  renderRuntime.hostAdapter.insertOrAppend(
-    parentReference,
-    (element.reference = renderRuntime.hostAdapter.createTextReference(element.children as string)),
-    nextReference
-  );
+export function _mount(frame: RenderFrame): void {
+  mountHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
 }
 
-export function mountHostElement(
-  element: SimpElement,
-  parentReference: HostReference,
-  nextReference: HostReference,
-  context: unknown,
-  hostNamespace: Maybe<string>,
-  renderRuntime: SimpRenderRuntime
-): void {
+export function _pushMountFrame(frame: RenderFrame): void {
+  frame.meta.renderRuntime.renderStack.push(frame);
+}
+
+export function _pushMountArrayChildrenFrame(frame: RenderFrame): void {
+  const children = frame.node.children as SimpElement[];
+  const { parentReference, parentAnchorReference, context, hostNamespace, renderRuntime } = frame.meta;
+
+  let rightSibling = frame.meta.rightSibling;
+
+  for (let i = children.length - 1; i >= 0; i--) {
+    const child = children[i]!;
+    child.parent = frame.node;
+
+    _pushMountFrame({
+      node: child,
+      phase: MOUNT_ENTER,
+      meta: {
+        prevElement: null,
+        parentReference,
+        parentAnchorReference,
+        rightSibling,
+        context,
+        hostNamespace,
+        renderRuntime,
+        placeHolderElement: null,
+      },
+    });
+
+    rightSibling = child;
+  }
+}
+
+function _mountHostElement(frame: RenderFrame): void {
+  const element = frame.node;
+  const { parentReference, parentAnchorReference, rightSibling, context, hostNamespace, renderRuntime } = frame.meta;
+
+  if (frame.phase === MOUNT_EXIT) {
+    if (element.childFlag === SIMP_ELEMENT_CHILD_FLAG_TEXT) {
+      renderRuntime.hostAdapter.setTextContent(element.reference, element.props.children);
+    }
+
+    if (element.props) {
+      renderRuntime.hostAdapter.mountProps(element.reference, element, renderRuntime, hostNamespace);
+    }
+
+    if (element.className) {
+      renderRuntime.hostAdapter.setClassname(element.reference, element.className, hostNamespace);
+    }
+
+    if (parentReference) {
+      renderRuntime.renderStack.push({
+        node: element,
+        phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR,
+        meta: {
+          renderRuntime,
+          hostNamespace: null,
+          parentAnchorReference,
+          rightSibling,
+          context: null,
+          parentReference,
+          placeHolderElement: null,
+          prevElement: null,
+        },
+      });
+    }
+
+    applyRef(element);
+
+    return;
+  }
+
   const hostNamespaces = renderRuntime.hostAdapter.getHostNamespaces(element, hostNamespace);
-  hostNamespace = hostNamespaces?.self;
-
   const hostReference = (element.reference = renderRuntime.hostAdapter.createReference(
     element.type as string,
-    hostNamespace
+    hostNamespaces?.self
   ));
 
   renderRuntime.hostAdapter.attachElementToReference(element, hostReference);
 
-  if (element.childFlag === SIMP_ELEMENT_CHILD_FLAG_LIST) {
-    mountArrayChildren(
-      element.children as SimpElement[],
-      hostReference,
-      null,
+  renderRuntime.renderStack.push({
+    node: element,
+    phase: MOUNT_EXIT,
+    meta: {
+      renderRuntime,
+      hostNamespace: hostNamespaces?.self,
+      parentAnchorReference,
+      rightSibling,
       context,
-      element,
-      hostNamespaces?.children,
-      renderRuntime
-    );
-  }
-  if (element.childFlag === SIMP_ELEMENT_CHILD_FLAG_ELEMENT) {
-    (element.children as SimpElement).parent = element;
-    mount(element.children as SimpElement, hostReference, null, context, hostNamespaces?.children, renderRuntime);
-  }
-  if (element.childFlag === SIMP_ELEMENT_CHILD_FLAG_TEXT) {
-    renderRuntime.hostAdapter.setTextContent(hostReference, element.props.children);
-  }
+      parentReference,
+      placeHolderElement: null,
+      prevElement: null,
+    },
+  });
 
-  if (element.props) {
-    renderRuntime.hostAdapter.mountProps(hostReference, element, renderRuntime, hostNamespace);
+  switch (element.childFlag) {
+    case SIMP_ELEMENT_CHILD_FLAG_LIST: {
+      _pushMountArrayChildrenFrame({
+        node: element,
+        phase: MOUNT_ENTER,
+        meta: {
+          renderRuntime,
+          hostNamespace: hostNamespaces?.children,
+          parentAnchorReference: null,
+          rightSibling: null,
+          context,
+          parentReference: hostReference,
+          placeHolderElement: null,
+          prevElement: null,
+        },
+      });
+      break;
+    }
+    case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
+      (element.children as SimpElement).parent = element;
+      _pushMountFrame({
+        node: element.children as SimpElement,
+        phase: MOUNT_ENTER,
+        meta: {
+          renderRuntime,
+          hostNamespace: hostNamespaces?.children,
+          parentAnchorReference: null,
+          rightSibling: null,
+          context,
+          parentReference: hostReference,
+          placeHolderElement: null,
+          prevElement: null,
+        },
+      });
+    }
   }
-
-  if (element.className) {
-    renderRuntime.hostAdapter.setClassname(hostReference, element.className, hostNamespace);
-  }
-
-  if (parentReference) {
-    renderRuntime.hostAdapter.insertOrAppend(parentReference, hostReference, nextReference);
-  }
-
-  applyRef(element);
 }
 
-export function mountFunctionalElement(
-  element: SimpElement,
-  parentReference: HostReference,
-  nextReference: HostReference,
-  context: unknown,
-  hostNamespace: Maybe<string>,
-  renderRuntime: SimpRenderRuntime
-): void {
+function _mountFunctionalElement(frame: RenderFrame): void {
+  const element = frame.node;
+  const { parentReference, parentAnchorReference, rightSibling, context, hostNamespace, renderRuntime } = frame.meta;
+
+  if (frame.phase === MOUNT_EXIT) {
+    lifecycleEventBus.publish({ type: 'mounted', element, renderRuntime });
+    return;
+  }
+
   if (context) {
     element.context = context;
   }
@@ -112,7 +208,7 @@ export function mountFunctionalElement(
     element.unmounted = false;
   }
 
-  element.store = createElementStore();
+  element.store = { latestElement: null, hostNamespace: null };
   element.store.latestElement = element;
 
   if (hostNamespace) {
@@ -122,7 +218,7 @@ export function mountFunctionalElement(
   // FC element always has Maybe<SimpElement> children due to a normalization process.
   let children;
 
-  let triedToRerenderUnsubscribe;
+  let triedToRerenderUnsubscribe: () => void;
 
   try {
     let triedToRerender = false;
@@ -170,86 +266,162 @@ export function mountFunctionalElement(
     triedToRerenderUnsubscribe!();
   }
 
+  renderRuntime.renderStack.push({
+    node: element,
+    phase: MOUNT_EXIT,
+    meta: {
+      renderRuntime,
+      hostNamespace: null,
+      parentAnchorReference: null,
+      rightSibling: null,
+      context: null,
+      parentReference: null,
+      placeHolderElement: null,
+      prevElement: null,
+    },
+  });
+
   if (element.children) {
-    (element.children as SimpElement).parent = element;
-    mount(
-      element.children as SimpElement,
-      parentReference,
-      nextReference,
-      element.context,
-      hostNamespace,
-      renderRuntime
-    );
-  }
-
-  lifecycleEventBus.publish({ type: 'mounted', element, renderRuntime });
-}
-
-export function mountFragment(
-  element: SimpElement,
-  parentReference: HostReference,
-  nextReference: HostReference,
-  context: unknown,
-  hostNamespace: Maybe<string>,
-  renderRuntime: SimpRenderRuntime
-): void {
-  switch (element.childFlag) {
-    case SIMP_ELEMENT_CHILD_FLAG_LIST:
-      mountArrayChildren(
-        element.children as SimpElement[],
-        parentReference,
-        nextReference,
-        context,
-        element,
+    const child = element.children as SimpElement;
+    child.parent = element;
+    renderRuntime.renderStack.push({
+      node: child,
+      phase: MOUNT_ENTER,
+      meta: {
+        renderRuntime,
         hostNamespace,
-        renderRuntime
-      );
-      break;
-    case SIMP_ELEMENT_CHILD_FLAG_ELEMENT:
-      (element.children as SimpElement).parent = element;
-      mount(element.children as SimpElement, parentReference, nextReference, context, hostNamespace, renderRuntime);
+        parentAnchorReference,
+        rightSibling,
+        context: element.context,
+        parentReference,
+        placeHolderElement: null,
+        prevElement: null,
+      },
+    });
   }
 }
 
-export function mountArrayChildren(
-  children: SimpElement[],
-  reference: HostReference,
-  nextReference: HostReference,
-  context: unknown,
-  parentElement: SimpElement,
-  hostNamespace: Maybe<string>,
-  renderRuntime: SimpRenderRuntime
-): void {
-  for (const child of children) {
-    child.parent = parentElement;
-    mount(child, reference, nextReference, context, hostNamespace, renderRuntime);
-  }
+function _mountTextElement(frame: RenderFrame): void {
+  const { renderRuntime, parentReference, parentAnchorReference } = frame.meta;
+
+  frame.node.reference = renderRuntime.hostAdapter.createTextReference(frame.node.children as string);
+
+  renderRuntime.renderStack.push({
+    node: frame.node,
+    phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR,
+    meta: {
+      renderRuntime,
+      hostNamespace: null,
+      parentAnchorReference,
+      rightSibling: frame.meta.rightSibling,
+      context: null,
+      parentReference,
+      placeHolderElement: null,
+      prevElement: null,
+    },
+  });
 }
 
-export function mountPortal(
-  element: SimpElement,
-  parentReference: HostReference,
-  nextReference: HostReference,
-  context: unknown,
-  _hostNamespace: Maybe<string>,
-  renderRuntime: SimpRenderRuntime
-): void {
-  if (element.children) {
-    (element.children as SimpElement).parent = element;
+function _mountPortal(frame: RenderFrame): void {
+  const element = frame.node;
+  const { parentReference, parentAnchorReference, rightSibling, context, renderRuntime } = frame.meta;
 
-    mount(
-      element.children as SimpElement,
-      element.ref,
-      null,
-      context,
-      renderRuntime.hostAdapter.getHostNamespaces(element.children as SimpElement, undefined)?.self,
-      renderRuntime
-    );
+  if (frame.phase === MOUNT_EXIT) {
+    element.reference = frame.meta.placeHolderElement!.reference;
+    return;
   }
 
   const placeHolderElement = createTextElement('');
 
-  mountTextElement(placeHolderElement, parentReference, nextReference, null, null, renderRuntime);
+  renderRuntime.renderStack.push({
+    node: element,
+    phase: MOUNT_EXIT,
+    meta: {
+      renderRuntime,
+      parentAnchorReference: null,
+      rightSibling: null,
+      context: null,
+      parentReference: null,
+      hostNamespace: null,
+      placeHolderElement,
+      prevElement: null,
+    },
+  });
 
-  element.reference = placeHolderElement.reference;
+  if (element.children) {
+    const child = element.children as SimpElement;
+    child.parent = element;
+
+    renderRuntime.renderStack.push({
+      node: child,
+      phase: MOUNT_ENTER,
+      meta: {
+        renderRuntime,
+        parentAnchorReference: null,
+        rightSibling: null,
+        context,
+        parentReference: element.ref,
+        hostNamespace: renderRuntime.hostAdapter.getHostNamespaces(child, undefined)?.self,
+        placeHolderElement: null,
+        prevElement: null,
+      },
+    });
+  }
+
+  renderRuntime.renderStack.push({
+    node: placeHolderElement,
+    phase: MOUNT_ENTER,
+    meta: {
+      renderRuntime,
+      parentAnchorReference,
+      rightSibling,
+      context: null,
+      parentReference,
+      hostNamespace: null,
+      placeHolderElement: null,
+      prevElement: null,
+    },
+  });
+}
+
+function _mountFragment(frame: RenderFrame): void {
+  const element = frame.node;
+  const { parentReference, parentAnchorReference, hostNamespace, context, renderRuntime, rightSibling } = frame.meta;
+
+  switch (element.childFlag) {
+    case SIMP_ELEMENT_CHILD_FLAG_LIST:
+      _pushMountArrayChildrenFrame({
+        node: element,
+        phase: MOUNT_ENTER,
+        meta: {
+          renderRuntime,
+          hostNamespace,
+          parentAnchorReference,
+          rightSibling,
+          context,
+          parentReference,
+          placeHolderElement: null,
+          prevElement: null,
+        },
+      });
+
+      break;
+    case SIMP_ELEMENT_CHILD_FLAG_ELEMENT:
+      const child = element.children as SimpElement;
+      child.parent = element;
+      renderRuntime.renderStack.push({
+        node: child,
+        phase: MOUNT_ENTER,
+        meta: {
+          renderRuntime,
+          hostNamespace,
+          parentAnchorReference,
+          rightSibling,
+          context,
+          parentReference,
+          placeHolderElement: null,
+          prevElement: null,
+        },
+      });
+  }
 }

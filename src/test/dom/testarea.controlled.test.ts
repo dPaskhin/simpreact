@@ -1,4 +1,4 @@
-import type { SimpRenderRuntime } from '@simpreact/internal';
+import { type SimpRenderRuntime, TraversalStack } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -14,6 +14,7 @@ const renderRuntime: SimpRenderRuntime = {
   renderer(type, element) {
     return type(element.props || emptyObject);
   },
+  renderStack: new TraversalStack(),
 };
 
 describe('textarea controlled', () => {

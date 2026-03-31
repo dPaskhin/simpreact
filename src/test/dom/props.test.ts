@@ -1,11 +1,11 @@
 import { createElement } from '@simpreact/core';
-import { type SimpRenderRuntime, unmount } from '@simpreact/internal';
+import { type SimpRenderRuntime, TraversalStack, unmount } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { patchDangerInnerHTML } from '../../main/dom/props/dangerInnerHTML.js';
 import { testHostAdapter } from '../test-host-adapter.js';
 
-vi.mock('@simpreact/internal', () => ({
+vi.mock('../../main/core/unmounting.js', () => ({
   unmount: vi.fn(),
 }));
 
@@ -16,6 +16,7 @@ const renderRuntime: SimpRenderRuntime = {
   renderer(type, element) {
     return type(element.props || emptyObject);
   },
+  renderStack: new TraversalStack(),
 };
 
 describe('patchDangerInnerHTML', () => {

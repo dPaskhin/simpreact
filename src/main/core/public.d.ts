@@ -1,4 +1,5 @@
-import type { SimpText } from '@simpreact/shared';
+import type { HostReference, TraversalStack } from '@simpreact/internal';
+import type { Maybe, Nullable, SimpText } from '@simpreact/shared';
 
 export type ComponentType<P = {}> = FunctionalComponent<P>;
 
@@ -52,7 +53,19 @@ export interface SimpRuntimeFCRenderer {
   (component: FC, element: SimpElement): SimpNode;
 }
 
+export interface RenderMeta {
+  prevElement: Nullable<SimpElement>;
+  parentReference: HostReference;
+  parentAnchorReference: HostReference;
+  rightSibling: Nullable<SimpElement>;
+  context: unknown;
+  hostNamespace: Maybe<string>;
+  renderRuntime: SimpRenderRuntime;
+  placeHolderElement: Nullable<SimpElement>;
+}
+
 export interface SimpRenderRuntime {
   hostAdapter: HostAdapter;
   renderer: SimpRuntimeFCRenderer;
+  renderStack: TraversalStack<SimpElement, RenderMeta>;
 }

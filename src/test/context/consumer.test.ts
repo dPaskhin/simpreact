@@ -1,35 +1,44 @@
 import { createCreateContext } from '@simpreact/context';
 import { createRenderer, domAdapter } from '@simpreact/dom';
 import { createUseState } from '@simpreact/hooks';
-import { createElement, memo, type SimpRenderRuntime } from '@simpreact/internal';
+import { createElement, memo, type SimpRenderRuntime, TraversalStack } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
-import { describe, expect, it, vi } from 'vitest';
-
-const renderRuntime: SimpRenderRuntime = {
-  hostAdapter: domAdapter,
-  renderer(type, element) {
-    return type(element.props || emptyObject);
-  },
-};
-
-const createContext = createCreateContext(renderRuntime);
-const render = createRenderer(renderRuntime);
-const useState = createUseState(renderRuntime);
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 describe('Context.Consumer', () => {
-  it('uses the default value when there is no Provider above', async () => {
+  let renderRuntime: SimpRenderRuntime;
+  let createContext: ReturnType<typeof createCreateContext>;
+  let render: ReturnType<typeof createRenderer>;
+  let useState: ReturnType<typeof createUseState>;
+
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    // TODO: remove this hack when the render runtime has the map of elements to their host references.
+    (document.body as any).__SIMP_ELEMENT__ = undefined;
+    renderRuntime = {
+      hostAdapter: domAdapter,
+      renderer(type, element) {
+        return type(element.props || emptyObject);
+      },
+      renderStack: new TraversalStack(),
+    };
+
+    createContext = createCreateContext(renderRuntime);
+    render = createRenderer(renderRuntime);
+    useState = createUseState(renderRuntime);
+  });
+
+  it('uses the default value when there is no Provider above', () => {
     const Ctx = createContext('DEFAULT');
 
     render(
       createElement(Ctx.Consumer, { children: (value: string) => createElement('div', { 'data-testid': 'v' }, value) }),
       document.body
     );
-
-    await new Promise(resolve => setTimeout(resolve, 100));
 
     expect(document.body.querySelector('[data-testid="v"]')!.textContent).toBe('DEFAULT');
   });
@@ -72,7 +81,11 @@ describe('Context.Consumer', () => {
       ]);
     }
 
-    render(createElement(App), document.body);
+    try {
+      render(createElement(App), document.body);
+    } catch (e) {
+      console.error('jerer', e);
+    }
 
     // initial
     expect(document.body.querySelector('[data-testid="v"]')!.textContent).toBe('A');

@@ -5,6 +5,7 @@ export type LifecycleEvent =
   | {
       type: 'beforeRender';
       element: SimpElement;
+      // TODO: update to 1 | 2
       phase: 'mounting' | 'updating';
       renderRuntime: SimpRenderRuntime;
     }

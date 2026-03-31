@@ -1,7 +1,15 @@
 import { createRenderer } from '@simpreact/dom';
 import { createUseEffect, createUseRef, createUseRerender } from '@simpreact/hooks';
-import type { SimpElement, SimpRenderRuntime } from '@simpreact/internal';
-import { createElement, createPortal, Fragment, mountPortal, patchPortal } from '@simpreact/internal';
+import {
+  createElement,
+  createPortal,
+  Fragment,
+  mount,
+  patch,
+  type SimpElement,
+  type SimpRenderRuntime,
+  TraversalStack,
+} from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { dispatchDelegatedEvent } from '../main/dom/events.js';
@@ -12,6 +20,7 @@ const renderRuntime: SimpRenderRuntime = {
   renderer(type, element) {
     return type(element.props || emptyObject);
   },
+  renderStack: new TraversalStack(),
 };
 
 const render = createRenderer(renderRuntime);
@@ -41,11 +50,11 @@ describe('patchPortal', () => {
 
       const prevPortal = createPortal(prevChild, containerA);
 
-      mountPortal(prevPortal, document.createElement('div'), null, null, null, renderRuntime);
+      mount(prevPortal, document.createElement('div'), null, null, null, null, renderRuntime);
 
       const nextPortal = createPortal(nextChild, containerA);
 
-      patchPortal(prevPortal, nextPortal, null, null, null, null, renderRuntime);
+      patch(prevPortal, nextPortal, null, null, null, null, null, renderRuntime);
 
       expect(containerA.contains(nextChild.reference as HTMLElement)).toBe(true);
       expect(containerA.contains(prevChild.reference as HTMLElement)).toBe(true);
@@ -57,11 +66,11 @@ describe('patchPortal', () => {
 
       const prevPortal = createPortal(prevChild, containerA);
 
-      mountPortal(prevPortal, document.createElement('div'), null, null, null, renderRuntime);
+      mount(prevPortal, document.createElement('div'), null, null, null, null, renderRuntime);
 
       const nextPortal = createPortal(nextChild, containerB);
 
-      patchPortal(prevPortal, nextPortal, null, null, null, null, renderRuntime);
+      patch(prevPortal, nextPortal, null, null, null, null, null, renderRuntime);
 
       expect(containerB.contains(nextChild.reference as HTMLElement)).toBe(true);
       expect(containerA.contains(prevChild.reference as HTMLElement)).toBe(false);

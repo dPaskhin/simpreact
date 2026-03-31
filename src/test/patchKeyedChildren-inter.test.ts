@@ -1,5 +1,5 @@
 import { createCreateRoot } from '@simpreact/dom';
-import { createElement, Fragment, type SimpRenderRuntime } from '@simpreact/internal';
+import { createElement, Fragment, type SimpRenderRuntime, TraversalStack } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { testHostAdapter } from './test-host-adapter.js';
@@ -9,6 +9,7 @@ const renderRuntime: SimpRenderRuntime = {
   renderer(type, element) {
     return type(element.props || emptyObject);
   },
+  renderStack: new TraversalStack(),
 };
 
 const createRoot = createCreateRoot(renderRuntime);

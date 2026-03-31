@@ -5,8 +5,7 @@ import * as Preact from 'preact';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { beforeEach, describe, measure, test } from 'toofast';
-import * as SimpReact from '../../../lib/core/index.js';
-import * as SimpReactDom from '../../../lib/dom/index.js';
+import * as SimpReact from '../../../lib/compat/index.js';
 
 describe('Reorder list items', () => {
   let container: HTMLElement;
@@ -27,7 +26,7 @@ describe('Reorder list items', () => {
       );
     };
 
-    const root = SimpReactDom.createRoot(container);
+    const root = SimpReact.createRoot(container);
 
     measure(
       {

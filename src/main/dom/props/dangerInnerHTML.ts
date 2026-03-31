@@ -1,6 +1,6 @@
 import type { SimpElement, SimpRenderRuntime } from '@simpreact/internal';
 import { unmount } from '@simpreact/internal';
-import type { Many, Maybe } from '@simpreact/shared';
+import type { Maybe } from '@simpreact/shared';
 
 export function patchDangerInnerHTML(
   prevValue: Maybe<{ __html: string }>,
@@ -23,7 +23,8 @@ export function patchDangerInnerHTML(
     if (nextHTML != null && !isSameInnerHTML(dom, nextHTML)) {
       if (prevElement != null) {
         if (prevElement.children) {
-          unmount(prevElement.children as Many<SimpElement>, renderRuntime);
+          // TODO: the HOST element can hold several children.
+          unmount(prevElement.children as SimpElement, renderRuntime);
           prevElement.children = undefined;
         }
       }

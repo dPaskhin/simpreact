@@ -1,6 +1,7 @@
 import type { SimpElement, SimpElementStore } from './createElement.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
-import { patchFunctionalComponent } from './patching.js';
+import { isMemo } from './memo.js';
+import { patch } from './patching.js';
 import type { SimpRenderRuntime } from './runtime.js';
 import { findParentReferenceFromElement } from './utils.js';
 
@@ -79,13 +80,18 @@ export function flushSyncRerender(renderRuntime: SimpRenderRuntime) {
 }
 
 function _rerender(element: SimpElement, renderRuntime: SimpRenderRuntime) {
-  patchFunctionalComponent(
+  if (isMemo(element.type)) {
+    element.type._isForcedUpdate = true;
+  }
+
+  patch(
     element,
     element,
-    element.context || null,
     findParentReferenceFromElement(element),
-    element.store!.hostNamespace,
     null,
+    null,
+    element.context || null,
+    element.store!.hostNamespace,
     renderRuntime
   );
 }

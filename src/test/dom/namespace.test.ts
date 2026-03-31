@@ -1,5 +1,4 @@
-import type { SimpRenderRuntime } from '@simpreact/internal';
-import { createElement, mount } from '@simpreact/internal';
+import { createElement, mount, type SimpRenderRuntime, TraversalStack } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { domAdapter } from '../../main/dom/domAdapter.js';
@@ -14,6 +13,7 @@ const renderRuntime: SimpRenderRuntime = {
   renderer(type, element) {
     return type(element.props || emptyObject);
   },
+  renderStack: new TraversalStack(),
 };
 
 describe('namespace', () => {
@@ -29,7 +29,7 @@ describe('namespace', () => {
       createElement(() => '')
     );
 
-    mount(root, document.createElement('div'), null, null, 'http://www.w3.org/1999/xhtml', renderRuntime);
+    mount(root, document.createElement('div'), null, null, null, 'http://www.w3.org/1999/xhtml', renderRuntime);
 
     expect(testHostAdapter.createReference).toHaveBeenNthCalledWith(1, 'div', undefined);
     expect(testHostAdapter.createReference).toHaveBeenNthCalledWith(2, 'span', undefined);
@@ -46,7 +46,7 @@ describe('namespace', () => {
       createElement('b')
     );
 
-    mount(root, document.createElement('div'), null, null, 'http://www.w3.org/1999/xhtml', renderRuntime);
+    mount(root, document.createElement('div'), null, null, null, 'http://www.w3.org/1999/xhtml', renderRuntime);
 
     expect(testHostAdapter.createReference).toHaveBeenNthCalledWith(1, 'div', undefined);
     expect(testHostAdapter.createReference).toHaveBeenNthCalledWith(2, 'span', undefined);
@@ -71,7 +71,7 @@ describe('namespace', () => {
       createElement('b')
     );
 
-    mount(root, document.createElement('div'), null, null, undefined, renderRuntime);
+    mount(root, document.createElement('div'), null, null, null, null, renderRuntime);
 
     expect(testHostAdapter.createReference).toHaveBeenNthCalledWith(1, 'div', undefined);
     expect(testHostAdapter.createReference).toHaveBeenNthCalledWith(2, 'span', undefined);

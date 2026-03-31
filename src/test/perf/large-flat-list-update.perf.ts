@@ -5,8 +5,7 @@ import * as Preact from 'preact';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { beforeEach, describe, measure, test } from 'toofast';
-import * as SimpReact from '../../../lib/core/index.js';
-import * as SimpReactDom from '../../../lib/dom/index.js';
+import * as SimpReact from '../../../lib/compat/index.js';
 
 describe('Large flat list updating', () => {
   let container: HTMLElement;
@@ -24,7 +23,7 @@ describe('Large flat list updating', () => {
       );
     };
 
-    const root = SimpReactDom.createRoot(container);
+    const root = SimpReact.createRoot(container);
 
     const initialItems = Array.from({ length: 5000 }, (_, i) => ({
       id: i,

@@ -1,4 +1,4 @@
-import type { Many, Maybe } from '@simpreact/shared';
+import type { Maybe } from '@simpreact/shared';
 import {
   SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
   SIMP_ELEMENT_CHILD_FLAG_LIST,
@@ -11,54 +11,122 @@ import {
 } from './createElement.js';
 import type { HostReference } from './hostAdapter.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
+import { processStack, type RenderFrame, UNMOUNT_ENTER, UNMOUNT_EXIT } from './processStack.js';
 import { unmountRef } from './ref.js';
 import type { SimpRenderRuntime } from './runtime.js';
 
-export function unmount(element: Many<SimpElement>, renderRuntime: SimpRenderRuntime): void {
-  if (Array.isArray(element)) {
-    for (const child of element) {
-      unmount(child, renderRuntime);
-    }
-    return;
+export function unmount(element: SimpElement, renderRuntime: SimpRenderRuntime): void {
+  if (renderRuntime.renderStack.size !== 0) {
+    throw new Error('Cannot unmount while rendering.');
   }
 
-  if ((element.flag & SIMP_ELEMENT_FLAG_FC) !== 0) {
-    // Skip — the element is already unmounted.
-    if (element.unmounted) {
+  _pushUnmountFrame({
+    node: element,
+    phase: UNMOUNT_ENTER,
+    meta: {
+      renderRuntime,
+      parentAnchorReference: null,
+      rightSibling: null,
+      context: null,
+      hostNamespace: null,
+      prevElement: null,
+      parentReference: null,
+      placeHolderElement: null,
+    },
+  });
+
+  processStack(renderRuntime);
+}
+
+export function _unmount(frame: RenderFrame): void {
+  const current = frame.node;
+
+  if (frame.phase === UNMOUNT_EXIT) {
+    if ((current.flag & SIMP_ELEMENT_FLAG_FC) !== 0) {
+      current.unmounted = true;
+      lifecycleEventBus.publish({ type: 'unmounted', element: current, renderRuntime: frame.meta.renderRuntime });
       return;
     }
 
-    // FC element always has Maybe<SimpElement> due to normalization.
-    if (element.children) {
-      unmount(element.children as SimpElement, renderRuntime);
+    if ((current.flag & SIMP_ELEMENT_FLAG_HOST) !== 0) {
+      unmountRef(current);
+      frame.meta.renderRuntime.hostAdapter.unmountProps(current.reference, current);
     }
-    element.unmounted = true;
-    lifecycleEventBus.publish({ type: 'unmounted', element, renderRuntime });
+
     return;
   }
 
-  if ((element.flag & SIMP_ELEMENT_FLAG_TEXT) !== 0) {
+  if ((current.flag & SIMP_ELEMENT_FLAG_FC) !== 0) {
+    if (current.unmounted) {
+      return;
+    }
+
+    _pushUnmountFrame({
+      node: current,
+      phase: UNMOUNT_EXIT,
+      meta: frame.meta,
+    });
+
+    if (current.children) {
+      _pushUnmountFrame({
+        node: current.children as SimpElement,
+        phase: UNMOUNT_ENTER,
+        meta: frame.meta,
+      });
+    }
+
     return;
   }
 
-  if ((element.flag & SIMP_ELEMENT_FLAG_PORTAL) !== 0) {
-    remove(element.children as SimpElement, element.ref, renderRuntime);
+  if ((current.flag & SIMP_ELEMENT_FLAG_TEXT) !== 0) {
     return;
   }
 
-  // Only FRAGMENT and HOST elements remain,
-  // with Maybe<Many<SimpElement>> children due to normalization.
-  if (element.children) {
-    unmount(element.children as Many<SimpElement>, renderRuntime);
+  if ((current.flag & SIMP_ELEMENT_FLAG_PORTAL) !== 0) {
+    _remove(current.children as SimpElement, current.ref, frame.meta.renderRuntime);
+    return;
   }
 
-  if ((element.flag & SIMP_ELEMENT_FLAG_HOST) !== 0) {
-    unmountRef(element);
-    renderRuntime.hostAdapter.unmountProps(element.reference, element);
+  if ((current.flag & SIMP_ELEMENT_FLAG_HOST) !== 0) {
+    _pushUnmountFrame({
+      node: current,
+      phase: UNMOUNT_EXIT,
+      meta: frame.meta,
+    });
+  }
+
+  if (current.childFlag === SIMP_ELEMENT_CHILD_FLAG_ELEMENT) {
+    _pushUnmountFrame({
+      node: current.children as SimpElement,
+      phase: UNMOUNT_ENTER,
+      meta: frame.meta,
+    });
+    return;
+  }
+  if (current.childFlag === SIMP_ELEMENT_CHILD_FLAG_ELEMENT) {
+    _pushUnmountArrayChildrenFrame({
+      node: current,
+      phase: UNMOUNT_ENTER,
+      meta: frame.meta,
+    });
   }
 }
 
-export function clearElementHostReference(
+export function _pushUnmountFrame(frame: RenderFrame): void {
+  frame.meta.renderRuntime.renderStack.push(frame);
+}
+
+export function _pushUnmountArrayChildrenFrame(frame: RenderFrame): void {
+  for (let i = (frame.node.children as SimpElement[]).length - 1; i >= 0; i -= 1) {
+    _pushUnmountFrame({
+      node: (frame.node.children as SimpElement[])[i]!,
+      phase: UNMOUNT_ENTER,
+      meta: frame.meta,
+    });
+  }
+}
+
+export function _clearElementHostReference(
   element: Maybe<SimpElement>,
   parentHostReference: HostReference,
   renderRuntime: SimpRenderRuntime
@@ -83,7 +151,7 @@ export function clearElementHostReference(
       switch (childFlag) {
         case SIMP_ELEMENT_CHILD_FLAG_LIST:
           for (let i = 0, len = (children as SimpElement[]).length; i < len; ++i) {
-            clearElementHostReference((children as SimpElement[])[i], parentHostReference, renderRuntime);
+            _clearElementHostReference((children as SimpElement[])[i], parentHostReference, renderRuntime);
           }
           return;
         case SIMP_ELEMENT_CHILD_FLAG_ELEMENT:
@@ -93,22 +161,20 @@ export function clearElementHostReference(
   }
 }
 
-export function remove(element: SimpElement, parentReference: HostReference, renderRuntime: SimpRenderRuntime): void {
-  unmount(element, renderRuntime);
-  clearElementHostReference(element, parentReference, renderRuntime);
-}
-
-export function removeAllChildren(
-  element: SimpElement,
-  children: SimpElement[],
-  parentReference: HostReference,
-  renderRuntime: SimpRenderRuntime
-): void {
-  unmount(children, renderRuntime);
-
-  if (element.flag & SIMP_ELEMENT_FLAG_FRAGMENT) {
-    clearElementHostReference(element, parentReference, renderRuntime);
-  } else {
-    renderRuntime.hostAdapter.clearNode(parentReference);
-  }
+export function _remove(element: SimpElement, parentReference: HostReference, renderRuntime: SimpRenderRuntime): void {
+  _clearElementHostReference(element, parentReference, renderRuntime);
+  _pushUnmountFrame({
+    node: element,
+    phase: UNMOUNT_ENTER,
+    meta: {
+      renderRuntime,
+      parentAnchorReference: null,
+      rightSibling: null,
+      context: null,
+      hostNamespace: null,
+      prevElement: null,
+      parentReference: null,
+      placeHolderElement: null,
+    },
+  });
 }

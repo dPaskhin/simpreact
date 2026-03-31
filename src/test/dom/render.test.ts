@@ -1,5 +1,5 @@
 import { createCreateRoot, createRenderer } from '@simpreact/dom';
-import { createElement, SIMP_ELEMENT_FLAG_HOST, type SimpRenderRuntime } from '@simpreact/internal';
+import { createElement, SIMP_ELEMENT_FLAG_HOST, type SimpRenderRuntime, TraversalStack } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { testHostAdapter } from '../test-host-adapter.js';
@@ -9,19 +9,20 @@ const renderRuntime: SimpRenderRuntime = {
   renderer(type, element) {
     return type(element.props || emptyObject);
   },
+  renderStack: new TraversalStack(),
 };
 
 const createRoot = createCreateRoot(renderRuntime);
 const render = createRenderer(renderRuntime);
 
 describe('render', () => {
+  let container: Element;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+  });
+
   describe('render', () => {
-    let container: Element;
-
-    beforeEach(() => {
-      container = document.createElement('div');
-    });
-
     it('should mount a new root element if none exists', () => {
       const element = createElement('div');
 
@@ -43,27 +44,12 @@ describe('render', () => {
       expect((container as any).__SIMP_ELEMENT__.children).toBe(next);
     });
 
-    it('should remove root element children if null element is passed', () => {
-      const existing = createElement('div');
-
-      render(existing, container as any);
-      render(null, container as any);
-
-      expect((container as any).__SIMP_ELEMENT__.children).toBe(null);
-    });
-
     it('should do nothing if both root and new element are null', () => {
       render(null, container as any);
     });
   });
 
   describe('createRoot', () => {
-    let container: Element;
-
-    beforeEach(() => {
-      container = document.createElement('div');
-    });
-
     it('should mount new root element', () => {
       const root = createRoot(container as any);
       const element = createElement('div');
@@ -93,8 +79,7 @@ describe('render', () => {
       root.render(element);
       root.unmount();
 
-      expect((container as any).__SIMP_ELEMENT__.flag).toBe(SIMP_ELEMENT_FLAG_HOST);
-      expect((container as any).__SIMP_ELEMENT__.children).toBe(null);
+      expect(container.hasChildNodes()).toBe(false);
     });
   });
 });

@@ -1,4 +1,4 @@
-import { createElement, createPortal, mountPortal, type SimpRenderRuntime } from '@simpreact/internal';
+import { createElement, createPortal, mount, type SimpRenderRuntime, TraversalStack } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { testHostAdapter } from './test-host-adapter.js';
@@ -8,6 +8,7 @@ const renderRuntime: SimpRenderRuntime = {
   renderer(type, element) {
     return type(element.props || emptyObject);
   },
+  renderStack: new TraversalStack(),
 };
 
 describe('mountPortal', () => {
@@ -20,7 +21,7 @@ describe('mountPortal', () => {
     const parentReference = document.createElement('div');
     const portal = createPortal(createElement('span'), container);
 
-    mountPortal(portal, parentReference, null, null, null, renderRuntime);
+    mount(portal, parentReference, null, null, null, null, renderRuntime);
 
     expect(testHostAdapter.appendChild).toHaveBeenCalledWith(container, document.createElement('span'));
     expect(testHostAdapter.appendChild).toHaveBeenCalledWith(parentReference, document.createTextNode(''));
@@ -38,7 +39,7 @@ describe('mountPortal', () => {
     const parentReference = document.createElement('div');
     const portal = createPortal(null, container);
 
-    mountPortal(portal, parentReference, null, null, null, renderRuntime);
+    mount(portal, parentReference, null, null, null, null, renderRuntime);
 
     expect(testHostAdapter.appendChild).toHaveBeenCalledWith(
       parentReference,

@@ -1,4 +1,4 @@
-import { createElement, mount, patch, remove, type SimpElement, type SimpRenderRuntime } from '@simpreact/internal';
+import { createElement, mount, patch, type SimpElement, type SimpRenderRuntime, unmount } from '@simpreact/internal';
 import type { Nullable } from '@simpreact/shared';
 import { attachElementToDom, getElementFromDom } from './attach-element-to-dom.js';
 
@@ -26,14 +26,16 @@ export function createRenderer(
           container,
           null,
           null,
+          null,
           renderRuntime.hostAdapter.getHostNamespaces(element, undefined)?.self,
           renderRuntime
         );
       }
     } else {
       if (!element) {
-        remove(currentRootElement.children as SimpElement, container, renderRuntime);
-        currentRootElement.children = null;
+        // TODO: detach element from host reference.
+        unmount(currentRootElement.children as SimpElement, renderRuntime);
+        renderRuntime.hostAdapter.clearNode(container);
       } else {
         const prevChildren = currentRootElement.children as SimpElement;
         currentRootElement.children = element;
@@ -42,6 +44,7 @@ export function createRenderer(
           prevChildren,
           element,
           container,
+          null,
           null,
           null,
           renderRuntime.hostAdapter.getHostNamespaces(element, undefined)?.self,

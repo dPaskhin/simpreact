@@ -1,5 +1,10 @@
-import type { SimpElement, SimpRenderRuntime } from '@simpreact/internal';
-import { createElement, SIMP_ELEMENT_CHILD_FLAG_LIST } from '@simpreact/internal';
+import {
+  createElement,
+  SIMP_ELEMENT_CHILD_FLAG_LIST,
+  type SimpElement,
+  type SimpRenderRuntime,
+  TraversalStack,
+} from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -15,6 +20,7 @@ const renderRuntime: SimpRenderRuntime = {
   renderer(type, element) {
     return type(element.props || emptyObject);
   },
+  renderStack: new TraversalStack(),
 };
 
 const createSelect = (props: any = {}) => {

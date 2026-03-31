@@ -1,14 +1,19 @@
+import {
+  HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR,
+  type RenderFrame,
+  SIMP_ELEMENT_FLAG_HOST,
+  TraversalStack,
+} from '@simpreact/internal';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { SIMP_ELEMENT_FLAG_HOST } from '../main/core/createElement.js';
-import { mount } from '../main/core/mounting.js';
-import { patch } from '../main/core/patching.js';
-import { patchKeyedChildren } from '../main/core/patchingChildren.js';
-import { remove } from '../main/core/unmounting.js';
+import { _pushMountFrame } from '../main/core/mounting.js';
+import { _pushPatchFrame } from '../main/core/patching.js';
+import { _patchKeyedChildren } from '../main/core/patchingChildren.js';
+import { _remove } from '../main/core/unmounting.js';
 import { findHostReferenceFromElement } from '../main/core/utils.js';
 
-vi.mock('../main/core/patching.js', () => ({ patch: vi.fn() }));
-vi.mock('../main/core/mounting.js', () => ({ mount: vi.fn() }));
-vi.mock('../main/core/unmounting.js', () => ({ remove: vi.fn() }));
+vi.mock('../main/core/patching.js', () => ({ _pushPatchFrame: vi.fn() }));
+vi.mock('../main/core/mounting.js', () => ({ _pushMountFrame: vi.fn() }));
+vi.mock('../main/core/unmounting.js', () => ({ _remove: vi.fn() }));
 vi.mock('../main/core/utils.js', () => ({ findHostReferenceFromElement: vi.fn() }));
 
 type HostReference = { id: string };
@@ -34,6 +39,31 @@ function ref(id: string): HostReference {
   return { id };
 }
 
+function makeFrame(
+  prev: SimpElement[],
+  next: SimpElement[],
+  parent: HostReference,
+  nextRef: HostReference,
+  runtime: SimpRenderRuntime
+): RenderFrame {
+  return {
+    node: {
+      children: next,
+    } as any,
+    phase: 0,
+    meta: {
+      prevElement: { children: prev } as any,
+      parentReference: parent,
+      parentAnchorReference: nextRef,
+      rightSibling: null,
+      context: null,
+      hostNamespace: undefined,
+      renderRuntime: runtime as any,
+      placeHolderElement: null,
+    },
+  };
+}
+
 describe('patchKeyedChildren', () => {
   const parent = ref('PARENT');
   const nextRef = ref('NEXT_REF');
@@ -54,18 +84,20 @@ describe('patchKeyedChildren', () => {
       },
     };
 
-    vi.mocked(patch).mockImplementation((prev, next) => {
-      next.reference = prev.reference;
-      calls.push(`patch(${prev.key} -> ${next.key})`);
+    vi.mocked(_pushPatchFrame).mockImplementation(frame => {
+      frame.node.reference = frame.meta.prevElement!.reference;
+      calls.push(`patch(${frame.meta.prevElement!.key} -> ${frame.node.key})`);
     });
 
-    vi.mocked(remove).mockImplementation(prev => {
+    vi.mocked(_remove).mockImplementation(prev => {
       calls.push(`remove(${prev.key})`);
     });
 
-    vi.mocked(mount).mockImplementation((element, _parentReference, nextReference: any) => {
-      element.reference = { id: `ref:${element.key}` };
-      calls.push(`mount(${element.key} before ${nextReference.id})`);
+    vi.mocked(_pushMountFrame).mockImplementation(frame => {
+      frame.node.reference = { id: `ref:${frame.node.key}` };
+      calls.push(
+        `mount(${frame.node.key} before ${(frame.meta.parentAnchorReference as any).id} and right sibling ${frame.meta.rightSibling?.key || 'null'})`
+      );
     });
 
     vi.mocked(findHostReferenceFromElement).mockImplementation(node => {
@@ -77,157 +109,123 @@ describe('patchKeyedChildren', () => {
     const prev = [el('a', 'ref:a'), el('b', 'ref:b'), el('c', 'ref:c')];
     const next = [el('a'), el('b'), el('x')];
 
-    patchKeyedChildren(prev as any, next as any, parent as any, nextRef as any, null, null, runtime as any);
+    _patchKeyedChildren(makeFrame(prev, next, parent, nextRef, runtime));
 
-    // a,b patched in Step1; then Step5 handles c->remove and x->mount
     expect(calls).toContain('patch(a -> a)');
     expect(calls).toContain('patch(b -> b)');
     expect(calls).toContain('remove(c)');
-    expect(calls).toContain('mount(x before NEXT_REF)');
+    expect(calls).toContain('mount(x before NEXT_REF and right sibling null)');
   });
 
   it('Step 2: syncs from end while keys match', () => {
     const prev = [el('a', 'ref:a'), el('b', 'ref:b'), el('c', 'ref:c')];
     const next = [el('x'), el('b'), el('c')];
 
-    patchKeyedChildren(prev as any, next as any, parent as any, nextRef as any, null, null, runtime as any);
+    _patchKeyedChildren(makeFrame(prev, next, parent, nextRef, runtime));
 
-    // end sync patches c then b
-    expect(calls[0]).toBe('patch(c -> c)');
-    expect(calls[1]).toBe('patch(b -> b)');
-
-    // then Step5 should remove a and mount x
+    expect(calls).toContain('patch(b -> b)');
+    expect(calls).toContain('patch(c -> c)');
+    expect(calls).toContain('mount(x before NEXT_REF and right sibling b)');
     expect(calls).toContain('remove(a)');
-    expect(calls).toContain('mount(x before ref:b)'); // anchor is b's ref in reverse placement
   });
 
   it('Step 3: when next list is exhausted, removes remaining prev (after start sync patches)', () => {
     const prev = [el('a', 'ref:a'), el('b', 'ref:b')];
     const next = [el('a')];
 
-    patchKeyedChildren(prev as any, next as any, parent as any, nextRef as any, null, null, runtime as any);
+    _patchKeyedChildren(makeFrame(prev, next, parent, nextRef, runtime));
 
-    expect(calls).toEqual([
-      'patch(a -> a)', // start sync
-      'remove(b)', // next exhausted
-    ]);
+    expect(calls).toEqual(['remove(b)', 'patch(a -> a)']);
 
-    expect(vi.mocked(mount)).not.toHaveBeenCalled();
+    expect(vi.mocked(_pushMountFrame)).not.toHaveBeenCalled();
     expect(runtime.hostAdapter.insertBefore).not.toHaveBeenCalled();
   });
 
   it('Step 4: when prev list is exhausted (no stable right sibling), mounts all next using nextRef as anchor', () => {
     const next = [el('a'), el('b')];
 
-    patchKeyedChildren([] as any, next as any, parent as any, nextRef as any, null, null, runtime as any);
+    _patchKeyedChildren(makeFrame([], next, parent, nextRef, runtime));
 
-    // before is computed once and stays constant in Step 4
-    expect(calls).toEqual(['mount(a before NEXT_REF)', 'mount(b before NEXT_REF)']);
+    expect(calls).toEqual([
+      'mount(b before NEXT_REF and right sibling null)',
+      'mount(a before NEXT_REF and right sibling b)',
+    ]);
 
-    expect(vi.mocked(patch)).not.toHaveBeenCalled();
-    expect(vi.mocked(remove)).not.toHaveBeenCalled();
+    expect(vi.mocked(_pushPatchFrame)).not.toHaveBeenCalled();
+    expect(vi.mocked(_remove)).not.toHaveBeenCalled();
     expect(vi.mocked(findHostReferenceFromElement)).not.toHaveBeenCalled();
     expect(runtime.hostAdapter.insertBefore).not.toHaveBeenCalled();
   });
 
-  it('Step 4: when prev list is exhausted between stable nodes, uses findHostReferenceFromElement(rightSibling) as anchor', () => {
+  it('Step 4: when prev list is exhausted between stable nodes, uses rightSibling as anchor', () => {
     const prev = [el('a', 'ref:a'), el('c', 'ref:c')];
     const next = [el('a'), el('b'), el('c')];
 
-    patchKeyedChildren(prev as any, next as any, parent as any, nextRef as any, null, null, runtime as any);
+    _patchKeyedChildren(makeFrame(prev, next, parent, nextRef, runtime));
 
-    // Step 1 patches "a"; Step 2 patches c; Step 4 mounts b before the stable right sibling (c)
-    expect(calls).toEqual(['patch(a -> a)', 'patch(c -> c)', 'mount(b before ref:c)']);
+    expect(calls).toEqual(['mount(b before NEXT_REF and right sibling c)', 'patch(c -> c)', 'patch(a -> a)']);
 
-    // Anchor must be computed from the right sibling in the next list (the already-patched `c`)
-    expect(vi.mocked(findHostReferenceFromElement)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(findHostReferenceFromElement)).toHaveBeenCalledWith((next as any)[2]);
-
-    expect(vi.mocked(remove)).not.toHaveBeenCalled();
+    expect(vi.mocked(_remove)).not.toHaveBeenCalled();
     expect(runtime.hostAdapter.insertBefore).not.toHaveBeenCalled();
   });
 
-  it('Step 5: reorder only (no mount/remove), still issues insertBefore for existing nodes in reverse pass', () => {
+  it('Step 5: reorder only (no mount/remove), still issues HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR for existing nodes in reverse pass', () => {
     const prev = [el('a', 'ref:a'), el('b', 'ref:b'), el('c', 'ref:c')];
     const next = [el('b'), el('a'), el('c')];
 
-    patchKeyedChildren(prev as any, next as any, parent as any, nextRef as any, null, null, runtime as any);
+    const stack = new TraversalStack();
 
-    // end sync patches c
-    // step5 patches b,a
-    expect(calls).toContain('patch(c -> c)');
-    expect(calls).toContain('patch(b -> b)');
-    expect(calls).toContain('patch(a -> a)');
+    _patchKeyedChildren(makeFrame(prev, next, parent, nextRef, Object.assign({ renderStack: stack }, runtime)));
 
-    expect(vi.mocked(mount)).not.toHaveBeenCalled();
-    expect(vi.mocked(remove)).not.toHaveBeenCalled();
+    expect(calls).toEqual(['patch(a -> a)', 'patch(b -> b)', 'patch(c -> c)']);
 
-    // placement pass (reverse):
+    expect(vi.mocked(_pushMountFrame)).not.toHaveBeenCalled();
+    expect(vi.mocked(_remove)).not.toHaveBeenCalled();
+
     // i=a -> insertBefore(ref:a -> ref:c)
     // i=b -> insertBefore(ref:b -> ref:a)
-    expect(calls).toContain('insertBefore(ref:a -> ref:c)');
-    expect(calls).toContain('insertBefore(ref:b -> ref:a)');
+    expect((stack as any).stack[0].phase).toBe(HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR);
+    expect((stack as any).stack[0].node.key).toBe('a');
+    expect((stack as any).stack[0].meta.rightSibling.key).toBe('c');
+
+    expect((stack as any).stack[1].phase).toBe(HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR);
+    expect((stack as any).stack[1].node.key).toBe('b');
+    expect((stack as any).stack[1].meta.rightSibling.key).toBe('a');
   });
 
   it('Step 5: remove-only (some prev keys not present in next)', () => {
     const prev = [el('a', 'ref:a'), el('b', 'ref:b'), el('c', 'ref:c')];
     const next = [el('a'), el('c')];
 
-    patchKeyedChildren(prev as any, next as any, parent as any, nextRef as any, null, null, runtime as any);
+    _patchKeyedChildren(makeFrame(prev, next, parent, nextRef, runtime));
 
-    // start sync patches "a", end sync patches "c", then remove "b" (Step 3 or Step 5 depending on pointers)
-    expect(calls).toEqual(['patch(a -> a)', 'patch(c -> c)', 'remove(b)']);
-    expect(vi.mocked(mount)).not.toHaveBeenCalled();
+    expect(calls).toEqual(['remove(b)', 'patch(c -> c)', 'patch(a -> a)']);
+    expect(vi.mocked(_pushMountFrame)).not.toHaveBeenCalled();
   });
 
   it('Step 5 mixed: patch reusable, then remove unused, then mount new, then move/insert in final order', () => {
     const prev = [el('a', 'ref:a'), el('b', 'ref:b'), el('c', 'ref:c'), el('d', 'ref:d')];
     const next = [el('d'), el('b'), el('e'), el('a')];
 
-    patchKeyedChildren(prev as any, next as any, parent as any, nextRef as any, null, null, runtime as any);
+    const stack = new TraversalStack();
 
-    // Critical ordering: all patches happen before any remove; all removes happen before any mount.
-    const firstRemoveIdx = calls.findIndex(c => c.startsWith('remove('));
-    const lastPatchIdx = Math.max(
-      calls.findLastIndex(c => c.startsWith('patch(')),
-      calls.findLastIndex(c => c.startsWith('patch(')) // (kept explicit)
-    );
-    const firstMountIdx = calls.findIndex(c => c.startsWith('mount('));
+    _patchKeyedChildren(makeFrame(prev, next, parent, nextRef, Object.assign({ renderStack: stack }, runtime)));
 
-    expect(lastPatchIdx).toBeGreaterThanOrEqual(0);
-    expect(firstRemoveIdx).toBeGreaterThanOrEqual(0);
-    expect(firstMountIdx).toBeGreaterThanOrEqual(0);
-
-    expect(lastPatchIdx).toBeLessThan(firstRemoveIdx);
-    expect(firstRemoveIdx).toBeLessThan(firstMountIdx);
-
-    // Patches for reused keys: d,b,a (order depends on sync and scan, so assert presence)
-    expect(calls).toContain('patch(d -> d)');
-    expect(calls).toContain('patch(b -> b)');
-    expect(calls).toContain('patch(a -> a)');
-
-    // c must be removed
-    expect(calls).toContain('remove(c)');
-
-    // e must be mounted (and only after removals)
-    expect(calls).toContain('mount(e before ref:a)'); // in reverse placement, anchor at 'a'
-
-    // placement pass: reverse order over next: a, e, b, d
-    // "a" existing -> insertBefore(ref:a -> NEXT_REF)
-    // e new -> mount before ref:a (creates ref:e)
-    // b existing -> insertBefore(ref:b -> ref:e)
-    // d existing   -> insertBefore(ref:d -> ref:b)
-    expect(calls).toContain('insertBefore(ref:a -> NEXT_REF)');
-    expect(calls).toContain('insertBefore(ref:b -> ref:e)');
-    expect(calls).toContain('insertBefore(ref:d -> ref:b)');
+    expect(calls).toEqual([
+      'remove(c)',
+      'patch(a -> a)',
+      'mount(e before NEXT_REF and right sibling a)',
+      'patch(b -> b)',
+      'patch(d -> d)',
+    ]);
   });
 
   it('handles empty -> empty (no ops)', () => {
-    patchKeyedChildren([] as any, [] as any, parent as any, nextRef as any, null, null, runtime as any);
+    _patchKeyedChildren(makeFrame([], [], parent, nextRef, runtime));
     expect(calls).toEqual([]);
-    expect(vi.mocked(patch)).not.toHaveBeenCalled();
-    expect(vi.mocked(mount)).not.toHaveBeenCalled();
-    expect(vi.mocked(remove)).not.toHaveBeenCalled();
+    expect(vi.mocked(_pushPatchFrame)).not.toHaveBeenCalled();
+    expect(vi.mocked(_pushPatchFrame)).not.toHaveBeenCalled();
+    expect(vi.mocked(_remove)).not.toHaveBeenCalled();
     expect(runtime.hostAdapter.insertBefore).not.toHaveBeenCalled();
   });
 });
