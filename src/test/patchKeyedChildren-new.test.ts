@@ -495,110 +495,65 @@ describe('patchKeyedChildren', () => {
 
     // -- Step 3 (next exhausted) --------------------------------------------
 
-    it('step 3: suffix patch is pushed before prefix patch (LIFO → prefix executes first)', () => {
-      // prev: [a, b, c, d]   next: [a, d]
-      // prefix: a  |  removed: b, c  |  suffix: d
-      // Intended execution order: patch(a) then patch(d).
-      // Because stack is LIFO, suffix must be pushed before prefix.
-      // Push order in log: d (suffix) then a (prefix).
+    it('step 3: prefix patch is pushed before suffix patch', () => {
       const log = runAndCollect([el('a'), el('b'), el('c'), el('d')], [el('a'), el('d')]);
 
       const patchLog = log.filter(f => f.phase === String(PATCH_ENTER)).map(f => f.key);
-      // suffix 'd' pushed first, prefix 'a' pushed second
-      expect(patchLog).toEqual(['d', 'a']);
+      expect(patchLog).toEqual(['a', 'd']);
     });
 
-    it('step 3: multi-node suffix is pushed in reverse list order, prefix pushed last', () => {
-      // prev: [a, b, c, d, e]  next: [a, d, e]
-      // prefix: a  |  removed: b, c  |  suffix: d, e
-      // Suffix loop runs suffixPairs in reverse (e first, then d).
-      // Prefix pushed after. Push order: e, d, a.
-      // Execution order (LIFO): a, d, e — correct forward order.
+    it('step 3: multi-node suffix is pushed in straight list order, prefix pushed first', () => {
       const log = runAndCollect([el('a'), el('b'), el('c'), el('d'), el('e')], [el('a'), el('d'), el('e')]);
 
       const patchLog = log.filter(f => f.phase === String(PATCH_ENTER)).map(f => f.key);
-      expect(patchLog).toEqual(['e', 'd', 'a']);
+      expect(patchLog).toEqual(['a', 'd', 'e']);
     });
 
     // -- Step 4 (prev exhausted) --------------------------------------------
 
-    it('step 4: mount frames are pushed in reverse list order (LIFO → executes first-to-last)', () => {
-      // prev: []   next: [a, b, c]
-      // Mount loop: i=2(c), i=1(b), i=0(a) → pushed c, b, a.
-      // Execution order (LIFO): a, b, c — correct DOM insertion order.
+    it('step 4: mount frames are pushed in straight list order', () => {
       const log = runAndCollect([], [el('a'), el('b'), el('c')]);
 
       const mountLog = log.filter(f => f.phase === String(MOUNT_ENTER)).map(f => f.key);
-      expect(mountLog).toEqual(['c', 'b', 'a']);
+      expect(mountLog).toEqual(['a', 'b', 'c']);
     });
 
-    it('step 4: suffix pushed before middle mounts, prefix pushed last of all', () => {
-      // prev: [a, e]   next: [a, b, c, e]
-      // prefix: a  |  new middle: b, c  |  suffix: e
-      // Push order: middle reversed (c, b), then suffix (e), then prefix (a).
-      // Execution order (LIFO): a, b, c, e.
+    it('step 4: prefix pushed before middle mounts, suffix pushed last of all', () => {
       const log = runAndCollect([el('a'), el('e')], [el('a'), el('b'), el('c'), el('e')]);
 
-      const pushKeys = log.map(f => f.key);
-      const idxA = pushKeys.lastIndexOf('a'); // prefix, must be last
-      const idxE = pushKeys.indexOf('e'); // suffix, after middle mounts
-
-      // prefix 'a' is the very last push
-      expect(idxA).toBe(pushKeys.length - 1);
-
-      // suffix 'e' comes after all middle mounts in push log
-      expect(pushKeys.indexOf('c')).toBeLessThan(idxE);
-      expect(pushKeys.indexOf('b')).toBeLessThan(idxE);
-    });
-
-    it('step 4: new middle mounts are pushed in reverse list order', () => {
-      // prev: [head, tail]   next: [head, x, y, z, tail]
-      // prefix: head  |  new middle: x, y, z  |  suffix: tail
-      // Mount loop: i=3(z), i=2(y), i=1(x) → pushed z, y, x.
-      const log = runAndCollect([el('head'), el('tail')], [el('head'), el('x'), el('y'), el('z'), el('tail')]);
-
-      const mountLog = log.filter(f => f.phase === String(MOUNT_ENTER)).map(f => f.key);
-      expect(mountLog).toEqual(['z', 'y', 'x']);
+      expect(log).toEqual([
+        { phase: '3', key: 'a' },
+        { phase: '1', key: 'b' },
+        { phase: '1', key: 'c' },
+        { phase: '3', key: 'e' },
+      ]);
     });
 
     // -- Step 5 (unknown middle) --------------------------------------------
 
-    it('step 5: middle frames are pushed in reverse next-list order', () => {
-      // prev: [b, c, d]   next: [d, b, c]  — pure reorder, no prefix/suffix
-      // Loop: i=2(c), i=1(b), i=0(d) → push order: c, b, d.
-      // Execution order (LIFO): d, b, c — matches next list order.
+    it('step 5: middle frames are pushed in straight next-list order', () => {
       const log = runAndCollect([el('b'), el('c'), el('d')], [el('d'), el('b'), el('c')]);
 
       const patchLog = log.filter(f => f.phase === String(PATCH_ENTER)).map(f => f.key);
-      expect(patchLog).toEqual(['c', 'b', 'd']);
+      expect(patchLog).toEqual(['d', 'b', 'c']);
     });
 
-    it('step 5: middle pushed first, then suffix, then prefix — all in reverse within each group', () => {
-      // prev: [a, b, c, d, z]   next: [a, d, b, c, z]
-      // prefix: a  |  middle: d,b,c (reordered)  |  suffix: z
-      // Middle loop reversed (i=3..1): c, b, d.
-      // Suffix pushed after middle: z.
-      // Prefix pushed last: a.
-      // Full push log: c, b, d, z, a.
-      // Execution order (LIFO): a, d, b, c, z — correct next-list order.
+    it('step 5: prefix pushed first, then middle, then suffix — all in straight order within each group', () => {
       const log = runAndCollect(
         [el('a'), el('b'), el('c'), el('d'), el('z')],
         [el('a'), el('d'), el('b'), el('c'), el('z')]
       );
 
-      const pushKeys = log.map(f => f.key);
-
-      // prefix 'a' is the very last push
-      expect(pushKeys[pushKeys.length - 1]).toBe('a');
-
-      // suffix 'z' is pushed after all middle keys
-      const idxZ = pushKeys.indexOf('z');
-      for (const midKey of ['b', 'c', 'd']) {
-        expect(pushKeys.indexOf(midKey)).toBeLessThan(idxZ);
-      }
-
-      // 'z' comes right before 'a'
-      expect(pushKeys[pushKeys.length - 2]).toBe('z');
+      expect(log).toEqual([
+        { key: 'a', phase: PATCH_ENTER.toString() },
+        { key: 'd', phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
+        { key: 'd', phase: PATCH_ENTER.toString() },
+        { key: 'b', phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
+        { key: 'b', phase: PATCH_ENTER.toString() },
+        { key: 'c', phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
+        { key: 'c', phase: PATCH_ENTER.toString() },
+        { key: 'z', phase: PATCH_ENTER.toString() },
+      ]);
     });
 
     it('step 5: HOST_OPS_PLACE is pushed immediately before PATCH for the same node (LIFO → PATCH executes first)', () => {
@@ -621,90 +576,30 @@ describe('patchKeyedChildren', () => {
     });
 
     it('step 5: exact push sequence for a mixed move+mount scenario', () => {
-      // prev: [a, b, c]   next: [c, x, a, b]   — no shared prefix/suffix
-      //
-      // Key→prevIndex map: a=0, b=1, c=2
-      // maxPrevIndexSoFar tracks relative order. Loop runs reversed i=3..0:
-      //
-      //   i=3 (b): prevIdx=1. 1 > -1 → maxPrev=1.  moved still false.
-      //            → PLACE(b), PATCH(b)
-      //   i=2 (a): prevIdx=0. 0 < 1  → moved=true.
-      //            → PLACE(a), PATCH(a)
-      //   i=1 (x): new (mapped=0)    → MOUNT(x)
-      //   i=0 (c): prevIdx=2. moved=true.
-      //            → PLACE(c), PATCH(c)
-      //
-      // Full push log:
-      //   PLACE(b), PATCH(b), PLACE(a), PATCH(a), MOUNT(x), PLACE(c), PATCH(c)
       const log = runAndCollect([el('a'), el('b'), el('c')], [el('c'), el('x'), el('a'), el('b')]);
 
-      const P = String(HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR);
-      const T = String(PATCH_ENTER);
-      const M = String(MOUNT_ENTER);
-
-      expect(log.map(f => `${f.phase}:${f.key}`)).toEqual([
-        `${P}:b`,
-        `${T}:b`,
-        `${P}:a`,
-        `${T}:a`,
-        `${M}:x`,
-        `${P}:c`,
-        `${T}:c`,
+      expect(log).toEqual([
+        { key: 'c', phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
+        { key: 'c', phase: PATCH_ENTER.toString() },
+        { key: 'x', phase: MOUNT_ENTER.toString() },
+        { key: 'a', phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
+        { key: 'a', phase: PATCH_ENTER.toString() },
+        { key: 'b', phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
+        { key: 'b', phase: PATCH_ENTER.toString() },
       ]);
     });
 
     it('step 5: a,b,c,d → d,b,e,a — exact push sequence with removal, insertion, and moves', () => {
-      // prev: [a, b, c, d]   next: [d, b, e, a]
-      //
-      // Prefix scan: a!==d → stops. Suffix scan: d!==a → stops.
-      // Entire list goes through step 5.
-      //
-      // Key→prevIndex map: a=0, b=1, c=2, d=3
-      //
-      // Match loop (i=0..3):
-      //   i=0 d: prevIdx=3. 3>-1  → maxPrev=3. newIndexToOldIndex[0]=4
-      //   i=1 b: prevIdx=1. 1<3   → moved=true. newIndexToOldIndex[1]=2
-      //   i=2 e: no match         → newIndexToOldIndex[2]=0  (new node)
-      //   i=3 a: prevIdx=0. moved already true. newIndexToOldIndex[3]=1
-      //
-      // Remove stale: usedPrev[2] (c) never marked → remove(c)
-      //
-      // Render loop builds a plan (i=3..0), rightSibling starts null:
-      //   i=3 a: matched → plan: PLACE(a), PATCH(a). rs=a
-      //   i=2 e: new     → deferred with captured rs=a. rs=e
-      //   i=1 b: matched → plan: PLACE(b), PATCH(b). rs=b
-      //   i=0 d: matched → plan: PLACE(d), PATCH(d). rs=d
-      //
-      // Plan before reorder:
-      //   PLACE(a), PATCH(a), MOUNT(e,rs=a), PLACE(b), PATCH(b), PLACE(d), PATCH(d)
-      //
-      // Reorder: MOUNT(e,rs=a) must be pushed AFTER PATCH(a) so that LIFO
-      // execution runs PATCH(a) before MOUNT(e). PATCH(a) is already immediately
-      // before MOUNT(e) in the plan, so no movement needed.
-      //
-      // Final push log:
-      //   PLACE(a), PATCH(a), MOUNT(e,rs=a), PLACE(b), PATCH(b), PLACE(d), PATCH(d)
-      //
-      // Execution order (LIFO):
-      //   PATCH(d) → PLACE(d) → PATCH(b) → PLACE(b) → MOUNT(e,rs=a) → PATCH(a) → PLACE(a)
-      //
-      // PATCH(a) runs before MOUNT(e), so a.reference is valid when e calls
-      // resolveAnchorReference(a). e is inserted before a. ✓
-
       const log = runAndCollect([el('a'), el('b'), el('c'), el('d')], [el('d'), el('b'), el('e'), el('a')]);
 
-      const P = String(HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR);
-      const T = String(PATCH_ENTER);
-      const M = String(MOUNT_ENTER);
-
-      expect(log.map(f => `${f.phase}:${f.key}`)).toEqual([
-        `${P}:a`,
-        `${T}:a`,
-        `${M}:e`,
-        `${P}:b`,
-        `${T}:b`,
-        `${P}:d`,
-        `${T}:d`,
+      expect(log).toEqual([
+        { key: 'd', phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
+        { key: 'd', phase: PATCH_ENTER.toString() },
+        { key: 'b', phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
+        { key: 'b', phase: PATCH_ENTER.toString() },
+        { key: 'e', phase: MOUNT_ENTER.toString() },
+        { key: 'a', phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
+        { key: 'a', phase: PATCH_ENTER.toString() },
       ]);
 
       // Stale node 'c' must be removed

@@ -21,7 +21,7 @@ describe('mountPortal', () => {
     const parentReference = document.createElement('div');
     const portal = createPortal(createElement('span'), container);
 
-    mount(portal, parentReference, null, null, null, null, renderRuntime);
+    mount(portal, parentReference, null, null, null, renderRuntime);
 
     expect(testHostAdapter.appendChild).toHaveBeenCalledWith(container, document.createElement('span'));
     expect(testHostAdapter.appendChild).toHaveBeenCalledWith(parentReference, document.createTextNode(''));
@@ -39,7 +39,7 @@ describe('mountPortal', () => {
     const parentReference = document.createElement('div');
     const portal = createPortal(null, container);
 
-    mount(portal, parentReference, null, null, null, null, renderRuntime);
+    mount(portal, parentReference, null, null, null, renderRuntime);
 
     expect(testHostAdapter.appendChild).toHaveBeenCalledWith(
       parentReference,

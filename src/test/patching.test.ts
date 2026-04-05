@@ -40,7 +40,7 @@ describe('patching', () => {
     it('mounts new children if no previous', () => {
       const next = createFragmentWithChildren(createElement('a', { key: '1' }), createElement('b', { key: '2' }));
 
-      mount(next, parent as HostReference, null, null, null, '', renderRuntime);
+      mount(next, parent as HostReference, null, null, null, renderRuntime);
 
       expect(parent.children.length).toBe(2);
       expect(parent.children[0]!.nodeName).toBe('A');
@@ -50,11 +50,11 @@ describe('patching', () => {
     it('removes all when new is empty', () => {
       const prev = createFragmentWithChildren(createElement('a', { key: '1' }), createElement('b', { key: '2' }));
 
-      mount(prev, parent as HostReference, null, null, null, null, renderRuntime);
+      mount(prev, parent as HostReference, null, null, null, renderRuntime);
 
       const next = createFragmentWithChildren();
 
-      patch(prev, next, parent as HostReference, null, null, null, null, renderRuntime);
+      patch(prev, next, parent as HostReference, null, null, null, renderRuntime);
 
       expect(parent.children.length).toBe(0);
     });
@@ -63,7 +63,7 @@ describe('patching', () => {
       const prev = createElement(Fragment, {
         children: createElement('a', { id: 'prev', key: '1' }, '1'),
       });
-      mount(prev, parent as HostReference, null, null, null, '', renderRuntime);
+      mount(prev, parent as HostReference, null, null, null, renderRuntime);
 
       const next = createElement(Fragment, {
         children: createElement('a', { id: 'next', key: '1' }),
@@ -72,7 +72,7 @@ describe('patching', () => {
       // Restore mocks before accumulation of host provider methods invokes.
       vi.resetAllMocks();
 
-      patch(prev, next, parent as HostReference, null, null, null, '', renderRuntime);
+      patch(prev, next, parent as HostReference, null, null, null, renderRuntime);
 
       expect((prev.children as SimpElement).reference).toStrictEqual((next.children as SimpElement).reference);
       expect(testHostAdapter.patchProps).toHaveBeenCalledWith(
@@ -80,7 +80,7 @@ describe('patching', () => {
         prev.children,
         next.children,
         renderRuntime,
-        ''
+        null
       );
     });
 
@@ -90,7 +90,7 @@ describe('patching', () => {
         createElement('b', { key: '2' }),
         createElement('c', { key: '3' })
       );
-      mount(prev, parent as HostReference, null, null, null, null, renderRuntime);
+      mount(prev, parent as HostReference, null, null, null, renderRuntime);
 
       const next = createFragmentWithChildren(
         createElement('c', { key: '3' }),
@@ -101,7 +101,7 @@ describe('patching', () => {
       // Restore mocks before accumulation of host provider methods invokes.
       vi.resetAllMocks();
 
-      patch(prev, next, parent as HostReference, null, null, null, '', renderRuntime);
+      patch(prev, next, parent as HostReference, null, null, null, renderRuntime);
 
       expect(Array.from(parent.children).map(c => c.nodeName)).toEqual(['C', 'A', 'B']);
 
@@ -111,25 +111,25 @@ describe('patching', () => {
       expect((prev.children as SimpElement[])[2]!.reference).toEqual((next.children as SimpElement[])[0]!.reference);
 
       expect(testHostAdapter.insertOrAppend).toHaveBeenCalledTimes(3);
-      expect(testHostAdapter.appendChild).toHaveBeenCalledTimes(3);
+      expect(testHostAdapter.appendChild).toHaveBeenCalledTimes(1);
 
       expect(testHostAdapter.insertOrAppend).toHaveBeenNthCalledWith(
         1,
         parent,
-        expect.objectContaining({ nodeName: 'C' }),
+        expect.objectContaining({ nodeName: 'B' }),
         null
       );
       expect(testHostAdapter.insertOrAppend).toHaveBeenNthCalledWith(
         2,
         parent,
         expect.objectContaining({ nodeName: 'A' }),
-        null
+        expect.objectContaining({ nodeName: 'B' })
       );
       expect(testHostAdapter.insertOrAppend).toHaveBeenNthCalledWith(
         3,
         parent,
-        expect.objectContaining({ nodeName: 'B' }),
-        null
+        expect.objectContaining({ nodeName: 'C' }),
+        expect.objectContaining({ nodeName: 'A' })
       );
       expect(testHostAdapter.setTextContent).not.toHaveBeenCalled();
       expect(testHostAdapter.removeChild).not.toHaveBeenCalled();
@@ -139,7 +139,7 @@ describe('patching', () => {
 
     it('adds new children in middle', () => {
       const prev = createFragmentWithChildren(createElement('a', { key: '1' }), createElement('c', { key: '3' }));
-      mount(prev, parent as HostReference, null, null, null, '', renderRuntime);
+      mount(prev, parent as HostReference, null, null, null, renderRuntime);
 
       const next = createFragmentWithChildren(
         createElement('a', { key: '1' }),
@@ -150,7 +150,7 @@ describe('patching', () => {
       // Restore mocks before accumulation of host provider methods invokes.
       vi.resetAllMocks();
 
-      patch(prev, next, parent as HostReference, null, null, null, '', renderRuntime);
+      patch(prev, next, parent as HostReference, null, null, null, renderRuntime);
 
       expect(Array.from(parent.children).map(c => c.nodeName)).toEqual(['A', 'B', 'C']);
       expect(testHostAdapter.appendChild).not.toHaveBeenCalled();
@@ -179,14 +179,14 @@ describe('patching', () => {
         createElement('b', { key: '2' }),
         createElement('c', { key: '3' })
       );
-      mount(prev, parent as HostReference, null, null, null, '', renderRuntime);
+      mount(prev, parent as HostReference, null, null, null, renderRuntime);
 
       const next = createFragmentWithChildren(createElement('a', { key: '1' }), createElement('c', { key: '3' }));
 
       // Restore mocks before accumulation of host provider methods invokes.
       vi.resetAllMocks();
 
-      patch(prev, next, parent as HostReference, null, null, null, '', renderRuntime);
+      patch(prev, next, parent as HostReference, null, null, null, renderRuntime);
 
       expect(Array.from(parent.children).map(c => c.nodeName)).toEqual(['A', 'C']);
       // It should be only one inserting in the case.
@@ -204,7 +204,7 @@ describe('patching', () => {
 
     it('replaces component with different key', () => {
       const prev = createElement(Fn, { id: 'prev', key: '1' });
-      mount(prev, parent as HostReference, null, null, null, '', renderRuntime);
+      mount(prev, parent as HostReference, null, null, null, renderRuntime);
 
       const prevRef = (prev.children as SimpElement).reference! as Element;
 
@@ -217,7 +217,7 @@ describe('patching', () => {
 
       lifecycleEventBus.subscribe(listener);
 
-      patch(prev, next, parent as HostReference, null, null, null, '', renderRuntime);
+      patch(prev, next, parent as HostReference, null, null, null, renderRuntime);
 
       const nextRef = (next.children as SimpElement).reference! as Element;
 
@@ -269,7 +269,7 @@ describe('patching', () => {
           createFragmentWithChildren(createElement('a'), createElement('b')),
           createElement('span')
         );
-        mount(prev, parent, null, null, null, null, renderRuntime);
+        mount(prev, parent, null, null, null, renderRuntime);
 
         const next = createElement(
           'div',
@@ -281,7 +281,7 @@ describe('patching', () => {
         // Restore mocks before accumulation of host provider methods invokes.
         vi.resetAllMocks();
 
-        patch(prev, next, parent, null, null, null, null, renderRuntime);
+        patch(prev, next, parent, null, null, null, renderRuntime);
 
         expect(((next.reference as Element).children[0] as HTMLAnchorElement).nodeName).toEqual('A');
         expect(((next.reference as Element).children[1] as HTMLSpanElement).nodeName).toEqual('SPAN');
@@ -289,7 +289,7 @@ describe('patching', () => {
 
       it('fragment children - from single to single element (not hosts children)', () => {
         const prev = createElement('div', null, createFragmentWithChildren(createElement('b')), createElement('span'));
-        mount(prev, parent, null, null, null, null, renderRuntime);
+        mount(prev, parent, null, null, null, renderRuntime);
 
         const next = createElement(
           'div',
@@ -301,7 +301,7 @@ describe('patching', () => {
         // Restore mocks before accumulation of host provider methods invokes.
         vi.resetAllMocks();
 
-        patch(prev, next, parent, null, null, null, null, renderRuntime);
+        patch(prev, next, parent, null, null, null, renderRuntime);
 
         expect(((next.reference as Element).children[0] as HTMLAnchorElement).nodeName).toEqual('A');
         expect(((next.reference as Element).children[1] as HTMLSpanElement).nodeName).toEqual('SPAN');
@@ -318,7 +318,7 @@ describe('patching', () => {
           createElement(context.Provider, { value: '' }, createElement('a'), createElement('b')),
           createElement('span')
         );
-        mount(prev, parent as HostReference, null, null, null, '', renderRuntime);
+        mount(prev, parent as HostReference, null, null, null, renderRuntime);
 
         const next = createElement(
           'div',
@@ -330,7 +330,7 @@ describe('patching', () => {
         // Restore mocks before accumulation of host provider methods invokes.
         vi.resetAllMocks();
 
-        patch(prev, next, parent as HostReference, null, null, null, '', renderRuntime);
+        patch(prev, next, parent as HostReference, null, null, null, renderRuntime);
 
         expect(((next.reference as Element).children[0] as HTMLAnchorElement).nodeName).toEqual('A');
         expect(((next.reference as Element).children[1] as HTMLSpanElement).nodeName).toEqual('SPAN');

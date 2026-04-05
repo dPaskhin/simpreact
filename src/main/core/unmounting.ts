@@ -25,7 +25,6 @@ export function unmount(element: SimpElement, renderRuntime: SimpRenderRuntime):
     phase: UNMOUNT_ENTER,
     meta: {
       renderRuntime,
-      parentAnchorReference: null,
       rightSibling: null,
       context: null,
       hostNamespace: null,
@@ -168,7 +167,6 @@ export function _remove(element: SimpElement, parentReference: HostReference, re
     phase: UNMOUNT_ENTER,
     meta: {
       renderRuntime,
-      parentAnchorReference: null,
       rightSibling: null,
       context: null,
       hostNamespace: null,

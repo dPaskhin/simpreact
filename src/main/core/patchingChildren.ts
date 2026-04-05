@@ -6,6 +6,7 @@ import {
   SIMP_ELEMENT_FLAG_FRAGMENT,
   type SimpElement,
 } from './createElement.js';
+import { _pushHostOperation } from './hostOperations.js';
 import { _pushMountArrayChildrenFrame, _pushMountFrame } from './mounting.js';
 import { _pushPatchFrame } from './patching.js';
 import {
@@ -33,16 +34,8 @@ export function _pushPatchKeyedChildrenFrame(frame: RenderFrame): void {
 
 export function _patchChildren(frame: RenderFrame): void {
   const nextElement = frame.node;
-  const {
-    renderRuntime,
-    parentAnchorReference,
-    rightSibling,
-    parentReference,
-    context,
-    hostNamespace,
-    placeHolderElement,
-    prevElement,
-  } = frame.meta;
+  const { renderRuntime, rightSibling, parentReference, context, hostNamespace, placeHolderElement, prevElement } =
+    frame.meta;
   const nextChildFlag = nextElement.childFlag;
   const prevChildFlag = prevElement!.childFlag;
   let nextChildren = nextElement.children;
@@ -63,7 +56,6 @@ export function _patchChildren(frame: RenderFrame): void {
               prevElement,
               context,
               parentReference,
-              parentAnchorReference,
               rightSibling,
               hostNamespace,
               placeHolderElement,
@@ -87,7 +79,6 @@ export function _patchChildren(frame: RenderFrame): void {
               prevElement: null,
               parentReference,
               renderRuntime,
-              parentAnchorReference,
               rightSibling,
               context,
               hostNamespace,
@@ -102,7 +93,6 @@ export function _patchChildren(frame: RenderFrame): void {
               prevElement: null,
               parentReference,
               renderRuntime,
-              parentAnchorReference,
               rightSibling: null,
               context,
               hostNamespace,
@@ -120,7 +110,6 @@ export function _patchChildren(frame: RenderFrame): void {
               prevElement: null,
               parentReference,
               renderRuntime,
-              parentAnchorReference,
               rightSibling: null,
               context,
               hostNamespace,
@@ -138,7 +127,6 @@ export function _patchChildren(frame: RenderFrame): void {
               prevElement: null,
               parentReference,
               renderRuntime,
-              parentAnchorReference,
               rightSibling: null,
               context,
               hostNamespace,
@@ -160,7 +148,6 @@ export function _patchChildren(frame: RenderFrame): void {
               prevElement: null,
               parentReference,
               renderRuntime,
-              parentAnchorReference,
               rightSibling: null,
               context,
               hostNamespace,
@@ -174,7 +161,6 @@ export function _patchChildren(frame: RenderFrame): void {
               prevElement: null,
               parentReference,
               renderRuntime,
-              parentAnchorReference,
               rightSibling,
               context,
               hostNamespace,
@@ -195,7 +181,6 @@ export function _patchChildren(frame: RenderFrame): void {
               prevElement: prevChildren as SimpElement,
               parentReference,
               renderRuntime,
-              parentAnchorReference,
               rightSibling,
               context,
               hostNamespace,
@@ -212,7 +197,6 @@ export function _patchChildren(frame: RenderFrame): void {
               prevElement: null,
               parentReference,
               renderRuntime,
-              parentAnchorReference,
               rightSibling: null,
               context,
               hostNamespace,
@@ -239,7 +223,6 @@ export function _patchChildren(frame: RenderFrame): void {
               prevElement: null,
               parentReference,
               renderRuntime,
-              parentAnchorReference,
               rightSibling,
               context,
               hostNamespace,
@@ -258,7 +241,6 @@ export function _patchChildren(frame: RenderFrame): void {
               prevElement: null,
               parentReference,
               renderRuntime,
-              parentAnchorReference,
               rightSibling,
               context,
               hostNamespace,
@@ -285,7 +267,6 @@ export function _patchChildren(frame: RenderFrame): void {
             phase: MOUNT_ENTER,
             meta: {
               parentReference,
-              parentAnchorReference,
               rightSibling,
               context,
               hostNamespace,
@@ -306,7 +287,6 @@ export function _patchChildren(frame: RenderFrame): void {
               prevElement: null,
               parentReference,
               renderRuntime,
-              parentAnchorReference,
               rightSibling,
               context,
               hostNamespace,
@@ -324,196 +304,111 @@ export function _patchChildren(frame: RenderFrame): void {
 }
 
 export function _patchKeyedChildren(frame: RenderFrame): void {
-  const nextElement = frame.node;
-  const { renderRuntime, parentAnchorReference, parentReference, prevElement, context, hostNamespace } = frame.meta;
+  const { node: nextElement, meta } = frame;
+  const { renderRuntime, parentReference, prevElement, context, hostNamespace } = meta;
+
   const nextChildren = nextElement.children as SimpElement[];
   const prevChildren = prevElement!.children as SimpElement[];
+  const nextLen = nextChildren.length;
+  const prevLen = prevChildren.length;
+
+  const base = {
+    parentReference,
+    renderRuntime,
+    context,
+    hostNamespace,
+    placeHolderElement: null,
+  } as const;
+
+  const rs = (i: number): SimpElement | null => {
+    return nextChildren[i + 1] ?? null;
+  };
 
   let prevStart = 0;
   let nextStart = 0;
-  let prevEnd = prevChildren.length - 1;
-  let nextEnd = nextChildren.length - 1;
+  let prevEnd = prevLen - 1;
+  let nextEnd = nextLen - 1;
 
-  const prefixPairs: Array<{ prev: SimpElement; next: SimpElement }> = [];
-  const suffixPairs: Array<{ prev: SimpElement; next: SimpElement }> = [];
-
-  // Step 1: collect prefix matches
+  // Step 1: shrink prefix
   while (
     prevStart <= prevEnd &&
     nextStart <= nextEnd &&
     prevChildren[prevStart]!.key === nextChildren[nextStart]!.key
   ) {
-    prefixPairs.push({
-      prev: prevChildren[prevStart]!,
-      next: nextChildren[nextStart]!,
-    });
-
     prevStart++;
     nextStart++;
   }
 
-  // Step 2: collect suffix matches
+  // Step 2: shrink suffix
   while (prevStart <= prevEnd && nextStart <= nextEnd && prevChildren[prevEnd]!.key === nextChildren[nextEnd]!.key) {
-    suffixPairs.push({
-      prev: prevChildren[prevEnd]!,
-      next: nextChildren[nextEnd]!,
-    });
-
     prevEnd--;
     nextEnd--;
   }
 
-  // Step 3: next exhausted -> remove remaining prev
-  if (nextStart > nextEnd) {
-    let rightSibling = frame.meta.rightSibling;
+  // next[i] in suffix maps to prev[i - delta]
+  const delta = nextLen - prevLen;
 
+  const pushSuffixPatches = (): void => {
+    for (let i = nextEnd + 1; i < nextLen; i++) {
+      _pushPatchFrame({
+        node: nextChildren[i]!,
+        phase: PATCH_ENTER,
+        meta: { ...base, prevElement: prevChildren[i - delta]!, rightSibling: rs(i) },
+      });
+    }
+  };
+
+  const pushPrefixPatches = (): void => {
+    for (let i = 0; i < nextStart; i++) {
+      _pushPatchFrame({
+        node: nextChildren[i]!,
+        phase: PATCH_ENTER,
+        meta: { ...base, prevElement: prevChildren[i]!, rightSibling: rs(i) },
+      });
+    }
+  };
+
+  // Step 3: next exhausted → remove stale prev, patch edges
+  if (nextStart > nextEnd) {
+    pushPrefixPatches();
     for (let i = prevStart; i <= prevEnd; i++) {
       _remove(prevChildren[i]!, parentReference, renderRuntime);
     }
-
-    for (let i = 0; i <= suffixPairs.length - 1; i++) {
-      const pair = suffixPairs[i]!;
-
-      _pushPatchFrame({
-        node: pair.next,
-        phase: PATCH_ENTER,
-        meta: {
-          prevElement: pair.prev,
-          parentReference,
-          renderRuntime,
-          parentAnchorReference,
-          rightSibling,
-          context,
-          hostNamespace,
-          placeHolderElement: null,
-        },
-      });
-    }
-
-    for (let i = 0; i <= prefixPairs.length - 1; i++) {
-      const pair = prefixPairs[i]!;
-
-      _pushPatchFrame({
-        node: pair.next,
-        phase: PATCH_ENTER,
-        meta: {
-          prevElement: pair.prev,
-          parentReference,
-          renderRuntime,
-          parentAnchorReference,
-          rightSibling,
-          context,
-          hostNamespace,
-          placeHolderElement: null,
-        },
-      });
-
-      rightSibling = pair.next;
-    }
-
+    pushSuffixPatches();
     return;
   }
 
-  // Step 4: prev exhausted -> mount remaining next
+  // Step 4: prev exhausted → mount remaining next, patch edges
   if (prevStart > prevEnd) {
-    let rightSibling = nextChildren[nextEnd + 1] || frame.meta.rightSibling;
-
-    for (let i = nextEnd; i >= nextStart; i--) {
-      const nextChild = nextChildren[i]!;
-
+    pushPrefixPatches();
+    for (let i = nextStart; i <= nextEnd; i++) {
       _pushMountFrame({
-        node: nextChild,
+        node: nextChildren[i]!,
         phase: MOUNT_ENTER,
-        meta: {
-          prevElement: null,
-          parentReference,
-          renderRuntime,
-          parentAnchorReference,
-          rightSibling,
-          context,
-          hostNamespace,
-          placeHolderElement: null,
-        },
-      });
-
-      rightSibling = nextChild;
-    }
-
-    // push suffix first
-    for (let i = suffixPairs.length - 1; i >= 0; i--) {
-      const pair = suffixPairs[i]!;
-
-      _pushPatchFrame({
-        node: pair.next,
-        phase: PATCH_ENTER,
-        meta: {
-          prevElement: pair.prev,
-          parentReference,
-          renderRuntime,
-          parentAnchorReference,
-          rightSibling: null,
-          context,
-          hostNamespace,
-          placeHolderElement: null,
-        },
+        meta: { ...base, prevElement: null, rightSibling: rs(i) },
       });
     }
-
-    for (let i = prefixPairs.length - 1; i >= 0; i--) {
-      const pair = prefixPairs[i]!;
-
-      _pushPatchFrame({
-        node: pair.next,
-        phase: PATCH_ENTER,
-        meta: {
-          prevElement: pair.prev,
-          parentReference,
-          renderRuntime,
-          parentAnchorReference,
-          rightSibling: null,
-          context,
-          hostNamespace,
-          placeHolderElement: null,
-        },
-      });
-    }
-
+    pushSuffixPatches();
     return;
   }
 
-  // Step 5: unknown sequence in the middle
-  const keyToPrevIndexMap = new Map<Key, number>();
-
+  // Step 5: unknown middle section
+  const keyToPrevIndex = new Map<Key, number>();
   for (let i = prevStart; i <= prevEnd; i++) {
     const key = prevChildren[i]!.key;
-
-    if (key != null) {
-      keyToPrevIndexMap.set(key, i);
-    }
+    if (key != null) keyToPrevIndex.set(key, i);
   }
 
-  const nextLen = nextEnd - nextStart + 1;
-  const newIndexToOldIndex: number[] = [];
-  for (let i = 0; i < nextLen; i++) {
-    newIndexToOldIndex.push(0);
-  }
-  const usedPrev: boolean[] = [];
-  for (let i = 0; i < prevEnd - prevStart + 1; i++) {
-    usedPrev.push(false);
-  }
+  const middleLen = nextEnd - nextStart + 1;
+  const newIndexToOldIndex = new Int32Array(middleLen); // 0 = new node
 
   let moved = false;
   let maxPrevIndexSoFar = -1;
 
-  // match only
   for (let i = nextStart; i <= nextEnd; i++) {
-    const nextChild = nextChildren[i]!;
-    const prevIndex = keyToPrevIndexMap.get(nextChild.key!);
-
+    const prevIndex = keyToPrevIndex.get(nextChildren[i]!.key!);
     if (prevIndex !== undefined) {
       newIndexToOldIndex[i - nextStart] = prevIndex + 1;
-      usedPrev[prevIndex - prevStart] = true;
-
       if (prevIndex < maxPrevIndexSoFar) {
         moved = true;
       } else {
@@ -522,141 +417,47 @@ export function _patchKeyedChildren(frame: RenderFrame): void {
     }
   }
 
-  // remove stale prev
+  pushPrefixPatches();
+
+  // Remove unmatched prev nodes
+  const matchedPrev = new Uint8Array(prevEnd - prevStart + 1);
+  for (let i = 0; i < middleLen; i++) {
+    const old = newIndexToOldIndex[i];
+    if (old !== 0) matchedPrev[old! - 1 - prevStart] = 1;
+  }
   for (let i = prevStart; i <= prevEnd; i++) {
-    if (!usedPrev[i - prevStart]) {
+    if (!matchedPrev[i - prevStart]) {
       _remove(prevChildren[i]!, parentReference, renderRuntime);
     }
   }
 
-  let rightSibling = nextChildren[nextEnd + 1] || frame.meta.rightSibling;
-
-  const plan: FramePlan[] = [];
-
-  for (let i = nextEnd; i >= nextStart; i--) {
+  for (let i = nextStart; i <= nextEnd; i++) {
     const nextChild = nextChildren[i]!;
-    const mapped = newIndexToOldIndex[i - nextStart]!;
+    const oldIndex = newIndexToOldIndex[i - nextStart]!;
 
-    if (mapped === 0) {
-      plan.push({ type: 'mount', next: nextChild, rightSibling });
-      rightSibling = nextChild;
-      continue;
-    }
-
-    const prevChild = prevChildren[mapped - 1]!;
-
-    if (moved) {
-      plan.push({ type: 'place', next: nextChild, prev: prevChild, rightSibling });
-    }
-    plan.push({ type: 'patch', next: nextChild, prev: prevChild, rightSibling: null });
-    rightSibling = nextChild;
-  }
-
-  const reordered: FramePlan[] = [];
-  for (const entry of plan) {
-    if (entry.type === 'mount' && entry.rightSibling !== null) {
-      // find the patch for the rightSibling and insert the mount after it
-      const rsKey = entry.rightSibling.key;
-      const idx = reordered.findLastIndex(e => e.type === 'patch' && e.next.key === rsKey);
-      if (idx !== -1) {
-        reordered.splice(idx + 1, 0, entry);
-        continue;
-      }
-    }
-    reordered.push(entry);
-  }
-
-  for (const entry of reordered) {
-    if (entry.type === 'mount') {
+    if (oldIndex === 0) {
       _pushMountFrame({
-        node: entry.next,
+        node: nextChild,
         phase: MOUNT_ENTER,
-        meta: {
-          prevElement: null,
-          parentReference,
-          renderRuntime,
-          parentAnchorReference,
-          rightSibling: entry.rightSibling,
-          context,
-          hostNamespace,
-          placeHolderElement: null,
-        },
-      });
-    } else if (entry.type === 'place') {
-      renderRuntime.renderStack.push({
-        node: entry.next,
-        phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR,
-        meta: {
-          prevElement: entry.prev,
-          parentReference,
-          renderRuntime,
-          parentAnchorReference,
-          rightSibling: entry.rightSibling,
-          context,
-          hostNamespace,
-          placeHolderElement: null,
-        },
+        meta: { ...base, prevElement: null, rightSibling: rs(i) },
       });
     } else {
+      const prevChild = prevChildren[oldIndex - 1]!;
+      // patch first (deeper = executes last within this node's two frames)
+      if (moved) {
+        _pushHostOperation({
+          node: nextChild,
+          phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR,
+          meta: { ...base, prevElement: prevChild, rightSibling: rs(i) },
+        });
+      }
       _pushPatchFrame({
-        node: entry.next,
+        node: nextChild,
         phase: PATCH_ENTER,
-        meta: {
-          prevElement: entry.prev,
-          parentReference,
-          renderRuntime,
-          parentAnchorReference,
-          rightSibling: null,
-          context,
-          hostNamespace,
-          placeHolderElement: null,
-        },
+        meta: { ...base, prevElement: prevChild, rightSibling: null },
       });
     }
   }
 
-  // push suffix first so it executes after the middle block
-  for (let i = suffixPairs.length - 1; i >= 0; i--) {
-    const pair = suffixPairs[i]!;
-
-    _pushPatchFrame({
-      node: pair.next,
-      phase: PATCH_ENTER,
-      meta: {
-        prevElement: pair.prev,
-        parentReference,
-        renderRuntime,
-        parentAnchorReference,
-        rightSibling: null,
-        context,
-        hostNamespace,
-        placeHolderElement: null,
-      },
-    });
-  }
-
-  // push the prefix last so it executes first
-  for (let i = prefixPairs.length - 1; i >= 0; i--) {
-    const pair = prefixPairs[i]!;
-
-    _pushPatchFrame({
-      node: pair.next,
-      phase: PATCH_ENTER,
-      meta: {
-        prevElement: pair.prev,
-        parentReference,
-        renderRuntime,
-        parentAnchorReference,
-        rightSibling: null,
-        context,
-        hostNamespace,
-        placeHolderElement: null,
-      },
-    });
-  }
+  pushSuffixPatches();
 }
-
-type FramePlan =
-  | { type: 'patch'; next: SimpElement; prev: SimpElement; rightSibling: SimpElement | null }
-  | { type: 'place'; next: SimpElement; prev: SimpElement; rightSibling: SimpElement | null }
-  | { type: 'mount'; next: SimpElement; rightSibling: SimpElement | null };

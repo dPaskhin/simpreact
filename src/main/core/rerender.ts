@@ -89,7 +89,6 @@ function _rerender(element: SimpElement, renderRuntime: SimpRenderRuntime) {
     element,
     findParentReferenceFromElement(element),
     null,
-    null,
     element.context || null,
     element.store!.hostNamespace,
     renderRuntime

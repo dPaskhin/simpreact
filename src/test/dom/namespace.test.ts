@@ -29,7 +29,7 @@ describe('namespace', () => {
       createElement(() => '')
     );
 
-    mount(root, document.createElement('div'), null, null, null, 'http://www.w3.org/1999/xhtml', renderRuntime);
+    mount(root, document.createElement('div'), null, null, 'http://www.w3.org/1999/xhtml', renderRuntime);
 
     expect(testHostAdapter.createReference).toHaveBeenNthCalledWith(1, 'div', undefined);
     expect(testHostAdapter.createReference).toHaveBeenNthCalledWith(2, 'span', undefined);
@@ -46,7 +46,7 @@ describe('namespace', () => {
       createElement('b')
     );
 
-    mount(root, document.createElement('div'), null, null, null, 'http://www.w3.org/1999/xhtml', renderRuntime);
+    mount(root, document.createElement('div'), null, null, 'http://www.w3.org/1999/xhtml', renderRuntime);
 
     expect(testHostAdapter.createReference).toHaveBeenNthCalledWith(1, 'div', undefined);
     expect(testHostAdapter.createReference).toHaveBeenNthCalledWith(2, 'span', undefined);
@@ -71,7 +71,7 @@ describe('namespace', () => {
       createElement('b')
     );
 
-    mount(root, document.createElement('div'), null, null, null, null, renderRuntime);
+    mount(root, document.createElement('div'), null, null, null, renderRuntime);
 
     expect(testHostAdapter.createReference).toHaveBeenNthCalledWith(1, 'div', undefined);
     expect(testHostAdapter.createReference).toHaveBeenNthCalledWith(2, 'span', undefined);

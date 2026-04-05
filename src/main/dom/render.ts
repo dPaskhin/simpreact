@@ -26,7 +26,6 @@ export function createRenderer(
           container,
           null,
           null,
-          null,
           renderRuntime.hostAdapter.getHostNamespaces(element, undefined)?.self,
           renderRuntime
         );
@@ -44,7 +43,6 @@ export function createRenderer(
           prevChildren,
           element,
           container,
-          null,
           null,
           null,
           renderRuntime.hostAdapter.getHostNamespaces(element, undefined)?.self,

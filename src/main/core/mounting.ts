@@ -9,6 +9,7 @@ import {
   type SimpElement,
 } from './createElement.js';
 import type { HostReference } from './hostAdapter.js';
+import { _pushHostOperation } from './hostOperations.js';
 import { type LifecycleEvent, lifecycleEventBus } from './lifecycleEventBus.js';
 import {
   HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR,
@@ -26,7 +27,6 @@ const mountHandlers = [_mountHostElement, _mountFunctionalElement, _mountTextEle
 export function mount(
   element: SimpElement,
   parentReference: HostReference,
-  parentAnchorReference: HostReference,
   rightSibling: Nullable<SimpElement>,
   context: unknown,
   hostNamespace: Maybe<string>,
@@ -42,7 +42,6 @@ export function mount(
     meta: {
       parentReference,
       renderRuntime,
-      parentAnchorReference,
       rightSibling,
       context,
       hostNamespace,
@@ -64,7 +63,7 @@ export function _pushMountFrame(frame: RenderFrame): void {
 
 export function _pushMountArrayChildrenFrame(frame: RenderFrame): void {
   const children = frame.node.children as SimpElement[];
-  const { parentReference, parentAnchorReference, context, hostNamespace, renderRuntime } = frame.meta;
+  const { parentReference, context, hostNamespace, renderRuntime } = frame.meta;
 
   let rightSibling = frame.meta.rightSibling;
 
@@ -78,7 +77,6 @@ export function _pushMountArrayChildrenFrame(frame: RenderFrame): void {
       meta: {
         prevElement: null,
         parentReference,
-        parentAnchorReference,
         rightSibling,
         context,
         hostNamespace,
@@ -93,7 +91,7 @@ export function _pushMountArrayChildrenFrame(frame: RenderFrame): void {
 
 function _mountHostElement(frame: RenderFrame): void {
   const element = frame.node;
-  const { parentReference, parentAnchorReference, rightSibling, context, hostNamespace, renderRuntime } = frame.meta;
+  const { parentReference, rightSibling, context, hostNamespace, renderRuntime } = frame.meta;
 
   if (frame.phase === MOUNT_EXIT) {
     if (element.childFlag === SIMP_ELEMENT_CHILD_FLAG_TEXT) {
@@ -109,13 +107,12 @@ function _mountHostElement(frame: RenderFrame): void {
     }
 
     if (parentReference) {
-      renderRuntime.renderStack.push({
+      _pushHostOperation({
         node: element,
         phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR,
         meta: {
           renderRuntime,
           hostNamespace: null,
-          parentAnchorReference,
           rightSibling,
           context: null,
           parentReference,
@@ -144,7 +141,6 @@ function _mountHostElement(frame: RenderFrame): void {
     meta: {
       renderRuntime,
       hostNamespace: hostNamespaces?.self,
-      parentAnchorReference,
       rightSibling,
       context,
       parentReference,
@@ -161,7 +157,6 @@ function _mountHostElement(frame: RenderFrame): void {
         meta: {
           renderRuntime,
           hostNamespace: hostNamespaces?.children,
-          parentAnchorReference: null,
           rightSibling: null,
           context,
           parentReference: hostReference,
@@ -179,7 +174,6 @@ function _mountHostElement(frame: RenderFrame): void {
         meta: {
           renderRuntime,
           hostNamespace: hostNamespaces?.children,
-          parentAnchorReference: null,
           rightSibling: null,
           context,
           parentReference: hostReference,
@@ -193,7 +187,7 @@ function _mountHostElement(frame: RenderFrame): void {
 
 function _mountFunctionalElement(frame: RenderFrame): void {
   const element = frame.node;
-  const { parentReference, parentAnchorReference, rightSibling, context, hostNamespace, renderRuntime } = frame.meta;
+  const { parentReference, rightSibling, context, hostNamespace, renderRuntime } = frame.meta;
 
   if (frame.phase === MOUNT_EXIT) {
     lifecycleEventBus.publish({ type: 'mounted', element, renderRuntime });
@@ -272,7 +266,6 @@ function _mountFunctionalElement(frame: RenderFrame): void {
     meta: {
       renderRuntime,
       hostNamespace: null,
-      parentAnchorReference: null,
       rightSibling: null,
       context: null,
       parentReference: null,
@@ -290,7 +283,6 @@ function _mountFunctionalElement(frame: RenderFrame): void {
       meta: {
         renderRuntime,
         hostNamespace,
-        parentAnchorReference,
         rightSibling,
         context: element.context,
         parentReference,
@@ -302,17 +294,16 @@ function _mountFunctionalElement(frame: RenderFrame): void {
 }
 
 function _mountTextElement(frame: RenderFrame): void {
-  const { renderRuntime, parentReference, parentAnchorReference } = frame.meta;
+  const { renderRuntime, parentReference } = frame.meta;
 
   frame.node.reference = renderRuntime.hostAdapter.createTextReference(frame.node.children as string);
 
-  renderRuntime.renderStack.push({
+  _pushHostOperation({
     node: frame.node,
     phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR,
     meta: {
       renderRuntime,
       hostNamespace: null,
-      parentAnchorReference,
       rightSibling: frame.meta.rightSibling,
       context: null,
       parentReference,
@@ -324,7 +315,7 @@ function _mountTextElement(frame: RenderFrame): void {
 
 function _mountPortal(frame: RenderFrame): void {
   const element = frame.node;
-  const { parentReference, parentAnchorReference, rightSibling, context, renderRuntime } = frame.meta;
+  const { parentReference, rightSibling, context, renderRuntime } = frame.meta;
 
   if (frame.phase === MOUNT_EXIT) {
     element.reference = frame.meta.placeHolderElement!.reference;
@@ -338,7 +329,6 @@ function _mountPortal(frame: RenderFrame): void {
     phase: MOUNT_EXIT,
     meta: {
       renderRuntime,
-      parentAnchorReference: null,
       rightSibling: null,
       context: null,
       parentReference: null,
@@ -357,7 +347,6 @@ function _mountPortal(frame: RenderFrame): void {
       phase: MOUNT_ENTER,
       meta: {
         renderRuntime,
-        parentAnchorReference: null,
         rightSibling: null,
         context,
         parentReference: element.ref,
@@ -373,7 +362,6 @@ function _mountPortal(frame: RenderFrame): void {
     phase: MOUNT_ENTER,
     meta: {
       renderRuntime,
-      parentAnchorReference,
       rightSibling,
       context: null,
       parentReference,
@@ -386,7 +374,7 @@ function _mountPortal(frame: RenderFrame): void {
 
 function _mountFragment(frame: RenderFrame): void {
   const element = frame.node;
-  const { parentReference, parentAnchorReference, hostNamespace, context, renderRuntime, rightSibling } = frame.meta;
+  const { parentReference, hostNamespace, context, renderRuntime, rightSibling } = frame.meta;
 
   switch (element.childFlag) {
     case SIMP_ELEMENT_CHILD_FLAG_LIST:
@@ -396,7 +384,6 @@ function _mountFragment(frame: RenderFrame): void {
         meta: {
           renderRuntime,
           hostNamespace,
-          parentAnchorReference,
           rightSibling,
           context,
           parentReference,
@@ -415,7 +402,6 @@ function _mountFragment(frame: RenderFrame): void {
         meta: {
           renderRuntime,
           hostNamespace,
-          parentAnchorReference,
           rightSibling,
           context,
           parentReference,

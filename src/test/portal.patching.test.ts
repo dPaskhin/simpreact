@@ -50,11 +50,11 @@ describe('patchPortal', () => {
 
       const prevPortal = createPortal(prevChild, containerA);
 
-      mount(prevPortal, document.createElement('div'), null, null, null, null, renderRuntime);
+      mount(prevPortal, document.createElement('div'), null, null, null, renderRuntime);
 
       const nextPortal = createPortal(nextChild, containerA);
 
-      patch(prevPortal, nextPortal, null, null, null, null, null, renderRuntime);
+      patch(prevPortal, nextPortal, null, null, null, null, renderRuntime);
 
       expect(containerA.contains(nextChild.reference as HTMLElement)).toBe(true);
       expect(containerA.contains(prevChild.reference as HTMLElement)).toBe(true);
@@ -66,11 +66,11 @@ describe('patchPortal', () => {
 
       const prevPortal = createPortal(prevChild, containerA);
 
-      mount(prevPortal, document.createElement('div'), null, null, null, null, renderRuntime);
+      mount(prevPortal, document.createElement('div'), null, null, null, renderRuntime);
 
       const nextPortal = createPortal(nextChild, containerB);
 
-      patch(prevPortal, nextPortal, null, null, null, null, null, renderRuntime);
+      patch(prevPortal, nextPortal, null, null, null, null, renderRuntime);
 
       expect(containerB.contains(nextChild.reference as HTMLElement)).toBe(true);
       expect(containerA.contains(prevChild.reference as HTMLElement)).toBe(false);

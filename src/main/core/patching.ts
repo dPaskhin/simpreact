@@ -9,12 +9,12 @@ import {
   type SimpElement,
 } from './createElement.js';
 import type { HostReference } from './hostAdapter.js';
+import { _pushHostOperation } from './hostOperations.js';
 import { type LifecycleEvent, lifecycleEventBus } from './lifecycleEventBus.js';
 import { isMemo } from './memo.js';
 import { _pushMountFrame } from './mounting.js';
 import { _pushPatchChildrenFrame } from './patchingChildren.js';
 import {
-  findNextLogicalSibling,
   HOST_OPS_REPLACE_CHILD,
   MOUNT_ENTER,
   PATCH_CHILDREN,
@@ -35,7 +35,6 @@ export function patch(
   prevElement: SimpElement,
   nextElement: SimpElement,
   parentReference: HostReference,
-  parentAnchorReference: HostReference,
   rightSibling: Nullable<SimpElement>,
   context: unknown,
   hostNamespace: Maybe<string>,
@@ -52,7 +51,6 @@ export function patch(
       prevElement,
       parentReference,
       renderRuntime,
-      parentAnchorReference,
       rightSibling,
       context,
       hostNamespace,
@@ -91,7 +89,6 @@ function _replaceWithNewElement(frame: RenderFrame): void {
       prevElement,
       renderRuntime,
       parentReference,
-      parentAnchorReference: null,
       rightSibling: null,
       hostNamespace,
       placeHolderElement: null,
@@ -101,14 +98,13 @@ function _replaceWithNewElement(frame: RenderFrame): void {
 
   nextElement.parent = prevElement!.parent;
   if ((nextElement.flag & SIMP_ELEMENT_FLAG_HOST) !== 0 && (prevElement!.flag & SIMP_ELEMENT_FLAG_HOST) !== 0) {
-    renderRuntime.renderStack.push({
+    _pushHostOperation({
       node: nextElement,
       phase: HOST_OPS_REPLACE_CHILD,
       meta: {
         prevElement,
         renderRuntime,
         parentReference,
-        parentAnchorReference: null,
         rightSibling: null,
         hostNamespace: null,
         placeHolderElement: null,
@@ -121,7 +117,6 @@ function _replaceWithNewElement(frame: RenderFrame): void {
       phase: MOUNT_ENTER,
       meta: {
         prevElement: null,
-        parentAnchorReference: null,
         rightSibling: null,
         renderRuntime,
         hostNamespace,
@@ -137,8 +132,7 @@ function _replaceWithNewElement(frame: RenderFrame): void {
       phase: MOUNT_ENTER,
       meta: {
         prevElement: null,
-        parentAnchorReference: frame.meta.parentAnchorReference,
-        rightSibling: frame.meta.rightSibling || findNextLogicalSibling(nextElement),
+        rightSibling: frame.meta.rightSibling,
         renderRuntime,
         hostNamespace,
         placeHolderElement: null,
@@ -182,7 +176,6 @@ function _patchHostElement(frame: RenderFrame): void {
       prevElement,
       renderRuntime,
       hostNamespace,
-      parentAnchorReference: null,
       rightSibling: null,
       context: null,
       parentReference: null,
@@ -197,7 +190,6 @@ function _patchHostElement(frame: RenderFrame): void {
       prevElement,
       renderRuntime,
       hostNamespace: renderRuntime.hostAdapter.getHostNamespaces(nextElement, hostNamespace)?.children,
-      parentAnchorReference: null,
       rightSibling: null,
       context,
       parentReference: nextElement.reference,
@@ -208,8 +200,7 @@ function _patchHostElement(frame: RenderFrame): void {
 
 function _patchFunctionalComponent(frame: RenderFrame): void {
   const nextElement = frame.node;
-  const { prevElement, context, renderRuntime, hostNamespace, parentAnchorReference, rightSibling, parentReference } =
-    frame.meta;
+  const { prevElement, context, renderRuntime, hostNamespace, rightSibling, parentReference } = frame.meta;
 
   if (frame.phase === PATCH_EXIT) {
     lifecycleEventBus.publish({ type: 'updated', element: nextElement, renderRuntime });
@@ -221,7 +212,6 @@ function _patchFunctionalComponent(frame: RenderFrame): void {
       node: nextElement,
       phase: MOUNT_ENTER,
       meta: {
-        parentAnchorReference,
         rightSibling,
         renderRuntime,
         hostNamespace,
@@ -339,7 +329,6 @@ function _patchFunctionalComponent(frame: RenderFrame): void {
       prevElement,
       renderRuntime,
       hostNamespace,
-      parentAnchorReference: null,
       rightSibling: null,
       context: null,
       parentReference: null,
@@ -355,7 +344,6 @@ function _patchFunctionalComponent(frame: RenderFrame): void {
       prevElement: { ...prevElement, children: prevChildren, childFlag: prevChildFlag } as SimpElement,
       renderRuntime,
       hostNamespace,
-      parentAnchorReference,
       rightSibling,
       context,
       parentReference,
@@ -399,7 +387,6 @@ function _patchPortal(frame: RenderFrame): void {
         prevElement,
         renderRuntime,
         hostNamespace: null,
-        parentAnchorReference: null,
         rightSibling: null,
         context: null,
         parentReference: null,
@@ -415,7 +402,6 @@ function _patchPortal(frame: RenderFrame): void {
       prevElement,
       renderRuntime,
       hostNamespace: renderRuntime.hostAdapter.getHostNamespaces(nextChildren, undefined)?.self,
-      parentAnchorReference: null,
       rightSibling: null,
       context,
       parentReference: nextContainer,
@@ -426,9 +412,7 @@ function _patchPortal(frame: RenderFrame): void {
 
 function _patchFragment(frame: RenderFrame): void {
   const nextElement = frame.node;
-  const { prevElement, renderRuntime, context, parentAnchorReference, parentReference, hostNamespace } = frame.meta;
-
-  let rightSibling = frame.meta.rightSibling || findNextLogicalSibling(nextElement);
+  const { prevElement, renderRuntime, context, parentReference, hostNamespace, rightSibling } = frame.meta;
 
   _pushPatchChildrenFrame({
     node: nextElement,
@@ -436,7 +420,6 @@ function _patchFragment(frame: RenderFrame): void {
     meta: {
       prevElement,
       parentReference,
-      parentAnchorReference,
       rightSibling,
       context,
       renderRuntime,

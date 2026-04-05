@@ -30,7 +30,6 @@ export const HOST_OPS_REPLACE_CHILD = 10;
 export interface RenderMeta {
   prevElement: Nullable<SimpElement>;
   parentReference: HostReference;
-  parentAnchorReference: HostReference;
   rightSibling: Nullable<SimpElement>;
   context: unknown;
   hostNamespace: Maybe<string>;
@@ -80,7 +79,7 @@ export function processStack(renderRuntime: SimpRenderRuntime): void {
         break;
       }
       case HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR: {
-        const anchor = resolveAnchorReference(frame.meta.rightSibling, frame.meta.parentAnchorReference);
+        const anchor = resolveAnchorReference(frame.meta.rightSibling);
         placeElementBeforeAnchor(frame.node, anchor, frame.meta.parentReference, renderRuntime);
         break;
       }
@@ -129,10 +128,7 @@ function placeElementBeforeAnchor(
   }
 }
 
-export function resolveAnchorReference(
-  rightSibling: Nullable<SimpElement>,
-  parentAnchorReference: HostReference
-): HostReference {
+export function resolveAnchorReference(rightSibling: Nullable<SimpElement>): HostReference {
   let current = rightSibling;
 
   while (current != null) {
@@ -145,16 +141,21 @@ export function resolveAnchorReference(
     current = findNextLogicalSibling(current);
   }
 
-  return parentAnchorReference;
+  return null;
 }
 
-export function findNextLogicalSibling(element: SimpElement): Nullable<SimpElement> {
+function findNextLogicalSibling(element: SimpElement): Nullable<SimpElement> {
   let current: Nullable<SimpElement> = element;
 
   while (current != null) {
     const parent = current.parent as Nullable<SimpElement>;
 
-    if (parent == null) {
+    if (
+      parent == null ||
+      (parent.flag & SIMP_ELEMENT_FLAG_HOST) !== 0 ||
+      (parent.flag & SIMP_ELEMENT_FLAG_TEXT) !== 0 ||
+      (parent.flag & SIMP_ELEMENT_FLAG_PORTAL) !== 0
+    ) {
       return null;
     }
 
