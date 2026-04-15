@@ -6,30 +6,31 @@ import {
   SIMP_ELEMENT_FLAG_FRAGMENT,
   type SimpElement,
 } from './createElement.js';
-import { _pushHostOperation } from './hostOperations.js';
-import { _pushMountArrayChildrenFrame, _pushMountFrame } from './mounting.js';
-import { _pushPatchFrame } from './patching.js';
-import {
-  HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR,
-  MOUNT_ENTER,
-  PATCH_ENTER,
-  PATCH_KEYED_CHILDREN,
-  type RenderFrame,
-  UNMOUNT_ENTER,
-} from './processStack.js';
+import { _pushHostOperationPlaceElement } from './hostOperations.js';
+import { _pushMountArrayChildrenFrame, _pushMountEnterFrame } from './mounting.js';
+import { _pushPatchEnterFrame } from './patching.js';
+import { PATCH_CHILDREN, PATCH_KEYED_CHILDREN, type RenderFrame, type RenderFrameMeta } from './processStack.js';
 import {
   _clearElementHostReference,
   _pushUnmountArrayChildrenFrame,
-  _pushUnmountFrame,
+  _pushUnmountEnterFrame,
   _remove,
 } from './unmounting.js';
 
-export function _pushPatchChildrenFrame(frame: RenderFrame): void {
-  frame.meta.renderRuntime.renderStack.push(frame);
+export function _pushPatchChildrenFrame(element: SimpElement, meta: RenderFrameMeta): void {
+  meta.renderRuntime.renderStack.push({
+    node: element,
+    phase: PATCH_CHILDREN,
+    meta,
+  });
 }
 
-export function _pushPatchKeyedChildrenFrame(frame: RenderFrame): void {
-  frame.meta.renderRuntime.renderStack.push(frame);
+export function _pushPatchKeyedChildrenFrame(element: SimpElement, meta: RenderFrameMeta): void {
+  meta.renderRuntime.renderStack.push({
+    node: element,
+    phase: PATCH_KEYED_CHILDREN,
+    meta,
+  });
 }
 
 export function _patchChildren(frame: RenderFrame): void {
@@ -49,18 +50,14 @@ export function _patchChildren(frame: RenderFrame): void {
             (child as SimpElement).parent = nextElement;
           }
 
-          _pushPatchKeyedChildrenFrame({
-            node: frame.node,
-            phase: PATCH_KEYED_CHILDREN,
-            meta: {
-              prevElement,
-              context,
-              parentReference,
-              rightSibling,
-              hostNamespace,
-              placeHolderElement,
-              renderRuntime,
-            },
+          _pushPatchKeyedChildrenFrame(frame.node, {
+            prevElement,
+            context,
+            parentReference,
+            rightSibling,
+            hostNamespace,
+            placeHolderElement,
+            renderRuntime,
           });
 
           break;
@@ -72,67 +69,27 @@ export function _patchChildren(frame: RenderFrame): void {
             renderRuntime.hostAdapter.clearNode(parentReference);
           }
 
-          _pushMountFrame({
-            node: nextChildren as SimpElement,
-            phase: MOUNT_ENTER,
-            meta: {
-              prevElement: null,
-              parentReference,
-              renderRuntime,
-              rightSibling,
-              context,
-              hostNamespace,
-              placeHolderElement: null,
-            },
+          _pushMountEnterFrame(nextChildren as SimpElement, {
+            parentReference,
+            rightSibling,
+            context,
+            hostNamespace,
+            renderRuntime,
+            prevElement: null,
+            placeHolderElement: null,
           });
 
-          _pushUnmountArrayChildrenFrame({
-            node: prevElement!,
-            phase: UNMOUNT_ENTER,
-            meta: {
-              prevElement: null,
-              parentReference,
-              renderRuntime,
-              rightSibling: null,
-              context,
-              hostNamespace,
-              placeHolderElement: null,
-            },
-          });
+          _pushUnmountArrayChildrenFrame(prevElement!, renderRuntime);
 
           break;
         }
         case SIMP_ELEMENT_CHILD_FLAG_TEXT: {
-          _pushUnmountArrayChildrenFrame({
-            node: prevElement!,
-            phase: UNMOUNT_ENTER,
-            meta: {
-              prevElement: null,
-              parentReference,
-              renderRuntime,
-              rightSibling: null,
-              context,
-              hostNamespace,
-              placeHolderElement: null,
-            },
-          });
+          _pushUnmountArrayChildrenFrame(prevElement!, renderRuntime);
           renderRuntime.hostAdapter.setTextContent(parentReference, nextElement.props?.children);
           break;
         }
         default: {
-          _pushUnmountArrayChildrenFrame({
-            node: prevElement!,
-            phase: UNMOUNT_ENTER,
-            meta: {
-              prevElement: null,
-              parentReference,
-              renderRuntime,
-              rightSibling: null,
-              context,
-              hostNamespace,
-              placeHolderElement: null,
-            },
-          });
+          _pushUnmountArrayChildrenFrame(prevElement!, renderRuntime);
           renderRuntime.hostAdapter.clearNode(parentReference);
         }
       }
@@ -141,31 +98,15 @@ export function _patchChildren(frame: RenderFrame): void {
     case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
       switch (nextChildFlag) {
         case SIMP_ELEMENT_CHILD_FLAG_LIST: {
-          _pushUnmountFrame({
-            node: prevChildren as SimpElement,
-            phase: UNMOUNT_ENTER,
-            meta: {
-              prevElement: null,
-              parentReference,
-              renderRuntime,
-              rightSibling: null,
-              context,
-              hostNamespace,
-              placeHolderElement: null,
-            },
-          });
-          _pushMountArrayChildrenFrame({
-            node: nextElement,
-            phase: MOUNT_ENTER,
-            meta: {
-              prevElement: null,
-              parentReference,
-              renderRuntime,
-              rightSibling,
-              context,
-              hostNamespace,
-              placeHolderElement: null,
-            },
+          _pushUnmountEnterFrame(prevChildren as SimpElement, renderRuntime);
+          _pushMountArrayChildrenFrame(nextElement, {
+            parentReference,
+            renderRuntime,
+            rightSibling,
+            context,
+            hostNamespace,
+            prevElement: null,
+            placeHolderElement: null,
           });
           _clearElementHostReference(prevChildren as SimpElement, parentReference, renderRuntime);
 
@@ -174,35 +115,19 @@ export function _patchChildren(frame: RenderFrame): void {
         case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
           (nextChildren as SimpElement).parent = nextElement;
 
-          _pushPatchFrame({
-            node: nextChildren as SimpElement,
-            phase: PATCH_ENTER,
-            meta: {
-              prevElement: prevChildren as SimpElement,
-              parentReference,
-              renderRuntime,
-              rightSibling,
-              context,
-              hostNamespace,
-              placeHolderElement: null,
-            },
+          _pushPatchEnterFrame(nextChildren as SimpElement, {
+            prevElement: prevChildren as SimpElement,
+            parentReference,
+            renderRuntime,
+            rightSibling,
+            context,
+            hostNamespace,
+            placeHolderElement: null,
           });
           break;
         }
         case SIMP_ELEMENT_CHILD_FLAG_TEXT: {
-          _pushUnmountArrayChildrenFrame({
-            node: prevElement!,
-            phase: UNMOUNT_ENTER,
-            meta: {
-              prevElement: null,
-              parentReference,
-              renderRuntime,
-              rightSibling: null,
-              context,
-              hostNamespace,
-              placeHolderElement: null,
-            },
-          });
+          _pushUnmountArrayChildrenFrame(prevElement!, renderRuntime);
           renderRuntime.hostAdapter.setTextContent(parentReference, nextElement.props?.children);
           break;
         }
@@ -216,36 +141,28 @@ export function _patchChildren(frame: RenderFrame): void {
       switch (nextChildFlag) {
         case SIMP_ELEMENT_CHILD_FLAG_LIST: {
           renderRuntime.hostAdapter.clearNode(parentReference);
-          _pushMountArrayChildrenFrame({
-            node: nextElement,
-            phase: MOUNT_ENTER,
-            meta: {
-              prevElement: null,
-              parentReference,
-              renderRuntime,
-              rightSibling,
-              context,
-              hostNamespace,
-              placeHolderElement: null,
-            },
+          _pushMountArrayChildrenFrame(nextElement, {
+            parentReference,
+            renderRuntime,
+            rightSibling,
+            context,
+            hostNamespace,
+            prevElement: null,
+            placeHolderElement: null,
           });
           break;
         }
         case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
           renderRuntime.hostAdapter.clearNode(parentReference);
           (nextChildren as SimpElement).parent = nextElement;
-          _pushMountFrame({
-            node: nextChildren as SimpElement,
-            phase: MOUNT_ENTER,
-            meta: {
-              prevElement: null,
-              parentReference,
-              renderRuntime,
-              rightSibling,
-              context,
-              hostNamespace,
-              placeHolderElement: null,
-            },
+          _pushMountEnterFrame(nextChildren as SimpElement, {
+            parentReference,
+            rightSibling,
+            context,
+            hostNamespace,
+            renderRuntime,
+            prevElement: null,
+            placeHolderElement: null,
           });
           break;
         }
@@ -262,36 +179,28 @@ export function _patchChildren(frame: RenderFrame): void {
     default: {
       switch (nextChildFlag) {
         case SIMP_ELEMENT_CHILD_FLAG_LIST: {
-          _pushMountArrayChildrenFrame({
-            node: nextElement,
-            phase: MOUNT_ENTER,
-            meta: {
-              parentReference,
-              rightSibling,
-              context,
-              hostNamespace,
-              placeHolderElement: null,
-              renderRuntime,
-              prevElement: null,
-            },
+          _pushMountArrayChildrenFrame(nextElement, {
+            parentReference,
+            rightSibling,
+            context,
+            hostNamespace,
+            renderRuntime,
+            prevElement: null,
+            placeHolderElement: null,
           });
           break;
         }
         case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
           (nextChildren as SimpElement).parent = nextElement;
 
-          _pushMountFrame({
-            node: nextChildren as SimpElement,
-            phase: MOUNT_ENTER,
-            meta: {
-              prevElement: null,
-              parentReference,
-              renderRuntime,
-              rightSibling,
-              context,
-              hostNamespace,
-              placeHolderElement: null,
-            },
+          _pushMountEnterFrame(nextChildren as SimpElement, {
+            parentReference,
+            rightSibling,
+            context,
+            hostNamespace,
+            renderRuntime,
+            prevElement: null,
+            placeHolderElement: null,
           });
           break;
         }
@@ -350,21 +259,13 @@ export function _patchKeyedChildren(frame: RenderFrame): void {
 
   const pushSuffixPatches = (): void => {
     for (let i = nextEnd + 1; i < nextLen; i++) {
-      _pushPatchFrame({
-        node: nextChildren[i]!,
-        phase: PATCH_ENTER,
-        meta: { ...base, prevElement: prevChildren[i - delta]!, rightSibling: rs(i) },
-      });
+      _pushPatchEnterFrame(nextChildren[i]!, { ...base, prevElement: prevChildren[i - delta]!, rightSibling: rs(i) });
     }
   };
 
   const pushPrefixPatches = (): void => {
     for (let i = 0; i < nextStart; i++) {
-      _pushPatchFrame({
-        node: nextChildren[i]!,
-        phase: PATCH_ENTER,
-        meta: { ...base, prevElement: prevChildren[i]!, rightSibling: rs(i) },
-      });
+      _pushPatchEnterFrame(nextChildren[i]!, { ...base, prevElement: prevChildren[i]!, rightSibling: rs(i) });
     }
   };
 
@@ -382,11 +283,7 @@ export function _patchKeyedChildren(frame: RenderFrame): void {
   if (prevStart > prevEnd) {
     pushPrefixPatches();
     for (let i = nextStart; i <= nextEnd; i++) {
-      _pushMountFrame({
-        node: nextChildren[i]!,
-        phase: MOUNT_ENTER,
-        meta: { ...base, prevElement: null, rightSibling: rs(i) },
-      });
+      _pushMountEnterFrame(nextChildren[i]!, { ...base, prevElement: null, rightSibling: rs(i) });
     }
     pushSuffixPatches();
     return;
@@ -436,26 +333,14 @@ export function _patchKeyedChildren(frame: RenderFrame): void {
     const oldIndex = newIndexToOldIndex[i - nextStart]!;
 
     if (oldIndex === 0) {
-      _pushMountFrame({
-        node: nextChild,
-        phase: MOUNT_ENTER,
-        meta: { ...base, prevElement: null, rightSibling: rs(i) },
-      });
+      _pushMountEnterFrame(nextChild, { ...base, prevElement: null, rightSibling: rs(i) });
     } else {
       const prevChild = prevChildren[oldIndex - 1]!;
       // patch first (deeper = executes last within this node's two frames)
       if (moved) {
-        _pushHostOperation({
-          node: nextChild,
-          phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR,
-          meta: { ...base, prevElement: prevChild, rightSibling: rs(i) },
-        });
+        _pushHostOperationPlaceElement(nextChild, { ...base, prevElement: prevChild, rightSibling: rs(i) });
       }
-      _pushPatchFrame({
-        node: nextChild,
-        phase: PATCH_ENTER,
-        meta: { ...base, prevElement: prevChild, rightSibling: null },
-      });
+      _pushPatchEnterFrame(nextChild, { ...base, prevElement: prevChild, rightSibling: null });
     }
   }
 

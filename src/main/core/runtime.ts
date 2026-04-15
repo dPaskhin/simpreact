@@ -1,6 +1,6 @@
 import type { FC, SimpElement, SimpNode } from './createElement.js';
 import type { HostAdapter } from './hostAdapter.js';
-import type { RenderMeta } from './processStack.js';
+import type { RenderFrameMeta } from './processStack.js';
 import type { TraversalStack } from './traverseStack.js';
 
 export interface SimpRuntimeFCRenderer {
@@ -10,6 +10,6 @@ export interface SimpRuntimeFCRenderer {
 export interface SimpRenderRuntime {
   hostAdapter: HostAdapter;
   renderer: SimpRuntimeFCRenderer;
-  renderStack: TraversalStack<SimpElement, RenderMeta>;
+  renderStack: TraversalStack<SimpElement, RenderFrameMeta>;
   [key: string]: unknown;
 }

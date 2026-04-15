@@ -28,10 +28,7 @@ describe('patchKeyedChildren (integration-ish): moving fragment/component nodes 
     createRoot(container).render(
       createElement(Fragment, { key: 'ROOT_FRAGMENT' }, [
         createElement('c', { key: 'c' }),
-        createElement(Fragment, { key: 'f' }, [
-          createElement('x', { key: 'x' }),
-          createElement('y', { key: 'y' }),
-        ]) as any,
+        createElement(Fragment, { key: 'f' }, [createElement('x', { key: 'x' }), createElement('y', { key: 'y' })]),
       ])
     );
 

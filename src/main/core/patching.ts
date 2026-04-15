@@ -9,24 +9,15 @@ import {
   type SimpElement,
 } from './createElement.js';
 import type { HostReference } from './hostAdapter.js';
-import { _pushHostOperation } from './hostOperations.js';
+import { _pushHostOperationReplaceElement } from './hostOperations.js';
 import { type LifecycleEvent, lifecycleEventBus } from './lifecycleEventBus.js';
 import { isMemo } from './memo.js';
-import { _pushMountFrame } from './mounting.js';
+import { _pushMountEnterFrame } from './mounting.js';
 import { _pushPatchChildrenFrame } from './patchingChildren.js';
-import {
-  HOST_OPS_REPLACE_CHILD,
-  MOUNT_ENTER,
-  PATCH_CHILDREN,
-  PATCH_ENTER,
-  PATCH_EXIT,
-  processStack,
-  type RenderFrame,
-  UNMOUNT_ENTER,
-} from './processStack.js';
+import { PATCH_ENTER, PATCH_EXIT, processStack, type RenderFrame, type RenderFrameMeta } from './processStack.js';
 import { applyRef } from './ref.js';
 import type { SimpRenderRuntime } from './runtime.js';
-import { _clearElementHostReference, _pushUnmountFrame, _remove } from './unmounting.js';
+import { _clearElementHostReference, _pushUnmountEnterFrame, _remove } from './unmounting.js';
 import { bitScanForwardIndex } from './utils.js';
 
 const patchHandlers = [_patchHostElement, _patchFunctionalComponent, _patchTextElement, _patchPortal, _patchFragment];
@@ -44,25 +35,33 @@ export function patch(
     throw new Error('Cannot patch while rendering.');
   }
 
-  _pushPatchFrame({
-    node: nextElement,
-    phase: PATCH_ENTER,
-    meta: {
-      prevElement,
-      parentReference,
-      renderRuntime,
-      rightSibling,
-      context,
-      hostNamespace,
-      placeHolderElement: null,
-    },
+  _pushPatchEnterFrame(nextElement, {
+    prevElement,
+    parentReference,
+    renderRuntime,
+    rightSibling,
+    context,
+    hostNamespace,
+    placeHolderElement: null,
   });
 
   processStack(renderRuntime);
 }
 
-export function _pushPatchFrame(frame: RenderFrame): void {
-  frame.meta.renderRuntime.renderStack.push(frame);
+export function _pushPatchEnterFrame(element: SimpElement, meta: RenderFrameMeta): void {
+  meta.renderRuntime.renderStack.push({
+    node: element,
+    phase: PATCH_ENTER,
+    meta,
+  });
+}
+
+export function _pushPatchExitFrame(element: SimpElement, meta: RenderFrameMeta): void {
+  meta.renderRuntime.renderStack.push({
+    node: element,
+    phase: PATCH_EXIT,
+    meta,
+  });
 }
 
 export function _patch(frame: RenderFrame): void {
@@ -82,63 +81,39 @@ function _replaceWithNewElement(frame: RenderFrame): void {
   const nextElement = frame.node;
   const { prevElement, parentReference, context, hostNamespace, renderRuntime } = frame.meta;
 
-  _pushUnmountFrame({
-    node: prevElement!,
-    phase: UNMOUNT_ENTER,
-    meta: {
+  _pushUnmountEnterFrame(prevElement!, renderRuntime);
+
+  nextElement.parent = prevElement!.parent;
+  if ((nextElement.flag & SIMP_ELEMENT_FLAG_HOST) !== 0 && (prevElement!.flag & SIMP_ELEMENT_FLAG_HOST) !== 0) {
+    _pushHostOperationReplaceElement(nextElement, {
       prevElement,
       renderRuntime,
       parentReference,
       rightSibling: null,
-      hostNamespace,
+      hostNamespace: null,
       placeHolderElement: null,
       context: null,
-    },
-  });
-
-  nextElement.parent = prevElement!.parent;
-  if ((nextElement.flag & SIMP_ELEMENT_FLAG_HOST) !== 0 && (prevElement!.flag & SIMP_ELEMENT_FLAG_HOST) !== 0) {
-    _pushHostOperation({
-      node: nextElement,
-      phase: HOST_OPS_REPLACE_CHILD,
-      meta: {
-        prevElement,
-        renderRuntime,
-        parentReference,
-        rightSibling: null,
-        hostNamespace: null,
-        placeHolderElement: null,
-        context: null,
-      },
     });
 
-    _pushMountFrame({
-      node: nextElement,
-      phase: MOUNT_ENTER,
-      meta: {
-        prevElement: null,
-        rightSibling: null,
-        renderRuntime,
-        hostNamespace,
-        placeHolderElement: null,
-        context,
-        parentReference: null,
-      },
+    _pushMountEnterFrame(nextElement, {
+      context,
+      hostNamespace,
+      renderRuntime,
+      parentReference: null,
+      rightSibling: null,
+      prevElement: null,
+      placeHolderElement: null,
     });
   } else {
     _clearElementHostReference(prevElement, parentReference, renderRuntime);
-    _pushMountFrame({
-      node: nextElement,
-      phase: MOUNT_ENTER,
-      meta: {
-        prevElement: null,
-        rightSibling: frame.meta.rightSibling,
-        renderRuntime,
-        hostNamespace,
-        placeHolderElement: null,
-        context,
-        parentReference,
-      },
+    _pushMountEnterFrame(nextElement, {
+      rightSibling: frame.meta.rightSibling,
+      renderRuntime,
+      hostNamespace,
+      context,
+      parentReference,
+      prevElement: null,
+      placeHolderElement: null,
     });
   }
 }
@@ -183,18 +158,14 @@ function _patchHostElement(frame: RenderFrame): void {
     },
   });
 
-  _pushPatchChildrenFrame({
-    node: nextElement,
-    phase: PATCH_CHILDREN,
-    meta: {
-      prevElement,
-      renderRuntime,
-      hostNamespace: renderRuntime.hostAdapter.getHostNamespaces(nextElement, hostNamespace)?.children,
-      rightSibling: null,
-      context,
-      parentReference: nextElement.reference,
-      placeHolderElement: null,
-    },
+  _pushPatchChildrenFrame(nextElement, {
+    prevElement,
+    renderRuntime,
+    hostNamespace: renderRuntime.hostAdapter.getHostNamespaces(nextElement, hostNamespace)?.children,
+    rightSibling: null,
+    context,
+    parentReference: nextElement.reference,
+    placeHolderElement: null,
   });
 }
 
@@ -208,18 +179,14 @@ function _patchFunctionalComponent(frame: RenderFrame): void {
   }
 
   if (prevElement!.unmounted) {
-    _pushMountFrame({
-      node: nextElement,
-      phase: MOUNT_ENTER,
-      meta: {
-        rightSibling,
-        renderRuntime,
-        hostNamespace,
-        context,
-        parentReference,
-        placeHolderElement: null,
-        prevElement: null,
-      },
+    _pushMountEnterFrame(nextElement, {
+      rightSibling,
+      renderRuntime,
+      hostNamespace,
+      context,
+      parentReference,
+      prevElement: null,
+      placeHolderElement: null,
     });
     return;
   }
@@ -336,19 +303,15 @@ function _patchFunctionalComponent(frame: RenderFrame): void {
     },
   });
 
-  _pushPatchChildrenFrame({
-    node: nextElement,
-    phase: PATCH_CHILDREN,
-    meta: {
-      // TODO: avoid creating a new object here
-      prevElement: { ...prevElement, children: prevChildren, childFlag: prevChildFlag } as SimpElement,
-      renderRuntime,
-      hostNamespace,
-      rightSibling,
-      context,
-      parentReference,
-      placeHolderElement: null,
-    },
+  _pushPatchChildrenFrame(nextElement, {
+    // TODO: avoid creating a new object here
+    prevElement: { ...prevElement, children: prevChildren, childFlag: prevChildFlag } as SimpElement,
+    renderRuntime,
+    hostNamespace,
+    rightSibling,
+    context,
+    parentReference,
+    placeHolderElement: null,
   });
 }
 
@@ -380,33 +343,25 @@ function _patchPortal(frame: RenderFrame): void {
   nextElement.reference = prevElement!.reference;
 
   if (prevContainer !== nextContainer && nextChildren != null) {
-    _pushPatchFrame({
-      node: nextElement,
-      phase: PATCH_EXIT,
-      meta: {
-        prevElement,
-        renderRuntime,
-        hostNamespace: null,
-        rightSibling: null,
-        context: null,
-        parentReference: null,
-        placeHolderElement: null,
-      },
+    _pushPatchExitFrame(nextElement, {
+      prevElement,
+      renderRuntime,
+      hostNamespace: null,
+      rightSibling: null,
+      context: null,
+      parentReference: null,
+      placeHolderElement: null,
     });
   }
 
-  _pushPatchChildrenFrame({
-    node: nextElement,
-    phase: PATCH_CHILDREN,
-    meta: {
-      prevElement,
-      renderRuntime,
-      hostNamespace: renderRuntime.hostAdapter.getHostNamespaces(nextChildren, undefined)?.self,
-      rightSibling: null,
-      context,
-      parentReference: nextContainer,
-      placeHolderElement: null,
-    },
+  _pushPatchChildrenFrame(nextElement, {
+    prevElement,
+    renderRuntime,
+    hostNamespace: renderRuntime.hostAdapter.getHostNamespaces(nextChildren, undefined)?.self,
+    rightSibling: null,
+    context,
+    parentReference: nextContainer,
+    placeHolderElement: null,
   });
 }
 
@@ -414,17 +369,13 @@ function _patchFragment(frame: RenderFrame): void {
   const nextElement = frame.node;
   const { prevElement, renderRuntime, context, parentReference, hostNamespace, rightSibling } = frame.meta;
 
-  _pushPatchChildrenFrame({
-    node: nextElement,
-    phase: PATCH_CHILDREN,
-    meta: {
-      prevElement,
-      parentReference,
-      rightSibling,
-      context,
-      renderRuntime,
-      hostNamespace,
-      placeHolderElement: null,
-    },
+  _pushPatchChildrenFrame(nextElement, {
+    prevElement,
+    parentReference,
+    rightSibling,
+    context,
+    renderRuntime,
+    hostNamespace,
+    placeHolderElement: null,
   });
 }

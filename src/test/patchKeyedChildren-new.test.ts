@@ -1,7 +1,7 @@
 import { createElement, HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR, MOUNT_ENTER, PATCH_ENTER } from '@simpreact/internal';
 import { beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
-import { _pushMountFrame } from '../main/core/mounting.js';
-import { _pushPatchFrame } from '../main/core/patching.js';
+import { _pushMountEnterFrame } from '../main/core/mounting.js';
+import { _pushPatchEnterFrame } from '../main/core/patching.js';
 import { _patchKeyedChildren } from '../main/core/patchingChildren.js';
 import { _remove } from '../main/core/unmounting.js';
 
@@ -10,17 +10,17 @@ import { _remove } from '../main/core/unmounting.js';
 // ---------------------------------------------------------------------------
 
 vi.mock('../main/core/mounting.js', () => ({
-  _pushMountFrame: vi.fn(),
+  _pushMountEnterFrame: vi.fn(),
   _pushMountArrayChildrenFrame: vi.fn(),
 }));
 
 vi.mock('../main/core/patching.js', () => ({
-  _pushPatchFrame: vi.fn(),
+  _pushPatchEnterFrame: vi.fn(),
 }));
 
 vi.mock('../main/core/unmounting.js', () => ({
   _remove: vi.fn(),
-  _pushUnmountFrame: vi.fn(),
+  _pushUnmountEnterFrame: vi.fn(),
   _pushUnmountArrayChildrenFrame: vi.fn(),
   clearElementHostReference: vi.fn(),
 }));
@@ -80,15 +80,15 @@ let mountSpy: MockInstance;
 let patchSpy: MockInstance;
 let removeSpy: MockInstance;
 
-const patchedKeys = () => patchSpy.mock.calls.map((c: any) => c[0].node.key);
-const mountedKeys = () => mountSpy.mock.calls.map((c: any) => c[0].node.key);
+const patchedKeys = () => patchSpy.mock.calls.map((c: any) => c[0].key);
+const mountedKeys = () => mountSpy.mock.calls.map((c: any) => c[0].key);
 const removedKeys = () => removeSpy.mock.calls.map((c: any) => c[0].key);
 
 describe('patchKeyedChildren', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mountSpy = _pushMountFrame as unknown as MockInstance;
-    patchSpy = _pushPatchFrame as unknown as MockInstance;
+    mountSpy = _pushMountEnterFrame as unknown as MockInstance;
+    patchSpy = _pushPatchEnterFrame as unknown as MockInstance;
     removeSpy = _remove as unknown as MockInstance;
   });
 
@@ -219,8 +219,8 @@ describe('patchKeyedChildren', () => {
       _patchKeyedChildren(frame);
 
       const calls = mountSpy.mock.calls.map((c: any) => ({
-        key: c[0].node.key,
-        rightSibling: c[0].meta.rightSibling,
+        key: c[0].key,
+        rightSibling: c[1].rightSibling,
       }));
 
       const byKey = Object.fromEntries(calls.map((c: any) => [c.key, c.rightSibling]));
@@ -356,7 +356,7 @@ describe('patchKeyedChildren', () => {
       _patchKeyedChildren(frame);
 
       const calls = patchSpy.mock.calls as any[];
-      const prevsByKey = Object.fromEntries(calls.map(c => [c[0].node.key, c[0].meta.prevElement]));
+      const prevsByKey = Object.fromEntries(calls.map(c => [c[0].key, c[1].prevElement]));
       expect(prevsByKey['a']).toBe(prevA);
       expect(prevsByKey['b']).toBe(prevB);
     });
@@ -365,25 +365,21 @@ describe('patchKeyedChildren', () => {
       const { frame } = makeFrame([el('a'), el('b')], [el('a'), el('b')]);
       _patchKeyedChildren(frame);
 
-      for (const call of patchSpy.mock.calls as any[]) {
-        expect(call[0].phase).toBe(PATCH_ENTER);
-      }
+      expect(patchSpy.mock.calls.length).toBe(2);
     });
 
     it('passes MOUNT_ENTER as the phase on every mount frame', () => {
       const { frame } = makeFrame([], [el('a'), el('b')]);
       _patchKeyedChildren(frame);
 
-      for (const call of mountSpy.mock.calls as any[]) {
-        expect(call[0].phase).toBe(MOUNT_ENTER);
-      }
+      expect(mountSpy.mock.calls.length).toBe(2);
     });
 
     it('propagates parentReference, context, and hostNamespace unchanged', () => {
       const { frame } = makeFrame([el('a')], [el('a')]);
       _patchKeyedChildren(frame);
 
-      const meta = (patchSpy.mock.calls[0] as any)[0].meta;
+      const meta = (patchSpy.mock.calls[0] as any)[1];
       expect(meta.parentReference).toBe(frame.meta.parentReference);
       expect(meta.context).toBe(frame.meta.context);
       expect(meta.hostNamespace).toBe(frame.meta.hostNamespace);
@@ -412,10 +408,10 @@ describe('patchKeyedChildren', () => {
       const { frame } = makeFrame(prev, next);
       _patchKeyedChildren(frame);
 
-      const mountCall = (mountSpy.mock.calls as any[]).find((c: any) => c[0].node.key === 'e');
+      const mountCall = (mountSpy.mock.calls as any[]).find((c: any) => c[0].key === 'e');
       expect(mountCall).toBeDefined();
 
-      const rightSibling = mountCall[0].meta.rightSibling;
+      const rightSibling = mountCall[1].rightSibling;
       expect(rightSibling).not.toBeNull();
       expect(rightSibling?.key).toBe('tail');
     });
@@ -451,17 +447,17 @@ describe('patchKeyedChildren', () => {
       const renderRuntime = {
         renderStack: {
           push(frame: any) {
-            log.push({ phase: String(frame.phase), key: frame.node?.key ?? null });
+            log.push({ phase: String(frame.phase), key: frame.node.key });
           },
         } as any,
       };
 
       // Spy implementations append to the same log
-      mountSpy.mockImplementation((frame: any) => {
-        log.push({ phase: String(MOUNT_ENTER), key: frame.node?.key ?? null });
+      mountSpy.mockImplementation((element: any) => {
+        log.push({ phase: String(MOUNT_ENTER), key: element.key });
       });
-      patchSpy.mockImplementation((frame: any) => {
-        log.push({ phase: String(PATCH_ENTER), key: frame.node?.key ?? null });
+      patchSpy.mockImplementation((element: any) => {
+        log.push({ phase: String(PATCH_ENTER), key: element.key });
       });
 
       const prevElement = createElement('ul', null, ...prevChildren);
@@ -632,8 +628,8 @@ describe('patchKeyedChildren', () => {
       _patchKeyedChildren(frame);
 
       const calls = (mountSpy.mock.calls as any[]).map((c: any) => ({
-        key: c[0].node.key as string,
-        rightSibling: c[0].meta.rightSibling as any,
+        key: c[0].key as string,
+        rightSibling: c[1].rightSibling as any,
       }));
       const byKey = Object.fromEntries(calls.map(c => [c.key, c.rightSibling]));
 
@@ -700,7 +696,7 @@ describe('patchKeyedChildren', () => {
       _patchKeyedChildren(frame);
 
       for (const call of [...patchSpy.mock.calls, ...mountSpy.mock.calls] as any[]) {
-        expect(call[0].meta.placeHolderElement).toBeNull();
+        expect(call[1].placeHolderElement).toBeNull();
       }
     });
   });

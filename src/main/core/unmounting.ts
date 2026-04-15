@@ -20,19 +20,7 @@ export function unmount(element: SimpElement, renderRuntime: SimpRenderRuntime):
     throw new Error('Cannot unmount while rendering.');
   }
 
-  _pushUnmountFrame({
-    node: element,
-    phase: UNMOUNT_ENTER,
-    meta: {
-      renderRuntime,
-      rightSibling: null,
-      context: null,
-      hostNamespace: null,
-      prevElement: null,
-      parentReference: null,
-      placeHolderElement: null,
-    },
-  });
+  _pushUnmountEnterFrame(element, renderRuntime);
 
   processStack(renderRuntime);
 }
@@ -60,18 +48,10 @@ export function _unmount(frame: RenderFrame): void {
       return;
     }
 
-    _pushUnmountFrame({
-      node: current,
-      phase: UNMOUNT_EXIT,
-      meta: frame.meta,
-    });
+    _pushUnmountExitFrame(current, frame.meta.renderRuntime);
 
     if (current.children) {
-      _pushUnmountFrame({
-        node: current.children as SimpElement,
-        phase: UNMOUNT_ENTER,
-        meta: frame.meta,
-      });
+      _pushUnmountEnterFrame(current.children as SimpElement, frame.meta.renderRuntime);
     }
 
     return;
@@ -87,41 +67,55 @@ export function _unmount(frame: RenderFrame): void {
   }
 
   if ((current.flag & SIMP_ELEMENT_FLAG_HOST) !== 0) {
-    _pushUnmountFrame({
-      node: current,
-      phase: UNMOUNT_EXIT,
-      meta: frame.meta,
-    });
+    _pushUnmountExitFrame(current, frame.meta.renderRuntime);
   }
 
   if (current.childFlag === SIMP_ELEMENT_CHILD_FLAG_ELEMENT) {
-    _pushUnmountFrame({
-      node: current.children as SimpElement,
-      phase: UNMOUNT_ENTER,
-      meta: frame.meta,
-    });
+    _pushUnmountEnterFrame(current.children as SimpElement, frame.meta.renderRuntime);
     return;
   }
   if (current.childFlag === SIMP_ELEMENT_CHILD_FLAG_ELEMENT) {
-    _pushUnmountArrayChildrenFrame({
-      node: current,
-      phase: UNMOUNT_ENTER,
-      meta: frame.meta,
-    });
+    _pushUnmountArrayChildrenFrame(current, frame.meta.renderRuntime);
   }
 }
 
-export function _pushUnmountFrame(frame: RenderFrame): void {
-  frame.meta.renderRuntime.renderStack.push(frame);
+export function _pushUnmountEnterFrame(element: SimpElement, renderRuntime: SimpRenderRuntime): void {
+  renderRuntime.renderStack.push({
+    node: element,
+    phase: UNMOUNT_ENTER,
+    meta: {
+      renderRuntime,
+      rightSibling: null,
+      context: null,
+      hostNamespace: null,
+      prevElement: null,
+      parentReference: null,
+      placeHolderElement: null,
+    },
+  });
 }
 
-export function _pushUnmountArrayChildrenFrame(frame: RenderFrame): void {
-  for (let i = (frame.node.children as SimpElement[]).length - 1; i >= 0; i -= 1) {
-    _pushUnmountFrame({
-      node: (frame.node.children as SimpElement[])[i]!,
-      phase: UNMOUNT_ENTER,
-      meta: frame.meta,
-    });
+export function _pushUnmountExitFrame(element: SimpElement, renderRuntime: SimpRenderRuntime): void {
+  renderRuntime.renderStack.push({
+    node: element,
+    phase: UNMOUNT_EXIT,
+    meta: {
+      renderRuntime,
+      rightSibling: null,
+      context: null,
+      hostNamespace: null,
+      prevElement: null,
+      parentReference: null,
+      placeHolderElement: null,
+    },
+  });
+}
+
+export function _pushUnmountArrayChildrenFrame(element: SimpElement, renderRuntime: SimpRenderRuntime): void {
+  const children = element.children as SimpElement[];
+
+  for (let i = children.length - 1; i >= 0; i -= 1) {
+    _pushUnmountEnterFrame(children[i]!, renderRuntime);
   }
 }
 
@@ -162,17 +156,5 @@ export function _clearElementHostReference(
 
 export function _remove(element: SimpElement, parentReference: HostReference, renderRuntime: SimpRenderRuntime): void {
   _clearElementHostReference(element, parentReference, renderRuntime);
-  _pushUnmountFrame({
-    node: element,
-    phase: UNMOUNT_ENTER,
-    meta: {
-      renderRuntime,
-      rightSibling: null,
-      context: null,
-      hostNamespace: null,
-      prevElement: null,
-      parentReference: null,
-      placeHolderElement: null,
-    },
-  });
+  _pushUnmountEnterFrame(element, renderRuntime);
 }

@@ -1,17 +1,17 @@
 import { type RenderFrame, SIMP_ELEMENT_FLAG_HOST } from '@simpreact/internal';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { _pushHostOperation } from '../main/core/hostOperations.js';
-import { _pushMountFrame } from '../main/core/mounting.js';
-import { _pushPatchFrame } from '../main/core/patching.js';
+import { _pushHostOperationPlaceElement } from '../main/core/hostOperations.js';
+import { _pushMountEnterFrame } from '../main/core/mounting.js';
+import { _pushPatchEnterFrame } from '../main/core/patching.js';
 import { _patchKeyedChildren } from '../main/core/patchingChildren.js';
 import { _remove } from '../main/core/unmounting.js';
 import { findHostReferenceFromElement } from '../main/core/utils.js';
 
-vi.mock('../main/core/patching.js', () => ({ _pushPatchFrame: vi.fn() }));
-vi.mock('../main/core/mounting.js', () => ({ _pushMountFrame: vi.fn() }));
+vi.mock('../main/core/patching.js', () => ({ _pushPatchEnterFrame: vi.fn() }));
+vi.mock('../main/core/mounting.js', () => ({ _pushMountEnterFrame: vi.fn() }));
 vi.mock('../main/core/unmounting.js', () => ({ _remove: vi.fn() }));
 vi.mock('../main/core/utils.js', () => ({ findHostReferenceFromElement: vi.fn() }));
-vi.mock('../main/core/hostOperations.js', () => ({ _pushHostOperation: vi.fn() }));
+vi.mock('../main/core/hostOperations.js', () => ({ _pushHostOperationPlaceElement: vi.fn() }));
 
 type HostReference = { id: string };
 type Key = string;
@@ -78,10 +78,10 @@ describe('patchKeyedChildren', () => {
       },
     };
 
-    vi.mocked(_pushPatchFrame).mockImplementation(frame => {
-      frame.node.reference = frame.meta.prevElement!.reference;
+    vi.mocked(_pushPatchEnterFrame).mockImplementation((element, meta) => {
+      element.reference = meta.prevElement!.reference;
       calls.push(
-        `patch(${frame.meta.prevElement!.key} -> ${frame.node.key} before right sibling ${frame.meta.rightSibling?.key || 'null'})`
+        `patch(${meta.prevElement!.key} -> ${element.key} before right sibling ${meta.rightSibling?.key || 'null'})`
       );
     });
 
@@ -89,15 +89,13 @@ describe('patchKeyedChildren', () => {
       calls.push(`remove(${prev.key})`);
     });
 
-    vi.mocked(_pushMountFrame).mockImplementation(frame => {
-      frame.node.reference = { id: `ref:${frame.node.key}` };
-      calls.push(`mount(${frame.node.key} before right sibling ${frame.meta.rightSibling?.key || 'null'})`);
+    vi.mocked(_pushMountEnterFrame).mockImplementation((element, meta) => {
+      element.reference = { id: `ref:${element.key}` };
+      calls.push(`mount(${element.key} before right sibling ${meta.rightSibling?.key || 'null'})`);
     });
 
-    vi.mocked(_pushHostOperation).mockImplementation(frame => {
-      calls.push(
-        `placeElementBeforeAnchor(${frame.node.key} before right sibling ${frame.meta.rightSibling?.key || 'null'})`
-      );
+    vi.mocked(_pushHostOperationPlaceElement).mockImplementation((element, meta) => {
+      calls.push(`placeElementBeforeAnchor(${element.key} before right sibling ${meta.rightSibling?.key || 'null'})`);
     });
 
     vi.mocked(findHostReferenceFromElement).mockImplementation(node => {
@@ -141,7 +139,7 @@ describe('patchKeyedChildren', () => {
 
     expect(calls).toEqual(['patch(a -> a before right sibling null)', 'remove(b)']);
 
-    expect(vi.mocked(_pushMountFrame)).not.toHaveBeenCalled();
+    expect(vi.mocked(_pushMountEnterFrame)).not.toHaveBeenCalled();
     expect(runtime.hostAdapter.insertBefore).not.toHaveBeenCalled();
   });
 
@@ -152,7 +150,7 @@ describe('patchKeyedChildren', () => {
 
     expect(calls).toEqual(['mount(a before right sibling b)', 'mount(b before right sibling null)']);
 
-    expect(vi.mocked(_pushPatchFrame)).not.toHaveBeenCalled();
+    expect(vi.mocked(_pushPatchEnterFrame)).not.toHaveBeenCalled();
     expect(vi.mocked(_remove)).not.toHaveBeenCalled();
     expect(vi.mocked(findHostReferenceFromElement)).not.toHaveBeenCalled();
     expect(runtime.hostAdapter.insertBefore).not.toHaveBeenCalled();
@@ -188,7 +186,7 @@ describe('patchKeyedChildren', () => {
       'patch(c -> c before right sibling null)',
     ]);
 
-    expect(vi.mocked(_pushMountFrame)).not.toHaveBeenCalled();
+    expect(vi.mocked(_pushMountEnterFrame)).not.toHaveBeenCalled();
     expect(vi.mocked(_remove)).not.toHaveBeenCalled();
   });
 
@@ -203,7 +201,7 @@ describe('patchKeyedChildren', () => {
       'remove(b)',
       'patch(c -> c before right sibling null)',
     ]);
-    expect(vi.mocked(_pushMountFrame)).not.toHaveBeenCalled();
+    expect(vi.mocked(_pushMountEnterFrame)).not.toHaveBeenCalled();
   });
 
   it('Step 5 mixed: patch reusable, then remove unused, then mount new, then move/insert in final order', () => {
@@ -227,8 +225,8 @@ describe('patchKeyedChildren', () => {
   it('handles empty -> empty (no ops)', () => {
     _patchKeyedChildren(makeFrame([], [], parent, runtime));
     expect(calls).toEqual([]);
-    expect(vi.mocked(_pushPatchFrame)).not.toHaveBeenCalled();
-    expect(vi.mocked(_pushPatchFrame)).not.toHaveBeenCalled();
+    expect(vi.mocked(_pushPatchEnterFrame)).not.toHaveBeenCalled();
+    expect(vi.mocked(_pushMountEnterFrame)).not.toHaveBeenCalled();
     expect(vi.mocked(_remove)).not.toHaveBeenCalled();
     expect(runtime.hostAdapter.insertBefore).not.toHaveBeenCalled();
   });

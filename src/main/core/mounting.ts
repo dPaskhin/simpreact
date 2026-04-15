@@ -9,15 +9,9 @@ import {
   type SimpElement,
 } from './createElement.js';
 import type { HostReference } from './hostAdapter.js';
-import { _pushHostOperation } from './hostOperations.js';
+import { _pushHostOperationPlaceElement } from './hostOperations.js';
 import { type LifecycleEvent, lifecycleEventBus } from './lifecycleEventBus.js';
-import {
-  HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR,
-  MOUNT_ENTER,
-  MOUNT_EXIT,
-  processStack,
-  type RenderFrame,
-} from './processStack.js';
+import { MOUNT_ENTER, MOUNT_EXIT, processStack, type RenderFrame, type RenderFrameMeta } from './processStack.js';
 import { applyRef } from './ref.js';
 import type { SimpRenderRuntime } from './runtime.js';
 import { bitScanForwardIndex } from './utils.js';
@@ -36,18 +30,14 @@ export function mount(
     throw new Error('Cannot mount while rendering.');
   }
 
-  _pushMountFrame({
-    node: element,
-    phase: MOUNT_ENTER,
-    meta: {
-      parentReference,
-      renderRuntime,
-      rightSibling,
-      context,
-      hostNamespace,
-      prevElement: null,
-      placeHolderElement: null,
-    },
+  _pushMountEnterFrame(element, {
+    parentReference,
+    rightSibling,
+    context,
+    hostNamespace,
+    renderRuntime,
+    placeHolderElement: null,
+    prevElement: null,
   });
 
   processStack(renderRuntime);
@@ -57,33 +47,31 @@ export function _mount(frame: RenderFrame): void {
   mountHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
 }
 
-export function _pushMountFrame(frame: RenderFrame): void {
-  frame.meta.renderRuntime.renderStack.push(frame);
+export function _pushMountEnterFrame(element: SimpElement, meta: RenderFrameMeta): void {
+  meta.renderRuntime.renderStack.push({
+    node: element,
+    phase: MOUNT_ENTER,
+    meta,
+  });
 }
 
-export function _pushMountArrayChildrenFrame(frame: RenderFrame): void {
-  const children = frame.node.children as SimpElement[];
-  const { parentReference, context, hostNamespace, renderRuntime } = frame.meta;
+function _pushMountExitFrame(element: SimpElement, meta: RenderFrameMeta): void {
+  meta.renderRuntime.renderStack.push({
+    node: element,
+    phase: MOUNT_EXIT,
+    meta,
+  });
+}
 
-  let rightSibling = frame.meta.rightSibling;
+export function _pushMountArrayChildrenFrame(element: SimpElement, meta: RenderFrameMeta): void {
+  const children = element.children as SimpElement[];
+  let rightSibling = null;
 
   for (let i = children.length - 1; i >= 0; i--) {
     const child = children[i]!;
-    child.parent = frame.node;
+    child.parent = element;
 
-    _pushMountFrame({
-      node: child,
-      phase: MOUNT_ENTER,
-      meta: {
-        prevElement: null,
-        parentReference,
-        rightSibling,
-        context,
-        hostNamespace,
-        renderRuntime,
-        placeHolderElement: null,
-      },
-    });
+    _pushMountEnterFrame(child, { ...meta, rightSibling });
 
     rightSibling = child;
   }
@@ -107,18 +95,14 @@ function _mountHostElement(frame: RenderFrame): void {
     }
 
     if (parentReference) {
-      _pushHostOperation({
-        node: element,
-        phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR,
-        meta: {
-          renderRuntime,
-          hostNamespace: null,
-          rightSibling,
-          context: null,
-          parentReference,
-          placeHolderElement: null,
-          prevElement: null,
-        },
+      _pushHostOperationPlaceElement(element, {
+        renderRuntime,
+        hostNamespace: null,
+        rightSibling,
+        context: null,
+        parentReference,
+        placeHolderElement: null,
+        prevElement: null,
       });
     }
 
@@ -135,51 +119,40 @@ function _mountHostElement(frame: RenderFrame): void {
 
   renderRuntime.hostAdapter.attachElementToReference(element, hostReference);
 
-  renderRuntime.renderStack.push({
-    node: element,
-    phase: MOUNT_EXIT,
-    meta: {
-      renderRuntime,
-      hostNamespace: hostNamespaces?.self,
-      rightSibling,
-      context,
-      parentReference,
-      placeHolderElement: null,
-      prevElement: null,
-    },
+  _pushMountExitFrame(element, {
+    renderRuntime,
+    hostNamespace: hostNamespaces?.self,
+    rightSibling,
+    context,
+    parentReference,
+    placeHolderElement: null,
+    prevElement: null,
   });
 
   switch (element.childFlag) {
     case SIMP_ELEMENT_CHILD_FLAG_LIST: {
-      _pushMountArrayChildrenFrame({
-        node: element,
-        phase: MOUNT_ENTER,
-        meta: {
-          renderRuntime,
-          hostNamespace: hostNamespaces?.children,
-          rightSibling: null,
-          context,
-          parentReference: hostReference,
-          placeHolderElement: null,
-          prevElement: null,
-        },
+      _pushMountArrayChildrenFrame(element, {
+        renderRuntime,
+        hostNamespace: hostNamespaces?.children,
+        rightSibling: null,
+        context,
+        parentReference: hostReference,
+        placeHolderElement: null,
+        prevElement: null,
       });
       break;
     }
     case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
       (element.children as SimpElement).parent = element;
-      _pushMountFrame({
-        node: element.children as SimpElement,
-        phase: MOUNT_ENTER,
-        meta: {
-          renderRuntime,
-          hostNamespace: hostNamespaces?.children,
-          rightSibling: null,
-          context,
-          parentReference: hostReference,
-          placeHolderElement: null,
-          prevElement: null,
-        },
+
+      _pushMountEnterFrame(element.children as SimpElement, {
+        renderRuntime,
+        hostNamespace: hostNamespaces?.children,
+        rightSibling: null,
+        context,
+        parentReference: hostReference,
+        placeHolderElement: null,
+        prevElement: null,
       });
     }
   }
@@ -260,35 +233,28 @@ function _mountFunctionalElement(frame: RenderFrame): void {
     triedToRerenderUnsubscribe!();
   }
 
-  renderRuntime.renderStack.push({
-    node: element,
-    phase: MOUNT_EXIT,
-    meta: {
-      renderRuntime,
-      hostNamespace: null,
-      rightSibling: null,
-      context: null,
-      parentReference: null,
-      placeHolderElement: null,
-      prevElement: null,
-    },
+  _pushMountExitFrame(element, {
+    renderRuntime,
+    hostNamespace: null,
+    rightSibling: null,
+    context: null,
+    parentReference: null,
+    placeHolderElement: null,
+    prevElement: null,
   });
 
   if (element.children) {
     const child = element.children as SimpElement;
     child.parent = element;
-    renderRuntime.renderStack.push({
-      node: child,
-      phase: MOUNT_ENTER,
-      meta: {
-        renderRuntime,
-        hostNamespace,
-        rightSibling,
-        context: element.context,
-        parentReference,
-        placeHolderElement: null,
-        prevElement: null,
-      },
+
+    _pushMountEnterFrame(child, {
+      renderRuntime,
+      hostNamespace,
+      rightSibling,
+      context: element.context,
+      parentReference,
+      placeHolderElement: null,
+      prevElement: null,
     });
   }
 }
@@ -298,18 +264,14 @@ function _mountTextElement(frame: RenderFrame): void {
 
   frame.node.reference = renderRuntime.hostAdapter.createTextReference(frame.node.children as string);
 
-  _pushHostOperation({
-    node: frame.node,
-    phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR,
-    meta: {
-      renderRuntime,
-      hostNamespace: null,
-      rightSibling: frame.meta.rightSibling,
-      context: null,
-      parentReference,
-      placeHolderElement: null,
-      prevElement: null,
-    },
+  _pushHostOperationPlaceElement(frame.node, {
+    renderRuntime,
+    hostNamespace: null,
+    rightSibling: frame.meta.rightSibling,
+    context: null,
+    parentReference,
+    placeHolderElement: null,
+    prevElement: null,
   });
 }
 
@@ -324,51 +286,39 @@ function _mountPortal(frame: RenderFrame): void {
 
   const placeHolderElement = createTextElement('');
 
-  renderRuntime.renderStack.push({
-    node: element,
-    phase: MOUNT_EXIT,
-    meta: {
-      renderRuntime,
-      rightSibling: null,
-      context: null,
-      parentReference: null,
-      hostNamespace: null,
-      placeHolderElement,
-      prevElement: null,
-    },
+  _pushMountExitFrame(element, {
+    renderRuntime,
+    rightSibling: null,
+    context: null,
+    parentReference: null,
+    hostNamespace: null,
+    placeHolderElement,
+    prevElement: null,
   });
 
   if (element.children) {
     const child = element.children as SimpElement;
     child.parent = element;
 
-    renderRuntime.renderStack.push({
-      node: child,
-      phase: MOUNT_ENTER,
-      meta: {
-        renderRuntime,
-        rightSibling: null,
-        context,
-        parentReference: element.ref,
-        hostNamespace: renderRuntime.hostAdapter.getHostNamespaces(child, undefined)?.self,
-        placeHolderElement: null,
-        prevElement: null,
-      },
+    _pushMountEnterFrame(child, {
+      renderRuntime,
+      rightSibling: null,
+      context,
+      parentReference: element.ref,
+      hostNamespace: renderRuntime.hostAdapter.getHostNamespaces(child, undefined)?.self,
+      placeHolderElement: null,
+      prevElement: null,
     });
   }
 
-  renderRuntime.renderStack.push({
-    node: placeHolderElement,
-    phase: MOUNT_ENTER,
-    meta: {
-      renderRuntime,
-      rightSibling,
-      context: null,
-      parentReference,
-      hostNamespace: null,
-      placeHolderElement: null,
-      prevElement: null,
-    },
+  _pushMountEnterFrame(placeHolderElement, {
+    renderRuntime,
+    rightSibling,
+    context: null,
+    parentReference,
+    hostNamespace: null,
+    placeHolderElement: null,
+    prevElement: null,
   });
 }
 
@@ -378,36 +328,28 @@ function _mountFragment(frame: RenderFrame): void {
 
   switch (element.childFlag) {
     case SIMP_ELEMENT_CHILD_FLAG_LIST:
-      _pushMountArrayChildrenFrame({
-        node: element,
-        phase: MOUNT_ENTER,
-        meta: {
-          renderRuntime,
-          hostNamespace,
-          rightSibling,
-          context,
-          parentReference,
-          placeHolderElement: null,
-          prevElement: null,
-        },
+      _pushMountArrayChildrenFrame(element, {
+        renderRuntime,
+        hostNamespace,
+        rightSibling,
+        context,
+        parentReference,
+        placeHolderElement: null,
+        prevElement: null,
       });
 
       break;
     case SIMP_ELEMENT_CHILD_FLAG_ELEMENT:
       const child = element.children as SimpElement;
       child.parent = element;
-      renderRuntime.renderStack.push({
-        node: child,
-        phase: MOUNT_ENTER,
-        meta: {
-          renderRuntime,
-          hostNamespace,
-          rightSibling,
-          context,
-          parentReference,
-          placeHolderElement: null,
-          prevElement: null,
-        },
+      _pushMountEnterFrame(child, {
+        renderRuntime,
+        hostNamespace,
+        rightSibling,
+        context,
+        parentReference,
+        placeHolderElement: null,
+        prevElement: null,
       });
   }
 }

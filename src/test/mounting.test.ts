@@ -69,9 +69,8 @@ describe('mounting', () => {
       const child1 = createElement('span');
       const child2 = createElement('p');
       const element = createElement('div', null, child1, child2);
-      const parentReference = testHostAdapter.createReference('div');
 
-      mount(element, parentReference, null, null, null, renderRuntime);
+      mount(element, null, null, null, null, renderRuntime);
 
       expect(testHostAdapter.createReference).toHaveBeenCalledWith('div', '');
       expect(testHostAdapter.createReference).toHaveBeenCalledWith('span', '');
