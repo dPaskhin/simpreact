@@ -11,5 +11,4 @@ export * from './processStack.js';
 export * from './ref.js';
 export * from './rerender.js';
 export * from './runtime.js';
-export * from './traverseStack.js';
 export * from './unmounting.js';

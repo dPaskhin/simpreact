@@ -8,10 +8,15 @@ import {
   SIMP_ELEMENT_CHILD_FLAG_TEXT,
   type SimpElement,
 } from './createElement.js';
-import type { HostReference } from './hostAdapter.js';
 import { _pushHostOperationPlaceElement } from './hostOperations.js';
-import { type LifecycleEvent, lifecycleEventBus } from './lifecycleEventBus.js';
-import { MOUNT_ENTER, MOUNT_EXIT, processStack, type RenderFrame, type RenderFrameMeta } from './processStack.js';
+import { type LifecycleEvent, lifecycleEventBus, MOUNTING_PHASE } from './lifecycleEventBus.js';
+import {
+  MOUNT_ENTER,
+  MOUNT_EXIT,
+  processStack,
+  type SimpRenderFrame,
+  type SimpRenderFrameMeta,
+} from './processStack.js';
 import { applyRef } from './ref.js';
 import type { SimpRenderRuntime } from './runtime.js';
 import { bitScanForwardIndex } from './utils.js';
@@ -20,13 +25,13 @@ const mountHandlers = [_mountHostElement, _mountFunctionalElement, _mountTextEle
 
 export function mount(
   element: SimpElement,
-  parentReference: HostReference,
+  parentReference: unknown,
   rightSibling: Nullable<SimpElement>,
   context: unknown,
   hostNamespace: Maybe<string>,
   renderRuntime: SimpRenderRuntime
 ): void {
-  if (renderRuntime.renderStack.size !== 0) {
+  if (renderRuntime.renderStack.length !== 0) {
     throw new Error('Cannot mount while rendering.');
   }
 
@@ -43,11 +48,11 @@ export function mount(
   processStack(renderRuntime);
 }
 
-export function _mount(frame: RenderFrame): void {
+export function _mount(frame: SimpRenderFrame): void {
   mountHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
 }
 
-export function _pushMountEnterFrame(element: SimpElement, meta: RenderFrameMeta): void {
+export function _pushMountEnterFrame(element: SimpElement, meta: SimpRenderFrameMeta): void {
   meta.renderRuntime.renderStack.push({
     node: element,
     phase: MOUNT_ENTER,
@@ -55,7 +60,7 @@ export function _pushMountEnterFrame(element: SimpElement, meta: RenderFrameMeta
   });
 }
 
-function _pushMountExitFrame(element: SimpElement, meta: RenderFrameMeta): void {
+function _pushMountExitFrame(element: SimpElement, meta: SimpRenderFrameMeta): void {
   meta.renderRuntime.renderStack.push({
     node: element,
     phase: MOUNT_EXIT,
@@ -63,7 +68,7 @@ function _pushMountExitFrame(element: SimpElement, meta: RenderFrameMeta): void 
   });
 }
 
-export function _pushMountArrayChildrenFrame(element: SimpElement, meta: RenderFrameMeta): void {
+export function _pushMountArrayChildrenFrame(element: SimpElement, meta: SimpRenderFrameMeta): void {
   const children = element.children as SimpElement[];
   let rightSibling = null;
 
@@ -77,7 +82,7 @@ export function _pushMountArrayChildrenFrame(element: SimpElement, meta: RenderF
   }
 }
 
-function _mountHostElement(frame: RenderFrame): void {
+function _mountHostElement(frame: SimpRenderFrame): void {
   const element = frame.node;
   const { parentReference, rightSibling, context, hostNamespace, renderRuntime } = frame.meta;
 
@@ -158,7 +163,7 @@ function _mountHostElement(frame: RenderFrame): void {
   }
 }
 
-function _mountFunctionalElement(frame: RenderFrame): void {
+function _mountFunctionalElement(frame: SimpRenderFrame): void {
   const element = frame.node;
   const { parentReference, rightSibling, context, hostNamespace, renderRuntime } = frame.meta;
 
@@ -204,7 +209,7 @@ function _mountFunctionalElement(frame: RenderFrame): void {
       lifecycleEventBus.publish({
         type: 'beforeRender',
         element,
-        phase: 'mounting',
+        phase: MOUNTING_PHASE,
         renderRuntime,
       });
 
@@ -213,14 +218,21 @@ function _mountFunctionalElement(frame: RenderFrame): void {
       lifecycleEventBus.publish({
         type: 'afterRender',
         element,
-        phase: 'mounting',
+        phase: MOUNTING_PHASE,
         renderRuntime,
       });
     } while (triedToRerender);
 
     normalizeRoot(element, children, false);
   } catch (error) {
-    const event: LifecycleEvent = { type: 'errored', element, error, phase: 'mounting', handled: false, renderRuntime };
+    const event: LifecycleEvent = {
+      type: 'errored',
+      element,
+      error,
+      phase: MOUNTING_PHASE,
+      handled: false,
+      renderRuntime,
+    };
 
     lifecycleEventBus.publish(event);
 
@@ -259,7 +271,7 @@ function _mountFunctionalElement(frame: RenderFrame): void {
   }
 }
 
-function _mountTextElement(frame: RenderFrame): void {
+function _mountTextElement(frame: SimpRenderFrame): void {
   const { renderRuntime, parentReference } = frame.meta;
 
   frame.node.reference = renderRuntime.hostAdapter.createTextReference(frame.node.children as string);
@@ -275,7 +287,7 @@ function _mountTextElement(frame: RenderFrame): void {
   });
 }
 
-function _mountPortal(frame: RenderFrame): void {
+function _mountPortal(frame: SimpRenderFrame): void {
   const element = frame.node;
   const { parentReference, rightSibling, context, renderRuntime } = frame.meta;
 
@@ -322,7 +334,7 @@ function _mountPortal(frame: RenderFrame): void {
   });
 }
 
-function _mountFragment(frame: RenderFrame): void {
+function _mountFragment(frame: SimpRenderFrame): void {
   const element = frame.node;
   const { parentReference, hostNamespace, context, renderRuntime, rightSibling } = frame.meta;
 

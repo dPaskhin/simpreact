@@ -3,10 +3,10 @@ import {
   createElement,
   createTextElement,
   lifecycleEventBus,
+  MOUNTING_PHASE,
   mount,
   type SimpElement,
   type SimpRenderRuntime,
-  TraversalStack,
 } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
@@ -17,7 +17,7 @@ const renderRuntime: SimpRenderRuntime = {
   renderer(type, element) {
     return type(element.props || emptyObject);
   },
-  renderStack: new TraversalStack(),
+  renderStack: [],
 };
 
 const createContext = createCreateContext(renderRuntime);
@@ -128,13 +128,13 @@ describe('mounting', () => {
       expect(listener).toHaveBeenCalledWith({
         type: 'beforeRender',
         element,
-        phase: 'mounting',
+        phase: MOUNTING_PHASE,
         renderRuntime,
       });
       expect(listener).toHaveBeenCalledWith({
         type: 'afterRender',
         element,
-        phase: 'mounting',
+        phase: MOUNTING_PHASE,
         renderRuntime,
       });
       expect(listener).toHaveBeenCalledWith({ type: 'mounted', element, renderRuntime });

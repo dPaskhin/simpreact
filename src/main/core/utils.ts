@@ -7,7 +7,6 @@ import {
   SIMP_ELEMENT_FLAG_TEXT,
   type SimpElement,
 } from './createElement.js';
-import type { HostReference } from './hostAdapter.js';
 import type { SimpRenderRuntime } from './runtime.js';
 
 export function bitScanForwardIndex(flag: number): number {
@@ -23,7 +22,7 @@ export function isHostLike(flag: number): boolean {
   );
 }
 
-export function findParentReferenceFromElement(element: SimpElement): HostReference {
+export function findParentReferenceFromElement(element: SimpElement): unknown | null {
   let flag: number;
   let temp: Nullable<SimpElement> = element;
 
@@ -44,13 +43,13 @@ const placeStack: SimpElement[] = [];
 
 export function placeElementBeforeAnchor(
   element: SimpElement,
-  anchor: HostReference,
-  parentReference: HostReference,
+  anchor: unknown,
+  parentReference: unknown,
   renderRuntime: SimpRenderRuntime
 ): void {
   const { hostAdapter } = renderRuntime;
   placeStack.push(element);
-  let nextAnchor: HostReference | null = anchor;
+  let nextAnchor: unknown | null = anchor;
 
   while (placeStack.length !== 0) {
     const current = placeStack.pop()!;
@@ -72,19 +71,21 @@ export function placeElementBeforeAnchor(
   }
 }
 
-export function resolveAnchorReference(rightSibling: Nullable<SimpElement>): HostReference {
+export function resolveAnchorReference(rightSibling: Nullable<SimpElement>): unknown | null {
   let current: Nullable<SimpElement> = rightSibling;
 
   while (current != null) {
     const reference = findHostReferenceFromElement(current);
-    if (reference != null) return reference;
+    if (reference != null) {
+      return reference;
+    }
     current = findNextLogicalSibling(current);
   }
 
   return null;
 }
 
-export function findHostReferenceFromElement(element: Nullable<SimpElement>): HostReference {
+export function findHostReferenceFromElement(element: Nullable<SimpElement>): unknown | null {
   if (element == null) {
     return null;
   }
@@ -99,7 +100,7 @@ export function findHostReferenceFromElement(element: Nullable<SimpElement>): Ho
     }
 
     if (isHostLike(node.flag)) {
-      return node.reference as HostReference;
+      return node.reference;
     }
 
     if (node.childFlag === SIMP_ELEMENT_CHILD_FLAG_LIST) {
@@ -115,13 +116,16 @@ export function findHostReferenceFromElement(element: Nullable<SimpElement>): Ho
   return null;
 }
 
+// TODO: make indices for children in a parent with list of children
 function findNextLogicalSibling(element: SimpElement): Nullable<SimpElement> {
   let current: Nullable<SimpElement> = element;
 
   while (current != null) {
     const parent = current.parent as Nullable<SimpElement>;
 
-    if (parent == null || isHostLike(parent.flag)) return null;
+    if (parent == null || isHostLike(parent.flag)) {
+      return null;
+    }
 
     if (parent.childFlag === SIMP_ELEMENT_CHILD_FLAG_LIST) {
       const siblings = parent.children as SimpElement[];

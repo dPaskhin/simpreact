@@ -1,4 +1,4 @@
-import { createElement, createPortal, mount, type SimpRenderRuntime, TraversalStack } from '@simpreact/internal';
+import { createElement, createPortal, mount, type SimpRenderRuntime } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { testHostAdapter } from './test-host-adapter.js';
@@ -8,7 +8,7 @@ const renderRuntime: SimpRenderRuntime = {
   renderer(type, element) {
     return type(element.props || emptyObject);
   },
-  renderStack: new TraversalStack(),
+  renderStack: [],
 };
 
 describe('mountPortal', () => {

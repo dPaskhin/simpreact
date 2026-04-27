@@ -1,6 +1,6 @@
 import { createCreateRoot } from '@simpreact/dom';
 import { createUseEffect, createUseRef, createUseRerender } from '@simpreact/hooks';
-import { createElement, type SimpRenderRuntime, TraversalStack } from '@simpreact/internal';
+import { createElement, type SimpRenderRuntime } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -16,7 +16,7 @@ const renderRuntime: SimpRenderRuntime = {
   renderer(type, element) {
     return type(element.props || emptyObject);
   },
-  renderStack: new TraversalStack(),
+  renderStack: [],
 };
 
 const createRoot = createCreateRoot(renderRuntime);

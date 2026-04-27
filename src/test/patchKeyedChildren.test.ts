@@ -1,4 +1,4 @@
-import { type RenderFrame, SIMP_ELEMENT_FLAG_HOST } from '@simpreact/internal';
+import { SIMP_ELEMENT_FLAG_HOST, type SimpRenderFrame } from '@simpreact/internal';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { _pushHostOperationPlaceElement } from '../main/core/hostOperations.js';
 import { _pushMountEnterFrame } from '../main/core/mounting.js';
@@ -41,7 +41,7 @@ function makeFrame(
   next: SimpElement[],
   parent: HostReference,
   runtime: SimpRenderRuntime
-): RenderFrame {
+): SimpRenderFrame {
   return {
     node: {
       children: next,

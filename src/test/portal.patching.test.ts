@@ -8,7 +8,6 @@ import {
   patch,
   type SimpElement,
   type SimpRenderRuntime,
-  TraversalStack,
 } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -20,7 +19,7 @@ const renderRuntime: SimpRenderRuntime = {
   renderer(type, element) {
     return type(element.props || emptyObject);
   },
-  renderStack: new TraversalStack(),
+  renderStack: [],
 };
 
 const render = createRenderer(renderRuntime);

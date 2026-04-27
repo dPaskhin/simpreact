@@ -1,11 +1,9 @@
 import type { Maybe, Nullable } from '@simpreact/shared';
 import type { SimpElement } from './createElement.js';
-import type { HostReference } from './hostAdapter.js';
 import { _mount } from './mounting.js';
 import { _patch } from './patching.js';
 import { _patchChildren, _patchKeyedChildren } from './patchingChildren.js';
 import type { SimpRenderRuntime } from './runtime.js';
-import type { TraversalFrame } from './traverseStack.js';
 import { _unmount } from './unmounting.js';
 import { placeElementBeforeAnchor, resolveAnchorReference } from './utils.js';
 
@@ -20,9 +18,9 @@ export const UNMOUNT_EXIT = 8;
 export const HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR = 9;
 export const HOST_OPS_REPLACE_CHILD = 10;
 
-export interface RenderFrameMeta {
+export interface SimpRenderFrameMeta {
   prevElement: Nullable<SimpElement>;
-  parentReference: HostReference;
+  parentReference: unknown;
   rightSibling: Nullable<SimpElement>;
   context: unknown;
   hostNamespace: Maybe<string>;
@@ -30,12 +28,18 @@ export interface RenderFrameMeta {
   placeHolderElement: Nullable<SimpElement>;
 }
 
-export interface RenderFrame extends TraversalFrame<SimpElement, RenderFrameMeta> {}
+export interface SimpRenderFrame {
+  node: SimpElement;
+  phase: number;
+  meta: SimpRenderFrameMeta;
+}
+
+export type SimpRenderStack = SimpRenderFrame[];
 
 export function processStack(renderRuntime: SimpRenderRuntime): void {
   const stack = renderRuntime.renderStack;
 
-  while (!stack.isEmpty) {
+  while (stack.length > 0) {
     const frame = stack.pop()!;
 
     switch (frame.phase) {

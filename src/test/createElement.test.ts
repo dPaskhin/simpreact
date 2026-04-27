@@ -19,7 +19,6 @@ import {
   SIMP_ELEMENT_FLAG_TEXT,
   type SimpElement,
   type SimpRenderRuntime,
-  TraversalStack,
 } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { describe, expect, it } from 'vitest';
@@ -38,7 +37,7 @@ const renderRuntime: SimpRenderRuntime = {
   renderer(type, element) {
     return type(element.props || emptyObject);
   },
-  renderStack: new TraversalStack(),
+  renderStack: [],
 };
 
 const createContext = createCreateContext(renderRuntime);

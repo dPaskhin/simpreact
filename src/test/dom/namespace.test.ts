@@ -1,4 +1,4 @@
-import { createElement, mount, type SimpRenderRuntime, TraversalStack } from '@simpreact/internal';
+import { createElement, mount, type SimpRenderRuntime } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { domAdapter } from '../../main/dom/domAdapter.js';
@@ -13,7 +13,7 @@ const renderRuntime: SimpRenderRuntime = {
   renderer(type, element) {
     return type(element.props || emptyObject);
   },
-  renderStack: new TraversalStack(),
+  renderStack: [],
 };
 
 describe('namespace', () => {

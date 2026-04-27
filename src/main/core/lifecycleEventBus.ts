@@ -1,18 +1,20 @@
 import type { SimpElement } from './createElement.js';
 import type { SimpRenderRuntime } from './runtime.js';
 
+export const MOUNTING_PHASE = 0;
+export const UPDATING_PHASE = 1;
+
 export type LifecycleEvent =
   | {
       type: 'beforeRender';
       element: SimpElement;
-      // TODO: update to 1 | 2
-      phase: 'mounting' | 'updating';
+      phase: number;
       renderRuntime: SimpRenderRuntime;
     }
   | {
       type: 'afterRender';
       element: SimpElement;
-      phase: 'mounting' | 'updating';
+      phase: number;
       renderRuntime: SimpRenderRuntime;
     }
   | { type: 'triedToRerender'; element: SimpElement; renderRuntime: SimpRenderRuntime }
@@ -23,7 +25,7 @@ export type LifecycleEvent =
       type: 'errored';
       element: SimpElement;
       error: any;
-      phase: 'mounting' | 'updating';
+      phase: number;
       handled: boolean;
       renderRuntime: SimpRenderRuntime;
     };

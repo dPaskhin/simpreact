@@ -9,14 +9,13 @@ import {
   SIMP_ELEMENT_FLAG_TEXT,
   type SimpElement,
 } from './createElement.js';
-import type { HostReference } from './hostAdapter.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
-import { processStack, type RenderFrame, UNMOUNT_ENTER, UNMOUNT_EXIT } from './processStack.js';
+import { processStack, type SimpRenderFrame, UNMOUNT_ENTER, UNMOUNT_EXIT } from './processStack.js';
 import { unmountRef } from './ref.js';
 import type { SimpRenderRuntime } from './runtime.js';
 
 export function unmount(element: SimpElement, renderRuntime: SimpRenderRuntime): void {
-  if (renderRuntime.renderStack.size !== 0) {
+  if (renderRuntime.renderStack.length !== 0) {
     throw new Error('Cannot unmount while rendering.');
   }
 
@@ -25,7 +24,7 @@ export function unmount(element: SimpElement, renderRuntime: SimpRenderRuntime):
   processStack(renderRuntime);
 }
 
-export function _unmount(frame: RenderFrame): void {
+export function _unmount(frame: SimpRenderFrame): void {
   const current = frame.node;
 
   if (frame.phase === UNMOUNT_EXIT) {
@@ -121,7 +120,7 @@ export function _pushUnmountArrayChildrenFrame(element: SimpElement, renderRunti
 
 export function _clearElementHostReference(
   element: Maybe<SimpElement>,
-  parentHostReference: HostReference,
+  parentHostReference: unknown,
   renderRuntime: SimpRenderRuntime
 ): void {
   while (element != null) {
@@ -154,7 +153,7 @@ export function _clearElementHostReference(
   }
 }
 
-export function _remove(element: SimpElement, parentReference: HostReference, renderRuntime: SimpRenderRuntime): void {
+export function _remove(element: SimpElement, parentReference: unknown, renderRuntime: SimpRenderRuntime): void {
   _clearElementHostReference(element, parentReference, renderRuntime);
   _pushUnmountEnterFrame(element, renderRuntime);
 }

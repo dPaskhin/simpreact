@@ -3,8 +3,6 @@ import type { Maybe, Nullable } from '@simpreact/shared';
 import type { SimpElement } from './createElement.js';
 import type { SimpRenderRuntime } from './runtime.js';
 
-export type HostReference = unknown;
-
 export interface HostAdapter<HostRef = unknown, HostTextRef = unknown, NS = string> {
   createReference(type: string, namespace?: Maybe<NS>): HostRef;
 

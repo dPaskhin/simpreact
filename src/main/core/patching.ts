@@ -8,13 +8,18 @@ import {
   SIMP_ELEMENT_FLAG_HOST,
   type SimpElement,
 } from './createElement.js';
-import type { HostReference } from './hostAdapter.js';
 import { _pushHostOperationReplaceElement } from './hostOperations.js';
-import { type LifecycleEvent, lifecycleEventBus } from './lifecycleEventBus.js';
+import { type LifecycleEvent, lifecycleEventBus, UPDATING_PHASE } from './lifecycleEventBus.js';
 import { isMemo } from './memo.js';
 import { _pushMountEnterFrame } from './mounting.js';
 import { _pushPatchChildrenFrame } from './patchingChildren.js';
-import { PATCH_ENTER, PATCH_EXIT, processStack, type RenderFrame, type RenderFrameMeta } from './processStack.js';
+import {
+  PATCH_ENTER,
+  PATCH_EXIT,
+  processStack,
+  type SimpRenderFrame,
+  type SimpRenderFrameMeta,
+} from './processStack.js';
 import { applyRef } from './ref.js';
 import type { SimpRenderRuntime } from './runtime.js';
 import { _clearElementHostReference, _pushUnmountEnterFrame, _remove } from './unmounting.js';
@@ -25,13 +30,13 @@ const patchHandlers = [_patchHostElement, _patchFunctionalComponent, _patchTextE
 export function patch(
   prevElement: SimpElement,
   nextElement: SimpElement,
-  parentReference: HostReference,
+  parentReference: unknown,
   rightSibling: Nullable<SimpElement>,
   context: unknown,
   hostNamespace: Maybe<string>,
   renderRuntime: SimpRenderRuntime
 ): void {
-  if (renderRuntime.renderStack.size !== 0) {
+  if (renderRuntime.renderStack.length !== 0) {
     throw new Error('Cannot patch while rendering.');
   }
 
@@ -48,7 +53,7 @@ export function patch(
   processStack(renderRuntime);
 }
 
-export function _pushPatchEnterFrame(element: SimpElement, meta: RenderFrameMeta): void {
+export function _pushPatchEnterFrame(element: SimpElement, meta: SimpRenderFrameMeta): void {
   meta.renderRuntime.renderStack.push({
     node: element,
     phase: PATCH_ENTER,
@@ -56,7 +61,7 @@ export function _pushPatchEnterFrame(element: SimpElement, meta: RenderFrameMeta
   });
 }
 
-export function _pushPatchExitFrame(element: SimpElement, meta: RenderFrameMeta): void {
+export function _pushPatchExitFrame(element: SimpElement, meta: SimpRenderFrameMeta): void {
   meta.renderRuntime.renderStack.push({
     node: element,
     phase: PATCH_EXIT,
@@ -64,7 +69,7 @@ export function _pushPatchExitFrame(element: SimpElement, meta: RenderFrameMeta)
   });
 }
 
-export function _patch(frame: RenderFrame): void {
+export function _patch(frame: SimpRenderFrame): void {
   const nextElement = frame.node;
   const { prevElement } = frame.meta;
 
@@ -77,7 +82,7 @@ export function _patch(frame: RenderFrame): void {
   patchHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
 }
 
-function _replaceWithNewElement(frame: RenderFrame): void {
+function _replaceWithNewElement(frame: SimpRenderFrame): void {
   const nextElement = frame.node;
   const { prevElement, parentReference, context, hostNamespace, renderRuntime } = frame.meta;
 
@@ -99,7 +104,7 @@ function _replaceWithNewElement(frame: RenderFrame): void {
       context,
       hostNamespace,
       renderRuntime,
-      parentReference: null,
+      parentReference: null!,
       rightSibling: null,
       prevElement: null,
       placeHolderElement: null,
@@ -118,7 +123,7 @@ function _replaceWithNewElement(frame: RenderFrame): void {
   }
 }
 
-function _patchHostElement(frame: RenderFrame): void {
+function _patchHostElement(frame: SimpRenderFrame): void {
   const nextElement = frame.node;
   const { prevElement, context, hostNamespace, renderRuntime } = frame.meta;
 
@@ -169,7 +174,7 @@ function _patchHostElement(frame: RenderFrame): void {
   });
 }
 
-function _patchFunctionalComponent(frame: RenderFrame): void {
+function _patchFunctionalComponent(frame: SimpRenderFrame): void {
   const nextElement = frame.node;
   const { prevElement, context, renderRuntime, hostNamespace, rightSibling, parentReference } = frame.meta;
 
@@ -237,7 +242,7 @@ function _patchFunctionalComponent(frame: RenderFrame): void {
       lifecycleEventBus.publish({
         type: 'beforeRender',
         element: nextElement,
-        phase: 'updating',
+        phase: UPDATING_PHASE,
         renderRuntime,
       });
 
@@ -246,7 +251,7 @@ function _patchFunctionalComponent(frame: RenderFrame): void {
       lifecycleEventBus.publish({
         type: 'afterRender',
         element: nextElement,
-        phase: 'updating',
+        phase: UPDATING_PHASE,
         renderRuntime,
       });
     } while (triedToRerender);
@@ -273,7 +278,7 @@ function _patchFunctionalComponent(frame: RenderFrame): void {
       type: 'errored',
       element: nextElement,
       error,
-      phase: 'updating',
+      phase: UPDATING_PHASE,
       handled: false,
       renderRuntime,
     };
@@ -315,7 +320,7 @@ function _patchFunctionalComponent(frame: RenderFrame): void {
   });
 }
 
-function _patchTextElement(frame: RenderFrame): void {
+function _patchTextElement(frame: SimpRenderFrame): void {
   const nextElement = frame.node;
   const { prevElement, renderRuntime } = frame.meta;
 
@@ -326,7 +331,7 @@ function _patchTextElement(frame: RenderFrame): void {
   }
 }
 
-function _patchPortal(frame: RenderFrame): void {
+function _patchPortal(frame: SimpRenderFrame): void {
   const nextElement = frame.node;
   const { prevElement, renderRuntime, context } = frame.meta;
 
@@ -365,7 +370,7 @@ function _patchPortal(frame: RenderFrame): void {
   });
 }
 
-function _patchFragment(frame: RenderFrame): void {
+function _patchFragment(frame: SimpRenderFrame): void {
   const nextElement = frame.node;
   const { prevElement, renderRuntime, context, parentReference, hostNamespace, rightSibling } = frame.meta;
 

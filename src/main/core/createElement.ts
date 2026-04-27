@@ -1,7 +1,6 @@
 import type { Nullable, SimpText } from '@simpreact/shared';
 import { isSimpText } from '@simpreact/shared';
 import { Fragment } from './fragment.js';
-import type { HostReference } from './hostAdapter.js';
 
 export type SimpNode = SimpElement | SimpText | Array<SimpNode> | boolean | null | undefined;
 
@@ -52,7 +51,7 @@ export interface SimpElement {
 
   className: Nullable<string>;
 
-  reference: Nullable<HostReference>;
+  reference: unknown;
 
   store: Nullable<SimpElementStore>;
 
@@ -97,7 +96,7 @@ export function createElement(type: string | FC, props?: any): SimpElement {
             props: props || null,
             children: null,
             className: props?.className || null,
-            reference: null,
+            reference: null!,
             store: null,
             context: null,
             ref: props?.ref ? { value: props.ref } : null,
@@ -125,7 +124,7 @@ export function createElement(type: string | FC, props?: any): SimpElement {
         props: props || null,
         children: null,
         className: props?.className || null,
-        reference: null,
+        reference: null!,
         store: null,
         context: null,
         ref: props?.ref ? { value: props.ref } : null,
@@ -146,7 +145,7 @@ export function createElement(type: string | FC, props?: any): SimpElement {
         props: props || null,
         children: null,
         className: null,
-        reference: null,
+        reference: null!,
         store: null,
         context: null,
         ref: null,
@@ -164,7 +163,7 @@ export function createElement(type: string | FC, props?: any): SimpElement {
           props: null,
           children: null,
           className: null,
-          reference: null,
+          reference: null!,
           store: null,
           context: null,
           ref: null,
@@ -187,7 +186,7 @@ export function createTextElement(text: SimpText): SimpElement {
     props: null,
     children: text.toString(),
     className: null,
-    reference: null,
+    reference: null!,
     store: null,
     context: null,
     ref: null,

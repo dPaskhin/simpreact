@@ -1,7 +1,7 @@
 import { createCreateContext } from '@simpreact/context';
 import { createRenderer, domAdapter } from '@simpreact/dom';
 import { createUseState } from '@simpreact/hooks';
-import { createElement, memo, type SimpRenderRuntime, TraversalStack } from '@simpreact/internal';
+import { createElement, memo, type SimpRenderRuntime } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -24,7 +24,7 @@ describe('Context.Consumer', () => {
       renderer(type, element) {
         return type(element.props || emptyObject);
       },
-      renderStack: new TraversalStack(),
+      renderStack: [],
     };
 
     createContext = createCreateContext(renderRuntime);

@@ -9,7 +9,12 @@ import {
 import { _pushHostOperationPlaceElement } from './hostOperations.js';
 import { _pushMountArrayChildrenFrame, _pushMountEnterFrame } from './mounting.js';
 import { _pushPatchEnterFrame } from './patching.js';
-import { PATCH_CHILDREN, PATCH_KEYED_CHILDREN, type RenderFrame, type RenderFrameMeta } from './processStack.js';
+import {
+  PATCH_CHILDREN,
+  PATCH_KEYED_CHILDREN,
+  type SimpRenderFrame,
+  type SimpRenderFrameMeta,
+} from './processStack.js';
 import {
   _clearElementHostReference,
   _pushUnmountArrayChildrenFrame,
@@ -17,7 +22,7 @@ import {
   _remove,
 } from './unmounting.js';
 
-export function _pushPatchChildrenFrame(element: SimpElement, meta: RenderFrameMeta): void {
+export function _pushPatchChildrenFrame(element: SimpElement, meta: SimpRenderFrameMeta): void {
   meta.renderRuntime.renderStack.push({
     node: element,
     phase: PATCH_CHILDREN,
@@ -25,7 +30,7 @@ export function _pushPatchChildrenFrame(element: SimpElement, meta: RenderFrameM
   });
 }
 
-export function _pushPatchKeyedChildrenFrame(element: SimpElement, meta: RenderFrameMeta): void {
+export function _pushPatchKeyedChildrenFrame(element: SimpElement, meta: SimpRenderFrameMeta): void {
   meta.renderRuntime.renderStack.push({
     node: element,
     phase: PATCH_KEYED_CHILDREN,
@@ -33,7 +38,7 @@ export function _pushPatchKeyedChildrenFrame(element: SimpElement, meta: RenderF
   });
 }
 
-export function _patchChildren(frame: RenderFrame): void {
+export function _patchChildren(frame: SimpRenderFrame): void {
   const nextElement = frame.node;
   const { renderRuntime, rightSibling, parentReference, context, hostNamespace, placeHolderElement, prevElement } =
     frame.meta;
@@ -212,7 +217,7 @@ export function _patchChildren(frame: RenderFrame): void {
   }
 }
 
-export function _patchKeyedChildren(frame: RenderFrame): void {
+export function _patchKeyedChildren(frame: SimpRenderFrame): void {
   const { node: nextElement, meta } = frame;
   const { renderRuntime, parentReference, prevElement, context, hostNamespace } = meta;
 

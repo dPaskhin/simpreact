@@ -1,9 +1,9 @@
 import type { SimpElement, SimpElementStore, SimpNode, SimpRenderRuntime } from '@simpreact/internal';
-import { lifecycleEventBus, rerender } from '@simpreact/internal';
+import { lifecycleEventBus, MOUNTING_PHASE, rerender } from '@simpreact/internal';
 import type { Maybe } from '@simpreact/shared';
 
 interface ContextSimpRenderRuntime extends SimpRenderRuntime {
-  renderPhase: 'mounting' | 'updating';
+  renderPhase: number;
   // In runtime this is a nullable variable.
   currentElement: ContextSimpElement;
 }
@@ -51,16 +51,15 @@ export function createCreateContext(renderRuntime: SimpRenderRuntime): CreateCon
       defaultValue,
 
       Provider(props) {
-        const currentElement = (renderRuntime as ContextSimpRenderRuntime).currentElement!;
-        const phase = renderRuntime.renderPhase!;
+        const { currentElement, renderPhase } = renderRuntime as ContextSimpRenderRuntime;
 
         if (!currentElement.context) {
           currentElement.context = new Map();
-        } else if (phase === 'mounting') {
+        } else if (renderPhase === MOUNTING_PHASE) {
           currentElement.context = new Map(currentElement.context);
         }
 
-        if (phase === 'mounting') {
+        if (renderPhase === MOUNTING_PHASE) {
           currentElement.context.set(context, {
             value: props.value,
             subs: new Set(),
