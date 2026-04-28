@@ -10,6 +10,7 @@ const renderRuntime: SimpRenderRuntime = {
     return type(element.props || emptyObject);
   },
   renderStack: [],
+  elementToHostMap: new Map(),
 };
 
 const createRoot = createCreateRoot(renderRuntime);
@@ -17,8 +18,7 @@ const createRoot = createCreateRoot(renderRuntime);
 describe('patchKeyedChildren (integration-ish): moving fragment/component nodes without reference', () => {
   beforeEach(() => {
     // Keep adapter calls clean per test
-    (testHostAdapter.insertBefore as any)?.mockClear?.();
-    (testHostAdapter.appendChild as any)?.mockClear?.();
+    (testHostAdapter.insertOrAppend as any)?.mockClear?.();
     (testHostAdapter.removeChild as any)?.mockClear?.();
   });
 

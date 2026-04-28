@@ -2,15 +2,13 @@ import type { SimpElement, SimpRenderRuntime } from '@simpreact/internal';
 import { flushSyncRerender, lockSyncRendering } from '@simpreact/internal';
 import type { Dict } from '@simpreact/shared';
 
-import { getElementFromDom } from '../../attach-element-to-dom.js';
-
 export function isEventNameIgnored(eventName: string): boolean {
   return eventName === 'onChange' || eventName === 'onInput';
 }
 
 function createControlledTextareaChangeHandler(renderRuntime: SimpRenderRuntime): (event: Event) => void {
   return (event: Event) => {
-    let element = getElementFromDom(event.target);
+    let element = renderRuntime.hostAdapter.getElementFromReference(event.target, renderRuntime);
 
     if (!element || !element.props) {
       return;
@@ -20,7 +18,7 @@ function createControlledTextareaChangeHandler(renderRuntime: SimpRenderRuntime)
       lockSyncRendering();
       element.props['onChange'](event);
       flushSyncRerender(renderRuntime);
-      element = getElementFromDom(event.target);
+      element = renderRuntime.hostAdapter.getElementFromReference(event.target, renderRuntime);
     }
 
     if (element) {
@@ -31,7 +29,7 @@ function createControlledTextareaChangeHandler(renderRuntime: SimpRenderRuntime)
 
 function createControlledTextareaInputHandler(renderRuntime: SimpRenderRuntime): (event: Event) => void {
   return event => {
-    let element = getElementFromDom(event.target);
+    let element = renderRuntime.hostAdapter.getElementFromReference(event.target, renderRuntime);
 
     if (!element || !element.props) {
       return;
@@ -41,7 +39,7 @@ function createControlledTextareaInputHandler(renderRuntime: SimpRenderRuntime):
       lockSyncRendering();
       element.props['onInput'](event);
       flushSyncRerender(renderRuntime);
-      element = getElementFromDom(event.target);
+      element = renderRuntime.hostAdapter.getElementFromReference(event.target, renderRuntime);
     }
 
     if (element) {

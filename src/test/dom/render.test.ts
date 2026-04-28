@@ -9,6 +9,7 @@ const renderRuntime: SimpRenderRuntime = {
   renderer(type, element) {
     return type(element.props || emptyObject);
   },
+  elementToHostMap: new Map(),
   renderStack: [],
 };
 

@@ -8,15 +8,13 @@ import {
 import type { Dict } from '@simpreact/shared';
 import { emptyObject } from '@simpreact/shared';
 
-import { getElementFromDom } from '../../attach-element-to-dom.js';
-
 export function isEventNameIgnored(eventName: string): boolean {
   return eventName === 'onChange';
 }
 
 function createControlledInputChangeHandler(renderRuntime: SimpRenderRuntime): (event: Event) => void {
   return (event: Event) => {
-    let element = getElementFromDom(event.target);
+    let element = renderRuntime.hostAdapter.getElementFromReference(event.target, renderRuntime);
 
     if (!element || !element.props) {
       return;
@@ -27,7 +25,7 @@ function createControlledInputChangeHandler(renderRuntime: SimpRenderRuntime): (
       element.props['onChange'](event);
       flushSyncRerender(renderRuntime);
 
-      element = getElementFromDom(event.target);
+      element = renderRuntime.hostAdapter.getElementFromReference(event.target, renderRuntime);
     }
 
     if (element) {

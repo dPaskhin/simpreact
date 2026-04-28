@@ -16,6 +16,7 @@ const renderRuntime: SimpRenderRuntime = {
   renderer(type, element) {
     return type(element.props || emptyObject);
   },
+  elementToHostMap: new Map(),
   renderStack: [],
 };
 
@@ -106,28 +107,28 @@ describe('events', () => {
     });
 
     it('adds event listener if handler is provided', () => {
-      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any);
+      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any, renderRuntime);
       expect(document.addEventListener).toHaveBeenCalledWith(eventType, expect.any(Function));
     });
 
     it('does not add duplicate event listener if already added', () => {
-      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any);
-      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any);
-      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any);
-      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any);
-      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any);
+      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any, renderRuntime);
+      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any, renderRuntime);
+      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any, renderRuntime);
+      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any, renderRuntime);
+      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any, renderRuntime);
       expect(document.addEventListener).toHaveBeenCalledTimes(1);
       expect(eventHandlerCounts.click).toBe(5);
     });
 
     it('removes event listener when handler is removed and count reaches zero', () => {
-      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any);
-      patchDelegatedEvent(eventType, null, eventHandlerCounts as any);
+      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any, renderRuntime);
+      patchDelegatedEvent(eventType, null, eventHandlerCounts as any, renderRuntime);
       expect(document.removeEventListener).toHaveBeenCalledWith(eventType, expect.any(Function));
     });
 
     it('does not throw if handler is null initially (no-op)', () => {
-      expect(() => patchDelegatedEvent(eventType, null, eventHandlerCounts as any)).not.toThrow();
+      expect(() => patchDelegatedEvent(eventType, null, eventHandlerCounts as any, renderRuntime)).not.toThrow();
       expect(eventHandlerCounts.click).toBe(0);
     });
   });
@@ -138,7 +139,7 @@ describe('events', () => {
       const simpElement = createElement('div', { onClick: handler });
       const event = createEventWithTarget(simpElement, 'click');
 
-      dispatchDelegatedEvent(event);
+      dispatchDelegatedEvent(event, renderRuntime);
       expect(handler).toHaveBeenCalledOnce();
     });
 
@@ -149,7 +150,7 @@ describe('events', () => {
       child.parent = parent;
       const event = createEventWithTarget(child, 'click');
 
-      dispatchDelegatedEvent(event);
+      dispatchDelegatedEvent(event, renderRuntime);
       expect(parentHandler).toHaveBeenCalledOnce();
     });
 
@@ -163,7 +164,7 @@ describe('events', () => {
       leaf.parent = mid;
       const event = createEventWithTarget(leaf, 'click');
 
-      dispatchDelegatedEvent(event);
+      dispatchDelegatedEvent(event, renderRuntime);
       expect(midHandler).toHaveBeenCalledOnce();
       expect(rootHandler).toHaveBeenCalledOnce();
     });
@@ -171,7 +172,7 @@ describe('events', () => {
     it('does nothing if no SimpElement is found', () => {
       const event = new Event('click');
       Object.defineProperty(event, 'target', { value: {}, writable: false });
-      expect(() => dispatchDelegatedEvent(event)).not.toThrow();
+      expect(() => dispatchDelegatedEvent(event, renderRuntime)).not.toThrow();
     });
   });
 
@@ -181,7 +182,7 @@ describe('events', () => {
       const simpElement = createElement('div', { onClickCapture: handler });
       const event = createEventWithTarget(simpElement, 'click');
 
-      dispatchDelegatedEvent(event);
+      dispatchDelegatedEvent(event, renderRuntime);
       expect(handler).toHaveBeenCalledOnce();
     });
 
@@ -195,7 +196,7 @@ describe('events', () => {
       leaf.parent = mid;
       const event = createEventWithTarget(leaf, 'click');
 
-      dispatchDelegatedEvent(event);
+      dispatchDelegatedEvent(event, renderRuntime);
       expect(rootHandler).toHaveBeenCalledOnce();
       expect(midHandler).toHaveBeenCalledOnce();
     });
@@ -203,7 +204,7 @@ describe('events', () => {
     it('does nothing if no SimpElement is found', () => {
       const event = new Event('click');
       Object.defineProperty(event, 'target', { value: {}, writable: false });
-      expect(() => dispatchDelegatedEvent(event)).not.toThrow();
+      expect(() => dispatchDelegatedEvent(event, renderRuntime)).not.toThrow();
     });
   });
 
@@ -218,7 +219,7 @@ describe('events', () => {
       leaf.parent = mid;
       const event = createEventWithTarget(leaf, 'click');
 
-      dispatchDelegatedEvent(event);
+      dispatchDelegatedEvent(event, renderRuntime);
       expect(midHandler).toHaveBeenCalledOnce();
       expect(rootHandler).not.toHaveBeenCalled();
     });
@@ -233,7 +234,7 @@ describe('events', () => {
       leaf.parent = mid;
       const event = createEventWithTarget(leaf, 'click');
 
-      dispatchDelegatedEvent(event);
+      dispatchDelegatedEvent(event, renderRuntime);
       expect(midHandler).toHaveBeenCalledOnce();
       expect(leafHandler).not.toHaveBeenCalled();
     });
@@ -253,7 +254,7 @@ describe('events', () => {
       leaf.parent = mid;
       const event = createEventWithTarget(leaf, 'click');
 
-      dispatchDelegatedEvent(event);
+      dispatchDelegatedEvent(event, renderRuntime);
       expect(midCaptureHandler).toHaveBeenCalledOnce();
       expect(leafCaptureHandler).not.toHaveBeenCalled();
       expect(rootBubbleHandler).not.toHaveBeenCalled();
@@ -279,7 +280,7 @@ describe('events', () => {
             value: leafRef.current,
             writable: false,
           });
-          dispatchDelegatedEvent(nativeEvent);
+          dispatchDelegatedEvent(nativeEvent, renderRuntime);
         }, []);
 
         return createElement(

@@ -28,19 +28,11 @@ export const testHostAdapter: HostAdapter<Element, Text> = {
     reference.textContent = text;
   }),
 
-  appendChild: vi.fn((parent, child) => {
-    parent.appendChild(child);
-  }),
-
-  insertBefore: vi.fn((parent, child, before) => {
-    parent.insertBefore(child, before);
-  }),
-
   insertOrAppend: vi.fn((parent, child, before) => {
     if (before) {
-      testHostAdapter.insertBefore(parent, child, before);
+      parent.insertBefore(child, before);
     } else {
-      testHostAdapter.appendChild(parent, child);
+      parent.appendChild(child);
     }
   }),
 
@@ -52,20 +44,16 @@ export const testHostAdapter: HostAdapter<Element, Text> = {
     parent.replaceChild(replacer, toBeReplaced);
   }),
 
-  findParentReference: vi.fn(reference => {
-    return reference.parentElement as Element;
-  }),
-
-  findNextSiblingReference: vi.fn(reference => {
-    return reference.nextSibling as Element;
-  }),
-
   clearNode: vi.fn(reference => {
     reference.textContent = '';
   }),
 
   attachElementToReference: vi.fn((element, reference) => {
     reference.__SIMP_ELEMENT__ = element;
+  }),
+
+  getElementFromReference: vi.fn(reference => {
+    return (reference as any).__SIMP_ELEMENT__;
   }),
 
   getHostNamespaces: vi.fn(() => ({ self: '', children: '' })),

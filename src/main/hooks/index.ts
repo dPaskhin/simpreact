@@ -21,10 +21,20 @@ type StateHookState<S = any> = [S, Dispatch<SetStateAction<S>>];
 
 type HookState = EffectState | RerenderHookState | RefHookState | StateHookState;
 
-interface HooksSimpRenderRuntime extends SimpRenderRuntime {
+interface HooksSpecificData {
   currentIndex: number;
-  // In runtime this is a nullable variable.
   currentElement: HooksSimpElement;
+}
+
+const hooksSpecificDataByRuntime = new WeakMap<SimpRenderRuntime, HooksSpecificData>();
+
+function getHooksSpecificData(renderRuntime: SimpRenderRuntime): HooksSpecificData {
+  let data = hooksSpecificDataByRuntime.get(renderRuntime);
+  if (!data) {
+    data = { currentIndex: 0, currentElement: null! };
+    hooksSpecificDataByRuntime.set(renderRuntime, data);
+  }
+  return data;
 }
 
 interface HooksSimpElement extends SimpElement {
@@ -37,22 +47,22 @@ interface HooksSimpElement extends SimpElement {
 }
 
 lifecycleEventBus.subscribe(event => {
-  const renderRuntime = event.renderRuntime as HooksSimpRenderRuntime;
+  const data = getHooksSpecificData(event.renderRuntime);
 
   if (event.type === 'beforeRender') {
-    renderRuntime.currentIndex = 0;
-    renderRuntime.currentElement = event.element as HooksSimpElement;
+    data.currentIndex = 0;
+    data.currentElement = event.element as HooksSimpElement;
 
-    if (renderRuntime.currentElement.store?.catchHandlers) {
-      renderRuntime.currentElement.store.catchHandlers = null;
+    if (data.currentElement.store?.catchHandlers) {
+      data.currentElement.store.catchHandlers = null;
     }
-    if (renderRuntime.currentElement.store?.effectsHookStates) {
-      renderRuntime.currentElement.store.effectsHookStates = null;
+    if (data.currentElement.store?.effectsHookStates) {
+      data.currentElement.store.effectsHookStates = null;
     }
   }
   if (event.type === 'afterRender' || event.type === 'errored') {
-    renderRuntime.currentElement = null!;
-    renderRuntime.currentIndex = 0;
+    data.currentElement = null!;
+    data.currentIndex = 0;
   }
   if (event.type === 'mounted') {
     const element = event.element as HooksSimpElement;
@@ -126,29 +136,33 @@ export interface UseRef {
   <T = undefined>(initialValue?: T): RefObject<T | undefined>;
 }
 export function createUseRef(renderRuntime: SimpRenderRuntime): UseRef {
-  return initialValue => {
-    const hookStates = getOrCreateHookStates((renderRuntime as HooksSimpRenderRuntime).currentElement);
+  const data = getHooksSpecificData(renderRuntime);
 
-    if (!hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex]) {
-      hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex] = { current: initialValue };
+  return initialValue => {
+    const hookStates = getOrCreateHookStates(data.currentElement);
+
+    if (!hookStates[data.currentIndex]) {
+      hookStates[data.currentIndex] = { current: initialValue };
     }
 
-    return hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex++] as RefObject<typeof initialValue>;
+    return hookStates[data.currentIndex++] as RefObject<typeof initialValue>;
   };
 }
 
 export function createUseRerender(renderRuntime: SimpRenderRuntime): () => RerenderHookState {
-  return () => {
-    const hookStates = getOrCreateHookStates((renderRuntime as HooksSimpRenderRuntime).currentElement);
+  const data = getHooksSpecificData(renderRuntime);
 
-    if (!hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex]) {
-      const elementStore = (renderRuntime as HooksSimpRenderRuntime).currentElement.store;
-      hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex] = function rerender() {
+  return () => {
+    const hookStates = getOrCreateHookStates(data.currentElement);
+
+    if (!hookStates[data.currentIndex]) {
+      const elementStore = data.currentElement.store;
+      hookStates[data.currentIndex] = function rerender() {
         _rerender(elementStore!.latestElement!, renderRuntime);
       };
     }
 
-    return hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex++] as RerenderHookState;
+    return hookStates[data.currentIndex++] as RerenderHookState;
   };
 }
 
@@ -160,15 +174,14 @@ export interface UseState {
   ): [S | undefined, Dispatch<SetStateAction<S | undefined>>];
 }
 export function createUseState(renderRuntime: SimpRenderRuntime): UseState {
-  return (initialState => {
-    const hookStates = getOrCreateHookStates((renderRuntime as HooksSimpRenderRuntime).currentElement);
+  const data = getHooksSpecificData(renderRuntime);
 
-    if (!hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex]) {
-      const elementStore = (renderRuntime as HooksSimpRenderRuntime).currentElement.store;
-      const state: StateHookState = (hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex] = [
-        undefined!,
-        undefined!,
-      ]);
+  return (initialState => {
+    const hookStates = getOrCreateHookStates(data.currentElement);
+
+    if (!hookStates[data.currentIndex]) {
+      const elementStore = data.currentElement.store;
+      const state: StateHookState = (hookStates[data.currentIndex] = [undefined!, undefined!]);
 
       state[0] = callOrGet(initialState)!;
       state[1] = function dispatch(action) {
@@ -183,18 +196,20 @@ export function createUseState(renderRuntime: SimpRenderRuntime): UseState {
       };
     }
 
-    return hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex++];
+    return hookStates[data.currentIndex++];
   }) as UseState;
 }
 
 export function createUseEffect(renderRuntime: SimpRenderRuntime): (effect: Effect, deps?: DependencyList) => void {
-  return (effect, deps) => {
-    const hookStates = getOrCreateHookStates((renderRuntime as HooksSimpRenderRuntime).currentElement);
+  const data = getHooksSpecificData(renderRuntime);
 
-    let state = hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex] as EffectState | undefined;
+  return (effect, deps) => {
+    const hookStates = getOrCreateHookStates(data.currentElement);
+
+    let state = hookStates[data.currentIndex] as EffectState | undefined;
 
     if (!state) {
-      state = hookStates[(renderRuntime as HooksSimpRenderRuntime).currentIndex] = {
+      state = hookStates[data.currentIndex] = {
         effect,
         deps: null,
         cleanup: null,
@@ -204,16 +219,18 @@ export function createUseEffect(renderRuntime: SimpRenderRuntime): (effect: Effe
     if (!shallowEqual(deps, state.deps)) {
       state.effect = effect;
       state.deps = deps || null;
-      getOrCreateEffectHookStates((renderRuntime as HooksSimpRenderRuntime).currentElement).push(state);
+      getOrCreateEffectHookStates(data.currentElement).push(state);
     }
 
-    (renderRuntime as HooksSimpRenderRuntime).currentIndex++;
+    data.currentIndex++;
   };
 }
 
 export function createUseCatch(renderRuntime: SimpRenderRuntime): (cb: (error: any) => void) => void {
+  const data = getHooksSpecificData(renderRuntime);
+
   return cb => {
-    const currentElement = (renderRuntime as HooksSimpRenderRuntime).currentElement;
+    const { currentElement } = data;
 
     if (!currentElement.store!.catchHandlers) {
       currentElement.store!.catchHandlers = [];

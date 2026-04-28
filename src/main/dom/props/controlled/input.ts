@@ -2,8 +2,6 @@ import type { SimpElement, SimpRenderRuntime } from '@simpreact/internal';
 import { flushSyncRerender, lockSyncRendering } from '@simpreact/internal';
 import type { Dict } from '@simpreact/shared';
 
-import { getElementFromDom } from '../../attach-element-to-dom.js';
-
 export function isCheckedType(type: string): boolean {
   return type === 'checkbox' || type === 'radio';
 }
@@ -14,7 +12,7 @@ export function isEventNameIgnored(props: Dict, eventName: string): boolean {
 
 function createControlledInputInputHandler(renderRuntime: SimpRenderRuntime): (event: Event) => void {
   return event => {
-    let element = getElementFromDom(event.target);
+    let element = renderRuntime.hostAdapter.getElementFromReference(event.target, renderRuntime);
 
     if (!element || !element.props) {
       return;
@@ -25,7 +23,7 @@ function createControlledInputInputHandler(renderRuntime: SimpRenderRuntime): (e
     }
     element.props['onInput'](event);
     flushSyncRerender(renderRuntime);
-    element = getElementFromDom(event.target);
+    element = renderRuntime.hostAdapter.getElementFromReference(event.target, renderRuntime);
 
     if (element) {
       syncControlledInputProps(element, element.props);
@@ -35,7 +33,7 @@ function createControlledInputInputHandler(renderRuntime: SimpRenderRuntime): (e
 
 function createControlledInputChangeHandler(renderRuntime: SimpRenderRuntime): (event: Event) => void {
   return event => {
-    let element = getElementFromDom(event.target);
+    let element = renderRuntime.hostAdapter.getElementFromReference(event.target, renderRuntime);
 
     if (!element || !element.props) {
       return;
@@ -45,7 +43,7 @@ function createControlledInputChangeHandler(renderRuntime: SimpRenderRuntime): (
       lockSyncRendering();
       element.props['onChange'](event);
       flushSyncRerender(renderRuntime);
-      element = getElementFromDom(event.target);
+      element = renderRuntime.hostAdapter.getElementFromReference(event.target, renderRuntime);
     }
 
     if (element) {

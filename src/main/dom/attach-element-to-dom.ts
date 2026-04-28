@@ -1,23 +1,21 @@
-import { SIMP_ELEMENT_FLAG_TEXT, type SimpElement } from '@simpreact/internal';
+import { SIMP_ELEMENT_FLAG_TEXT, type SimpElement, type SimpRenderRuntime } from '@simpreact/internal';
 import type { Nullable } from '@simpreact/shared';
 
-const elementPropertyName = '__SIMP_ELEMENT__';
-
-export function attachElementToDom(element: SimpElement, dom: Node): void {
+export function attachElementToDom(element: SimpElement, dom: Node, renderRuntime: SimpRenderRuntime): void {
   if ((element.flag & SIMP_ELEMENT_FLAG_TEXT) === 0) {
-    Object.defineProperty(dom, elementPropertyName, {
-      value: element,
-      writable: true,
-    });
+    renderRuntime.elementToHostMap.set(dom, element);
   }
 }
 
-export function getElementFromDom(target: Nullable<EventTarget>): Nullable<SimpElement> {
+export function getElementFromDom(
+  target: Nullable<EventTarget>,
+  renderRuntime: SimpRenderRuntime
+): Nullable<SimpElement> {
   if (!target) {
     return null;
   }
 
-  while (target && !(elementPropertyName in target)) {
+  while (target && !renderRuntime.elementToHostMap.has(target)) {
     target = (target as Element).parentElement;
   }
 
@@ -25,5 +23,5 @@ export function getElementFromDom(target: Nullable<EventTarget>): Nullable<SimpE
     return null;
   }
 
-  return target[elementPropertyName] as SimpElement;
+  return renderRuntime.elementToHostMap.get(target) as SimpElement;
 }

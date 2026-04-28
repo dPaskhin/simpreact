@@ -1,6 +1,5 @@
 import type { HostAdapter } from '@simpreact/internal';
-
-import { attachElementToDom } from './attach-element-to-dom.js';
+import { attachElementToDom, getElementFromDom } from './attach-element-to-dom.js';
 import type { Namespace } from './namespace.js';
 import { defaultNamespace } from './namespace.js';
 import { mountProps, patchProps, unmountProps } from './props/index.js';
@@ -25,8 +24,8 @@ export const domAdapter: HostAdapter<HTMLElement | SVGElement, Text, Namespace> 
     patchProps(dom, prevElement, nextElement, namespace || defaultNamespace, renderRuntime);
   },
 
-  unmountProps(dom, element) {
-    unmountProps(dom, element);
+  unmountProps(dom, element, renderRuntime) {
+    unmountProps(dom, element, renderRuntime);
   },
 
   setClassname(reference, className, namespace) {
@@ -47,19 +46,11 @@ export const domAdapter: HostAdapter<HTMLElement | SVGElement, Text, Namespace> 
     }
   },
 
-  appendChild(parent, child) {
-    parent.appendChild(child);
-  },
-
-  insertBefore(parent, child, before) {
-    parent.insertBefore(child, before);
-  },
-
   insertOrAppend(parent, child, before) {
     if (before) {
-      domAdapter.insertBefore(parent, child, before);
+      parent.insertBefore(child, before);
     } else {
-      domAdapter.appendChild(parent, child);
+      parent.appendChild(child);
     }
   },
 
@@ -71,20 +62,16 @@ export const domAdapter: HostAdapter<HTMLElement | SVGElement, Text, Namespace> 
     parent.replaceChild(replacer, toBeReplaced);
   },
 
-  findParentReference(reference) {
-    return reference.parentElement as HTMLElement | SVGElement;
-  },
-
-  findNextSiblingReference(reference) {
-    return reference.nextSibling as HTMLElement | SVGElement;
-  },
-
   clearNode(reference) {
     reference.textContent = '';
   },
 
-  attachElementToReference(element, reference) {
-    attachElementToDom(element, reference);
+  attachElementToReference(element, reference, renderRuntime) {
+    attachElementToDom(element, reference, renderRuntime);
+  },
+
+  getElementFromReference(reference, renderRuntime) {
+    return getElementFromDom(reference, renderRuntime);
   },
 
   getHostNamespaces(element, currentNamespace) {

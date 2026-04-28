@@ -38,7 +38,15 @@ export function mountProps(
   const isControlled = isFormElementControlled(element.props);
 
   for (const propName in element.props) {
-    patchFormElementsPropAndAttrs(propName, dom as HTMLElement, element, isControlled, null, element.props[propName]);
+    patchFormElementsPropAndAttrs(
+      propName,
+      dom as HTMLElement,
+      element,
+      isControlled,
+      null,
+      element.props[propName],
+      renderRuntime
+    );
   }
 
   if (isControlled) {
@@ -47,14 +55,18 @@ export function mountProps(
   }
 }
 
-export function unmountProps(dom: HTMLElement | SVGElement, element: SimpElement): void {
+export function unmountProps(
+  dom: HTMLElement | SVGElement,
+  element: SimpElement,
+  renderRuntime: SimpRenderRuntime
+): void {
   if (!element.props) {
     return;
   }
 
   for (const propName in element.props) {
     if (isPropNameEventName(propName)) {
-      patchEvent(propName, element.props[propName], null, dom);
+      patchEvent(propName, element.props[propName], null, dom, renderRuntime);
     }
   }
 }
@@ -120,7 +132,8 @@ export function patchProps(
         nextElement,
         isNextElementControlled,
         prevValue,
-        nextValue
+        nextValue,
+        renderRuntime
       );
     }
   }
@@ -133,7 +146,8 @@ export function patchProps(
         prevElement,
         isPrevElementControlled,
         prevProps[propName],
-        null
+        null,
+        renderRuntime
       );
     }
   }
@@ -154,7 +168,8 @@ function patchFormElementsPropAndAttrs(
   element: SimpElement,
   isControlled: boolean,
   prevValue: any,
-  nextValue: any
+  nextValue: any,
+  renderRuntime: SimpRenderRuntime
 ): void {
   switch (propName) {
     case 'children':
@@ -198,11 +213,11 @@ function patchFormElementsPropAndAttrs(
     default:
       if (isPropNameEventName(propName)) {
         if (isControlled && isEventNameIgnored(element, propName)) {
-          patchEvent(propName, prevValue, null, dom);
+          patchEvent(propName, prevValue, null, dom, renderRuntime);
           break;
         }
 
-        patchEvent(propName, prevValue, nextValue, dom);
+        patchEvent(propName, prevValue, nextValue, dom, renderRuntime);
       } else {
         patchDomAttr(dom, nextValue, propName);
       }
@@ -259,7 +274,7 @@ function patchDefaultElementPropAndAttrs(
 
     default:
       if (isPropNameEventName(propName)) {
-        patchEvent(propName, prevValue, nextValue, dom);
+        patchEvent(propName, prevValue, nextValue, dom, renderRuntime);
       } else {
         patchDomAttr(dom, nextValue, propName, namespace);
       }

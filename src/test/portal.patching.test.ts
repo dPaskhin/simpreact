@@ -19,6 +19,7 @@ const renderRuntime: SimpRenderRuntime = {
   renderer(type, element) {
     return type(element.props || emptyObject);
   },
+  elementToHostMap: new Map(),
   renderStack: [],
 };
 
@@ -89,7 +90,7 @@ describe('patchPortal', () => {
             value: buttonRef.current,
             writable: false,
           });
-          dispatchDelegatedEvent(nativeEvent);
+          dispatchDelegatedEvent(nativeEvent, renderRuntime);
         }, []);
 
         return createElement(

@@ -1,9 +1,7 @@
-import { SIMP_ELEMENT_FLAG_HOST, type SimpElement } from '@simpreact/internal';
+import { SIMP_ELEMENT_FLAG_HOST, type SimpElement, type SimpRenderRuntime } from '@simpreact/internal';
 import type { Nullable } from '@simpreact/shared';
 
-import { getElementFromDom } from './attach-element-to-dom.js';
-
-type DelegatedEventType =
+export type DelegatedEventType =
   | 'click'
   | 'dblclick'
   | 'mousedown'
@@ -40,7 +38,7 @@ const eventNameByTypes: Record<DelegatedEventType, string> = {
 
 const delegatedEventTypes = new Set(Object.keys(eventNameByTypes));
 
-const eventHandlerCounts: Record<DelegatedEventType, number> = {
+const createEventHandlerCounts = (): Record<DelegatedEventType, number> => ({
   click: 0,
   dblclick: 0,
   mousedown: 0,
@@ -56,7 +54,28 @@ const eventHandlerCounts: Record<DelegatedEventType, number> = {
   keyup: 0,
   focusin: 0,
   focusout: 0,
-};
+});
+
+const eventHandlerCountsByRuntime = new WeakMap<SimpRenderRuntime, Record<DelegatedEventType, number>>();
+const delegatedEventDispatchersByRuntime = new WeakMap<SimpRenderRuntime, (event: Event) => void>();
+
+function getEventHandlerCounts(renderRuntime: SimpRenderRuntime): Record<DelegatedEventType, number> {
+  let eventHandlerCounts = eventHandlerCountsByRuntime.get(renderRuntime);
+  if (!eventHandlerCounts) {
+    eventHandlerCounts = createEventHandlerCounts();
+    eventHandlerCountsByRuntime.set(renderRuntime, eventHandlerCounts);
+  }
+  return eventHandlerCounts;
+}
+
+function getDelegatedEventDispatcher(renderRuntime: SimpRenderRuntime): (event: Event) => void {
+  let dispatcher = delegatedEventDispatchersByRuntime.get(renderRuntime);
+  if (!dispatcher) {
+    dispatcher = event => dispatchDelegatedEvent(event, renderRuntime);
+    delegatedEventDispatchersByRuntime.set(renderRuntime, dispatcher);
+  }
+  return dispatcher;
+}
 
 export class SyntheticEvent {
   nativeEvent: Event;
@@ -106,7 +125,7 @@ export class SyntheticEvent {
   }
 }
 
-export function dispatchDelegatedEvent(event: Event): void {
+export function dispatchDelegatedEvent(event: Event, renderRuntime: SimpRenderRuntime): void {
   const syntheticEvent = new SyntheticEvent(event);
 
   const captureHandlers: Array<{
@@ -118,7 +137,7 @@ export function dispatchDelegatedEvent(event: Event): void {
     handler: (event: SyntheticEvent) => void;
   }> = [];
 
-  let element: Nullable<SimpElement> = getElementFromDom(event.target);
+  let element = renderRuntime.hostAdapter.getElementFromReference(event.target, renderRuntime);
 
   while (element) {
     if ((element.flag & SIMP_ELEMENT_FLAG_HOST) !== 0) {
@@ -152,13 +171,19 @@ export function dispatchDelegatedEvent(event: Event): void {
 
 const captureRegex = /Capture/;
 
-export function patchEvent(name: string, prevValue: any, nextValue: any, dom: Element): void {
+export function patchEvent(
+  name: string,
+  prevValue: any,
+  nextValue: any,
+  dom: Element,
+  renderRuntime: SimpRenderRuntime
+): void {
   const isCapture = captureRegex.test(name);
 
   name = name.replace(captureRegex, '').substring(2).toLowerCase();
 
   if (delegatedEventTypes.has(name)) {
-    patchDelegatedEvent(name as DelegatedEventType, nextValue, eventHandlerCounts);
+    patchDelegatedEvent(name as DelegatedEventType, nextValue, getEventHandlerCounts(renderRuntime), renderRuntime);
   } else {
     patchNormalEvent(name, prevValue, nextValue, dom, isCapture);
   }
@@ -167,15 +192,18 @@ export function patchEvent(name: string, prevValue: any, nextValue: any, dom: El
 export function patchDelegatedEvent(
   eventType: DelegatedEventType,
   handler: any,
-  eventHandlerCounts: Record<DelegatedEventType, number>
+  eventHandlerCounts: Record<DelegatedEventType, number>,
+  renderRuntime: SimpRenderRuntime
 ): void {
+  const dispatcher = getDelegatedEventDispatcher(renderRuntime);
+
   if (typeof handler === 'function') {
     if (++eventHandlerCounts[eventType]! === 1) {
-      document.addEventListener(eventType, dispatchDelegatedEvent);
+      document.addEventListener(eventType, dispatcher);
     }
   } else {
     if (eventHandlerCounts[eventType] !== 0 && --eventHandlerCounts[eventType]! === 0) {
-      document.removeEventListener(eventType, dispatchDelegatedEvent);
+      document.removeEventListener(eventType, dispatcher);
     }
   }
 }

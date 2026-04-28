@@ -36,7 +36,7 @@ export function _unmount(frame: SimpRenderFrame): void {
 
     if ((current.flag & SIMP_ELEMENT_FLAG_HOST) !== 0) {
       unmountRef(current);
-      frame.meta.renderRuntime.hostAdapter.unmountProps(current.reference, current);
+      frame.meta.renderRuntime.hostAdapter.unmountProps(current.reference, current, frame.meta.renderRuntime);
     }
 
     return;

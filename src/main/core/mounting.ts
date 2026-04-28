@@ -121,7 +121,7 @@ function _mountHostElement(frame: SimpRenderFrame): void {
     hostNamespaces?.self
   ));
 
-  renderRuntime.hostAdapter.attachElementToReference(element, hostReference);
+  renderRuntime.hostAdapter.attachElementToReference(element, hostReference, renderRuntime);
 
   _pushMountExitFrame(element, {
     renderRuntime,

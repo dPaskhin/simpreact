@@ -8,6 +8,7 @@ const renderRuntime: SimpRenderRuntime = {
   renderer(type, element) {
     return type(element.props || emptyObject);
   },
+  elementToHostMap: new Map(),
   renderStack: [],
 };
 
@@ -23,8 +24,8 @@ describe('mountPortal', () => {
 
     mount(portal, parentReference, null, null, null, renderRuntime);
 
-    expect(testHostAdapter.appendChild).toHaveBeenCalledWith(container, document.createElement('span'));
-    expect(testHostAdapter.appendChild).toHaveBeenCalledWith(parentReference, document.createTextNode(''));
+    expect(testHostAdapter.insertOrAppend).toHaveBeenCalledWith(container, document.createElement('span'), null);
+    expect(testHostAdapter.insertOrAppend).toHaveBeenCalledWith(parentReference, document.createTextNode(''), null);
 
     expect(container.children.length).toBe(1);
     expect((container.firstChild as HTMLSpanElement)!.nodeName).toBe('SPAN');
@@ -41,9 +42,10 @@ describe('mountPortal', () => {
 
     mount(portal, parentReference, null, null, null, renderRuntime);
 
-    expect(testHostAdapter.appendChild).toHaveBeenCalledWith(
+    expect(testHostAdapter.insertOrAppend).toHaveBeenCalledWith(
       parentReference,
-      expect.objectContaining({ textContent: '' })
+      expect.objectContaining({ textContent: '' }),
+      null
     );
 
     expect(container.children.length).toBe(0);

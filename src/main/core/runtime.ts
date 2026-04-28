@@ -10,5 +10,6 @@ export interface SimpRenderRuntime {
   hostAdapter: HostAdapter;
   renderer: SimpRuntimeFCRenderer;
   renderStack: SimpRenderStack;
+  elementToHostMap: Map<unknown, SimpElement>;
   [key: string]: unknown;
 }

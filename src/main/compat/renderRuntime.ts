@@ -7,5 +7,6 @@ export const renderRuntime: SimpRenderRuntime = {
   renderer(component, element) {
     return component(element.props || emptyObject);
   },
+  elementToHostMap: new Map(),
   renderStack: [],
 };

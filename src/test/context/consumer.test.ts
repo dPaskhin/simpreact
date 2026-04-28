@@ -25,6 +25,7 @@ describe('Context.Consumer', () => {
         return type(element.props || emptyObject);
       },
       renderStack: [],
+      elementToHostMap: new Map(),
     };
 
     createContext = createCreateContext(renderRuntime);

@@ -1,16 +1,23 @@
 import type { SimpElement, SimpElementStore, SimpNode, SimpRenderRuntime } from '@simpreact/internal';
 import { lifecycleEventBus, MOUNTING_PHASE, rerender } from '@simpreact/internal';
-import type { Maybe } from '@simpreact/shared';
 
-interface ContextSimpRenderRuntime extends SimpRenderRuntime {
+interface ContextSpecificData {
   renderPhase: number;
-  // In runtime this is a nullable variable.
-  currentElement: ContextSimpElement;
+  currentElement: SimpElement;
+}
+
+const contextSpecificDataByRuntime = new WeakMap<SimpRenderRuntime, ContextSpecificData>();
+
+function getContextSpecificData(renderRuntime: SimpRenderRuntime): ContextSpecificData {
+  let data = contextSpecificDataByRuntime.get(renderRuntime);
+  if (!data) {
+    data = { renderPhase: null!, currentElement: null! };
+    contextSpecificDataByRuntime.set(renderRuntime, data);
+  }
+  return data;
 }
 
 type SimpContextEntry = { value: any; subs: Set<SimpElementStore> };
-
-type SimpContextMap = Map<SimpContext, SimpContextEntry>;
 
 type Provider<T = any> = (props: { value: T; children: SimpNode }) => SimpNode;
 type Consumer<T = any> = (props: { children: (value: T) => SimpNode }) => SimpNode;
@@ -21,23 +28,19 @@ interface SimpContext<T = any> {
   Consumer: Consumer<T>;
 }
 
-type ContextSimpElement = Omit<SimpElement, 'context'> & {
-  context?: Maybe<SimpContextMap>;
-};
-
 lifecycleEventBus.subscribe(event => {
-  const renderRuntime = event.renderRuntime as ContextSimpRenderRuntime;
+  const data = getContextSpecificData(event.renderRuntime);
 
   if (event.type === 'beforeRender') {
-    renderRuntime.currentElement = event.element as ContextSimpElement;
-    renderRuntime.renderPhase = event.phase;
+    data.currentElement = event.element;
+    data.renderPhase = event.phase;
   }
   if (event.type === 'afterRender') {
-    renderRuntime.currentElement = null!;
-    renderRuntime.renderPhase = null!;
+    data.currentElement = null!;
+    data.renderPhase = null!;
   }
-  if (event.type === 'unmounted' && (event.element as ContextSimpElement).context) {
-    (event.element as ContextSimpElement).context!.forEach(value => value.subs.delete(event.element.store!));
+  if (event.type === 'unmounted' && event.element.context) {
+    event.element.context.forEach((value: SimpContextEntry) => value.subs.delete(event.element.store!));
   }
 });
 
@@ -46,12 +49,14 @@ export interface CreateContext {
 }
 
 export function createCreateContext(renderRuntime: SimpRenderRuntime): CreateContext {
+  const data = getContextSpecificData(renderRuntime);
+
   return <T>(defaultValue: T) => {
     const context: SimpContext<T> = {
       defaultValue,
 
       Provider(props) {
-        const { currentElement, renderPhase } = renderRuntime as ContextSimpRenderRuntime;
+        const { currentElement, renderPhase } = data;
 
         if (!currentElement.context) {
           currentElement.context = new Map();
@@ -67,7 +72,7 @@ export function createCreateContext(renderRuntime: SimpRenderRuntime): CreateCon
           return props.children;
         }
 
-        let contextEntry = currentElement.context.get(context);
+        let contextEntry = currentElement!.context.get(context);
 
         if (!contextEntry) {
           contextEntry = { value: props.value, subs: new Set() };
@@ -89,8 +94,8 @@ export function createCreateContext(renderRuntime: SimpRenderRuntime): CreateCon
       },
 
       Consumer(props) {
-        const contextEntry = (renderRuntime as ContextSimpRenderRuntime).currentElement.context?.get(context);
-        const currentElement = renderRuntime.currentElement as ContextSimpElement;
+        const { currentElement } = data;
+        const contextEntry = currentElement.context?.get(context);
 
         if (!contextEntry) {
           // No provider above: just use the default value, don't subscribe
@@ -114,12 +119,13 @@ export interface UseContext {
 }
 
 export function createUseContext(renderRuntime: SimpRenderRuntime): UseContext {
+  const data = getContextSpecificData(renderRuntime);
+
   return <T>(context: SimpContext<T>): T => {
-    const contextEntry = (renderRuntime as ContextSimpRenderRuntime).currentElement.context?.get(context);
-    const currentElement = renderRuntime.currentElement as ContextSimpElement;
+    const { currentElement } = data;
+    const contextEntry = currentElement.context?.get(context);
 
     if (!contextEntry) {
-      // No provider above: just return the default value, don't subscribe
       return context.defaultValue;
     }
 

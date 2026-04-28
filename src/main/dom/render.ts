@@ -1,6 +1,5 @@
 import { createElement, mount, patch, type SimpElement, type SimpRenderRuntime, unmount } from '@simpreact/internal';
 import type { Nullable } from '@simpreact/shared';
-import { attachElementToDom, getElementFromDom } from './attach-element-to-dom.js';
 
 export function createRenderer(
   renderRuntime: SimpRenderRuntime
@@ -10,7 +9,7 @@ export function createRenderer(
       return;
     }
 
-    const currentRootElement = getElementFromDom(container as Element);
+    const currentRootElement = renderRuntime.hostAdapter.getElementFromReference(container, renderRuntime);
 
     if (!currentRootElement) {
       if (element) {
@@ -20,7 +19,7 @@ export function createRenderer(
         element.parent.type = null;
         element.parent.reference = container;
 
-        attachElementToDom(element.parent, container as Element);
+        renderRuntime.hostAdapter.attachElementToReference(element.parent, container, renderRuntime);
         mount(
           element,
           container,

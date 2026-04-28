@@ -147,7 +147,7 @@ function _patchHostElement(frame: SimpRenderFrame): void {
 
   nextElement.ref = prevElement!.ref;
   nextElement.reference = prevElement!.reference;
-  renderRuntime.hostAdapter.attachElementToReference(nextElement, nextElement.reference);
+  renderRuntime.hostAdapter.attachElementToReference(nextElement, nextElement.reference, renderRuntime);
 
   renderRuntime.renderStack.push({
     node: nextElement,
@@ -346,7 +346,7 @@ function _patchPortal(frame: SimpRenderFrame): void {
 
   if (frame.phase === PATCH_EXIT) {
     renderRuntime.hostAdapter.removeChild(prevContainer, nextChildren.reference);
-    renderRuntime.hostAdapter.appendChild(nextContainer, nextChildren.reference);
+    renderRuntime.hostAdapter.insertOrAppend(nextContainer, nextChildren.reference, null);
     return;
   }
 

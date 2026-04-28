@@ -68,4 +68,5 @@ export interface SimpRenderRuntime {
   hostAdapter: HostAdapter;
   renderer: SimpRuntimeFCRenderer;
   renderStack: TraversalStack<SimpElement, RenderMeta>;
+  elementToHostMap: Map<unknown, SimpElement>;
 }

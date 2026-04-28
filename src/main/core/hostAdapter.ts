@@ -18,29 +18,27 @@ export interface HostAdapter<HostRef = unknown, HostTextRef = unknown, NS = stri
     namespace?: Maybe<NS>
   ): void;
 
-  unmountProps(reference: HostRef, element: SimpElement): void;
+  unmountProps(reference: HostRef, element: SimpElement, renderRuntime: SimpRenderRuntime): void;
 
   setClassname(reference: HostRef, className: Maybe<string>, namespace?: Maybe<NS>): void;
 
   setTextContent(reference: HostRef, text: string, referenceHasOnlyTextElement?: boolean): void;
 
-  appendChild(parent: HostRef, child: HostRef | HostTextRef): void;
-
   removeChild(parent: HostRef, child: HostRef | HostTextRef): void;
 
   replaceChild(parent: HostRef, replacer: HostRef | HostTextRef, toBeReplaced: HostRef | HostTextRef): void;
 
-  insertBefore(parent: HostRef, child: HostRef | HostTextRef, before: Nullable<HostRef | HostTextRef>): void;
-
   insertOrAppend(parent: HostRef, child: HostRef | HostTextRef, before: Nullable<HostRef | HostTextRef>): void;
-
-  findParentReference(reference: HostRef | HostTextRef): Nullable<HostRef>;
-
-  findNextSiblingReference(reference: HostRef | HostTextRef): Nullable<HostRef>;
 
   clearNode(reference: HostRef | HostTextRef): void;
 
-  attachElementToReference(element: SimpElement, reference: HostRef | HostTextRef): void;
+  attachElementToReference(
+    element: SimpElement,
+    reference: HostRef | HostTextRef,
+    renderRuntime: SimpRenderRuntime
+  ): void;
+
+  getElementFromReference(reference: HostRef | HostTextRef, renderRuntime: SimpRenderRuntime): Nullable<SimpElement>;
 
   getHostNamespaces(
     element: SimpElement,

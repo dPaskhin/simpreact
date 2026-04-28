@@ -18,6 +18,7 @@ const renderRuntime: SimpRenderRuntime = {
   renderer(type, element) {
     return type(element.props || emptyObject);
   },
+  elementToHostMap: new Map(),
   renderStack: [],
 };
 
@@ -110,7 +111,6 @@ describe('patching', () => {
       expect((prev.children as SimpElement[])[2]!.reference).toEqual((next.children as SimpElement[])[0]!.reference);
 
       expect(testHostAdapter.insertOrAppend).toHaveBeenCalledTimes(1);
-      expect(testHostAdapter.appendChild).not.toHaveBeenCalled();
 
       expect(testHostAdapter.insertOrAppend).toHaveBeenNthCalledWith(
         1,
@@ -140,7 +140,6 @@ describe('patching', () => {
       patch(prev, next, parent, null, null, null, renderRuntime);
 
       expect(Array.from(parent.children).map(c => c.nodeName)).toEqual(['A', 'B', 'C']);
-      expect(testHostAdapter.appendChild).not.toHaveBeenCalled();
       expect(testHostAdapter.setTextContent).not.toHaveBeenCalled();
       expect(testHostAdapter.removeChild).not.toHaveBeenCalled();
       expect(testHostAdapter.replaceChild).not.toHaveBeenCalled();
@@ -152,7 +151,7 @@ describe('patching', () => {
         expect.objectContaining({ nodeName: 'B' }),
         expect.objectContaining({ nodeName: 'C' })
       );
-      expect(testHostAdapter.insertBefore).toHaveBeenNthCalledWith(
+      expect(testHostAdapter.insertOrAppend).toHaveBeenNthCalledWith(
         1,
         parent,
         expect.objectContaining({ nodeName: 'B' }),
@@ -177,12 +176,10 @@ describe('patching', () => {
 
       expect(Array.from(parent.children).map(c => c.nodeName)).toEqual(['A', 'C']);
       // It should be only one inserting in the case.
-      expect(testHostAdapter.appendChild).not.toHaveBeenCalled();
       expect(testHostAdapter.setTextContent).not.toHaveBeenCalled();
       expect(testHostAdapter.removeChild).toHaveBeenNthCalledWith(1, parent, document.createElement('b'));
       expect(testHostAdapter.replaceChild).not.toHaveBeenCalled();
       expect(testHostAdapter.insertOrAppend).not.toHaveBeenCalled();
-      expect(testHostAdapter.insertBefore).not.toHaveBeenCalled();
     });
   });
 
@@ -219,7 +216,6 @@ describe('patching', () => {
         expect.objectContaining({ nodeName: 'X-FN' })
       );
       expect(testHostAdapter.insertOrAppend).toHaveBeenNthCalledWith(1, parent, nextRef, null);
-      expect(testHostAdapter.appendChild).toHaveBeenCalledTimes(1);
       expect(testHostAdapter.replaceChild).not.toHaveBeenCalled();
       expect(testHostAdapter.setTextContent).not.toHaveBeenCalled();
 
