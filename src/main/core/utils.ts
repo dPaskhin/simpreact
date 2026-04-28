@@ -79,7 +79,7 @@ export function resolveAnchorReference(rightSibling: Nullable<SimpElement>): unk
     if (reference != null) {
       return reference;
     }
-    current = findNextLogicalSibling(current);
+    current = findNextLogicalElement(current);
   }
 
   return null;
@@ -116,31 +116,27 @@ export function findHostReferenceFromElement(element: Nullable<SimpElement>): un
   return null;
 }
 
-// TODO: make indices for children in a parent with list of children
-function findNextLogicalSibling(element: SimpElement): Nullable<SimpElement> {
-  let current: Nullable<SimpElement> = element;
+function findNextLogicalElement(element: SimpElement): Nullable<SimpElement> {
+  let current: SimpElement = element;
 
-  while (current != null) {
+  while (true) {
     const parent = current.parent as Nullable<SimpElement>;
 
     if (parent == null || isHostLike(parent.flag)) {
       return null;
     }
 
-    if (parent.childFlag === SIMP_ELEMENT_CHILD_FLAG_LIST) {
-      const siblings = parent.children as SimpElement[];
-      // Walk forward from the end to find current, then return next.
-      // Avoids indexOf's full-scan when current is near the end,
-      // which is the common case during tree teardown/mount.
-      for (let i = siblings.length - 2; i >= 0; i--) {
-        if (siblings[i] === current) {
-          return siblings[i + 1]!;
-        }
-      }
+    if (parent.childFlag !== SIMP_ELEMENT_CHILD_FLAG_LIST) {
+      current = parent;
+      continue;
+    }
+
+    const nextSibling = (parent.children as SimpElement[])[current.index + 1];
+
+    if (nextSibling != null) {
+      return nextSibling;
     }
 
     current = parent;
   }
-
-  return null;
 }

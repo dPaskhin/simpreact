@@ -19,6 +19,7 @@ type Key = string;
 type SimpElement = {
   key: Key;
   flag: number;
+  index: number;
   reference?: HostReference;
 };
 
@@ -28,8 +29,8 @@ type SimpRenderRuntime = {
   };
 };
 
-function el(key: string, ref?: string): SimpElement {
-  return { key, flag: SIMP_ELEMENT_FLAG_HOST, reference: ref ? { id: ref } : undefined };
+function el(key: string, ref: string | undefined, index: number): SimpElement {
+  return { key, flag: SIMP_ELEMENT_FLAG_HOST, reference: ref ? { id: ref } : undefined, index };
 }
 
 function ref(id: string): HostReference {
@@ -104,8 +105,8 @@ describe('patchKeyedChildren', () => {
   });
 
   it('Step 1: syncs from start while keys match', () => {
-    const prev = [el('a', 'ref:a'), el('b', 'ref:b'), el('c', 'ref:c')];
-    const next = [el('a'), el('b'), el('x')];
+    const prev = [el('a', 'ref:a', 0), el('b', 'ref:b', 1), el('c', 'ref:c', 2)];
+    const next = [el('a', undefined, 0), el('b', undefined, 1), el('x', undefined, 2)];
 
     _patchKeyedChildren(makeFrame(prev, next, parent, runtime));
 
@@ -118,8 +119,8 @@ describe('patchKeyedChildren', () => {
   });
 
   it('Step 2: syncs from end while keys match', () => {
-    const prev = [el('a', 'ref:a'), el('b', 'ref:b'), el('c', 'ref:c')];
-    const next = [el('x'), el('b'), el('c')];
+    const prev = [el('a', 'ref:a', 0), el('b', 'ref:b', 1), el('c', 'ref:c', 2)];
+    const next = [el('x', undefined, 0), el('b', undefined, 1), el('c', undefined, 2)];
 
     _patchKeyedChildren(makeFrame(prev, next, parent, runtime));
 
@@ -132,8 +133,8 @@ describe('patchKeyedChildren', () => {
   });
 
   it('Step 3: when next list is exhausted, removes remaining prev (after start sync patches)', () => {
-    const prev = [el('a', 'ref:a'), el('b', 'ref:b')];
-    const next = [el('a')];
+    const prev = [el('a', 'ref:a', 0), el('b', 'ref:b', 1)];
+    const next = [el('a', undefined, 0)];
 
     _patchKeyedChildren(makeFrame(prev, next, parent, runtime));
 
@@ -144,7 +145,7 @@ describe('patchKeyedChildren', () => {
   });
 
   it('Step 4: when prev list is exhausted (no stable right sibling), mounts all next using rightSibling as anchor', () => {
-    const next = [el('a'), el('b')];
+    const next = [el('a', undefined, 0), el('b', undefined, 1)];
 
     _patchKeyedChildren(makeFrame([], next, parent, runtime));
 
@@ -157,8 +158,8 @@ describe('patchKeyedChildren', () => {
   });
 
   it('Step 4: when prev list is exhausted between stable nodes, uses rightSibling as anchor', () => {
-    const prev = [el('a', 'ref:a'), el('c', 'ref:c')];
-    const next = [el('a'), el('b'), el('c')];
+    const prev = [el('a', 'ref:a', 0), el('c', 'ref:c', 1)];
+    const next = [el('a', undefined, 0), el('b', undefined, 1), el('c', undefined, 2)];
 
     _patchKeyedChildren(makeFrame(prev, next, parent, runtime));
 
@@ -173,8 +174,8 @@ describe('patchKeyedChildren', () => {
   });
 
   it('Step 5: reorder only (no mount/remove), still issues HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR for existing nodes in reverse pass', () => {
-    const prev = [el('a', 'ref:a'), el('b', 'ref:b'), el('c', 'ref:c')];
-    const next = [el('b'), el('a'), el('c')];
+    const prev = [el('a', 'ref:a', 0), el('b', 'ref:b', 1), el('c', 'ref:c', 2)];
+    const next = [el('b', undefined, 0), el('a', undefined, 1), el('c', undefined, 2)];
 
     _patchKeyedChildren(makeFrame(prev, next, parent, runtime));
 
@@ -191,8 +192,8 @@ describe('patchKeyedChildren', () => {
   });
 
   it('Step 5: remove-only (some prev keys not present in next)', () => {
-    const prev = [el('a', 'ref:a'), el('b', 'ref:b'), el('c', 'ref:c')];
-    const next = [el('a'), el('c')];
+    const prev = [el('a', 'ref:a', 0), el('b', 'ref:b', 1), el('c', 'ref:c', 2)];
+    const next = [el('a', undefined, 0), el('c', undefined, 1)];
 
     _patchKeyedChildren(makeFrame(prev, next, parent, runtime));
 
@@ -205,8 +206,8 @@ describe('patchKeyedChildren', () => {
   });
 
   it('Step 5 mixed: patch reusable, then remove unused, then mount new, then move/insert in final order', () => {
-    const prev = [el('a', 'ref:a'), el('b', 'ref:b'), el('c', 'ref:c'), el('d', 'ref:d')];
-    const next = [el('d'), el('b'), el('e'), el('a')];
+    const prev = [el('a', 'ref:a', 0), el('b', 'ref:b', 1), el('c', 'ref:c', 2), el('d', 'ref:d', 3)];
+    const next = [el('d', undefined, 0), el('b', undefined, 1), el('e', undefined, 2), el('a', undefined, 3)];
 
     _patchKeyedChildren(makeFrame(prev, next, parent, runtime));
 

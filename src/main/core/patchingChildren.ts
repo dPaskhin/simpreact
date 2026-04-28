@@ -223,6 +223,7 @@ export function _patchKeyedChildren(frame: SimpRenderFrame): void {
 
   const nextChildren = nextElement.children as SimpElement[];
   const prevChildren = prevElement!.children as SimpElement[];
+
   const nextLen = nextChildren.length;
   const prevLen = prevChildren.length;
 
@@ -234,8 +235,8 @@ export function _patchKeyedChildren(frame: SimpRenderFrame): void {
     placeHolderElement: null,
   } as const;
 
-  const rs = (i: number): SimpElement | null => {
-    return nextChildren[i + 1] ?? null;
+  const getRightSibling = (child: SimpElement): SimpElement | null => {
+    return nextChildren[child.index + 1] ?? null;
   };
 
   let prevStart = 0;
@@ -243,7 +244,6 @@ export function _patchKeyedChildren(frame: SimpRenderFrame): void {
   let prevEnd = prevLen - 1;
   let nextEnd = nextLen - 1;
 
-  // Step 1: shrink prefix
   while (
     prevStart <= prevEnd &&
     nextStart <= nextEnd &&
@@ -253,64 +253,93 @@ export function _patchKeyedChildren(frame: SimpRenderFrame): void {
     nextStart++;
   }
 
-  // Step 2: shrink suffix
   while (prevStart <= prevEnd && nextStart <= nextEnd && prevChildren[prevEnd]!.key === nextChildren[nextEnd]!.key) {
     prevEnd--;
     nextEnd--;
   }
 
-  // next[i] in suffix maps to prev[i - delta]
-  const delta = nextLen - prevLen;
-
-  const pushSuffixPatches = (): void => {
-    for (let i = nextEnd + 1; i < nextLen; i++) {
-      _pushPatchEnterFrame(nextChildren[i]!, { ...base, prevElement: prevChildren[i - delta]!, rightSibling: rs(i) });
-    }
-  };
-
   const pushPrefixPatches = (): void => {
     for (let i = 0; i < nextStart; i++) {
-      _pushPatchEnterFrame(nextChildren[i]!, { ...base, prevElement: prevChildren[i]!, rightSibling: rs(i) });
+      const nextChild = nextChildren[i]!;
+      const prevChild = prevChildren[nextChild.index]!;
+
+      _pushPatchEnterFrame(nextChild, {
+        ...base,
+        prevElement: prevChild,
+        rightSibling: getRightSibling(nextChild),
+      });
     }
   };
 
-  // Step 3: next exhausted → remove stale prev, patch edges
+  const pushSuffixPatches = (): void => {
+    const delta = nextLen - prevLen;
+
+    for (let i = nextEnd + 1; i < nextLen; i++) {
+      const nextChild = nextChildren[i]!;
+      const prevChild = prevChildren[nextChild.index - delta]!;
+
+      _pushPatchEnterFrame(nextChild, {
+        ...base,
+        prevElement: prevChild,
+        rightSibling: getRightSibling(nextChild),
+      });
+    }
+  };
+
   if (nextStart > nextEnd) {
     pushPrefixPatches();
+
     for (let i = prevStart; i <= prevEnd; i++) {
       _remove(prevChildren[i]!, parentReference, renderRuntime);
     }
+
     pushSuffixPatches();
     return;
   }
 
-  // Step 4: prev exhausted → mount remaining next, patch edges
   if (prevStart > prevEnd) {
     pushPrefixPatches();
+
     for (let i = nextStart; i <= nextEnd; i++) {
-      _pushMountEnterFrame(nextChildren[i]!, { ...base, prevElement: null, rightSibling: rs(i) });
+      const nextChild = nextChildren[i]!;
+
+      _pushMountEnterFrame(nextChild, {
+        ...base,
+        prevElement: null,
+        rightSibling: getRightSibling(nextChild),
+      });
     }
+
     pushSuffixPatches();
     return;
   }
 
-  // Step 5: unknown middle section
-  const keyToPrevIndex = new Map<Key, number>();
+  const keyToPrevChild = new Map<Key, SimpElement>();
+
   for (let i = prevStart; i <= prevEnd; i++) {
-    const key = prevChildren[i]!.key;
-    if (key != null) keyToPrevIndex.set(key, i);
+    const prevChild = prevChildren[i]!;
+    const key = prevChild.key;
+
+    if (key != null) {
+      keyToPrevChild.set(key, prevChild);
+    }
   }
 
   const middleLen = nextEnd - nextStart + 1;
-  const newIndexToOldIndex = new Int32Array(middleLen); // 0 = new node
+  const newIndexToOldIndex = new Int32Array(middleLen);
 
   let moved = false;
   let maxPrevIndexSoFar = -1;
 
   for (let i = nextStart; i <= nextEnd; i++) {
-    const prevIndex = keyToPrevIndex.get(nextChildren[i]!.key!);
-    if (prevIndex !== undefined) {
-      newIndexToOldIndex[i - nextStart] = prevIndex + 1;
+    const nextChild = nextChildren[i]!;
+    const prevChild = keyToPrevChild.get(nextChild.key!);
+
+    if (prevChild != null) {
+      const prevIndex = prevChild.index;
+
+      newIndexToOldIndex[nextChild.index - nextStart] = prevIndex + 1;
+
       if (prevIndex < maxPrevIndexSoFar) {
         moved = true;
       } else {
@@ -321,12 +350,16 @@ export function _patchKeyedChildren(frame: SimpRenderFrame): void {
 
   pushPrefixPatches();
 
-  // Remove unmatched prev nodes
   const matchedPrev = new Uint8Array(prevEnd - prevStart + 1);
+
   for (let i = 0; i < middleLen; i++) {
-    const old = newIndexToOldIndex[i];
-    if (old !== 0) matchedPrev[old! - 1 - prevStart] = 1;
+    const oldIndex = newIndexToOldIndex[i];
+
+    if (oldIndex !== 0) {
+      matchedPrev[oldIndex! - 1 - prevStart] = 1;
+    }
   }
+
   for (let i = prevStart; i <= prevEnd; i++) {
     if (!matchedPrev[i - prevStart]) {
       _remove(prevChildren[i]!, parentReference, renderRuntime);
@@ -335,18 +368,32 @@ export function _patchKeyedChildren(frame: SimpRenderFrame): void {
 
   for (let i = nextStart; i <= nextEnd; i++) {
     const nextChild = nextChildren[i]!;
-    const oldIndex = newIndexToOldIndex[i - nextStart]!;
+    const oldIndex = newIndexToOldIndex[nextChild.index - nextStart];
 
     if (oldIndex === 0) {
-      _pushMountEnterFrame(nextChild, { ...base, prevElement: null, rightSibling: rs(i) });
-    } else {
-      const prevChild = prevChildren[oldIndex - 1]!;
-      // patch first (deeper = executes last within this node's two frames)
-      if (moved) {
-        _pushHostOperationPlaceElement(nextChild, { ...base, prevElement: prevChild, rightSibling: rs(i) });
-      }
-      _pushPatchEnterFrame(nextChild, { ...base, prevElement: prevChild, rightSibling: null });
+      _pushMountEnterFrame(nextChild, {
+        ...base,
+        prevElement: null,
+        rightSibling: getRightSibling(nextChild),
+      });
+      continue;
     }
+
+    const prevChild = prevChildren[oldIndex! - 1]!;
+
+    if (moved) {
+      _pushHostOperationPlaceElement(nextChild, {
+        ...base,
+        prevElement: prevChild,
+        rightSibling: getRightSibling(nextChild),
+      });
+    }
+
+    _pushPatchEnterFrame(nextChild, {
+      ...base,
+      prevElement: prevChild,
+      rightSibling: null,
+    });
   }
 
   pushSuffixPatches();

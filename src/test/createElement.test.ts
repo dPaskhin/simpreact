@@ -100,7 +100,7 @@ describe('createElement and utils', () => {
           childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
           children: 'hello',
           parent: null,
-          key: '.0',
+          key: null,
           type: null,
           props: null,
           className: null,
@@ -109,6 +109,7 @@ describe('createElement and utils', () => {
           context: null,
           ref: null,
           unmounted: null,
+          index: 0,
         },
       });
       expect(normalizeChildren(createMockHostElement(), 42, true)).toEqual({
@@ -119,7 +120,7 @@ describe('createElement and utils', () => {
           childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
           children: '42',
           parent: null,
-          key: '.0',
+          key: null,
           type: null,
           props: null,
           className: null,
@@ -128,6 +129,7 @@ describe('createElement and utils', () => {
           context: null,
           ref: null,
           unmounted: null,
+          index: 0,
         },
       });
       expect(normalizeChildren(createMockHostElement(), 42n, true)).toEqual({
@@ -138,7 +140,7 @@ describe('createElement and utils', () => {
           childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
           children: '42',
           parent: null,
-          key: '.0',
+          key: null,
           type: null,
           props: null,
           className: null,
@@ -147,6 +149,7 @@ describe('createElement and utils', () => {
           context: null,
           ref: null,
           unmounted: null,
+          index: 0,
         },
       });
     });
@@ -182,6 +185,7 @@ describe('createElement and utils', () => {
           context: null,
           ref: null,
           unmounted: null,
+          index: 0,
         },
         {
           key: '.1',
@@ -197,6 +201,7 @@ describe('createElement and utils', () => {
           context: null,
           ref: null,
           unmounted: null,
+          index: 1,
         },
         {
           children: '123',
@@ -212,6 +217,7 @@ describe('createElement and utils', () => {
           context: null,
           ref: null,
           unmounted: null,
+          index: 2,
         },
         {
           key: '.3.0',
@@ -227,6 +233,7 @@ describe('createElement and utils', () => {
           context: null,
           ref: null,
           unmounted: null,
+          index: 3,
         },
         {
           key: '.3.1',
@@ -242,6 +249,7 @@ describe('createElement and utils', () => {
           context: null,
           ref: null,
           unmounted: null,
+          index: 4,
         },
         {
           key: '.3.2.0',
@@ -257,6 +265,7 @@ describe('createElement and utils', () => {
           context: null,
           ref: null,
           unmounted: null,
+          index: 5,
         },
         {
           key: '.3.2.1',
@@ -272,6 +281,7 @@ describe('createElement and utils', () => {
           context: null,
           ref: null,
           unmounted: null,
+          index: 6,
         },
         {
           key: '.4bKeyI',
@@ -287,6 +297,7 @@ describe('createElement and utils', () => {
           context: null,
           ref: null,
           unmounted: null,
+          index: 7,
         },
         {
           key: '.4bKeyII',
@@ -302,6 +313,7 @@ describe('createElement and utils', () => {
           context: null,
           ref: null,
           unmounted: null,
+          index: 8,
         },
         {
           key: 'bKeyII',
@@ -317,6 +329,7 @@ describe('createElement and utils', () => {
           context: null,
           ref: null,
           unmounted: null,
+          index: 9,
         },
         {
           key: '.6',
@@ -332,6 +345,7 @@ describe('createElement and utils', () => {
           context: null,
           ref: null,
           unmounted: null,
+          index: 10,
         },
       ]);
     });
@@ -354,8 +368,9 @@ describe('createElement and utils', () => {
           context: null,
           ref: null,
           unmounted: null,
+          index: 0,
         },
-        { ...el, childFlag: SIMP_ELEMENT_CHILD_FLAG_LIST, key: '.1' },
+        { ...el, childFlag: SIMP_ELEMENT_CHILD_FLAG_LIST, key: '.1', index: 1 },
         {
           flag: SIMP_ELEMENT_FLAG_TEXT,
           childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
@@ -370,6 +385,7 @@ describe('createElement and utils', () => {
           context: null,
           ref: null,
           unmounted: null,
+          index: 2,
         },
       ]);
     });
@@ -414,6 +430,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
       expect(createTextElement(0)).toEqual({
         flag: SIMP_ELEMENT_FLAG_TEXT,
@@ -429,6 +446,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
       expect(createTextElement(-1)).toEqual({
         flag: SIMP_ELEMENT_FLAG_TEXT,
@@ -444,6 +462,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
       expect(createTextElement(42n)).toEqual({
         flag: SIMP_ELEMENT_FLAG_TEXT,
@@ -459,6 +478,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
       expect(createTextElement('')).toEqual({
         flag: SIMP_ELEMENT_FLAG_TEXT,
@@ -474,6 +494,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
     });
   });
@@ -495,6 +516,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
     });
 
@@ -513,6 +535,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
       expect(createElement('div', null, '')).toEqual({
         flag: SIMP_ELEMENT_FLAG_HOST,
@@ -528,6 +551,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
       expect(createElement('div', null, 0)).toEqual({
         flag: SIMP_ELEMENT_FLAG_HOST,
@@ -543,6 +567,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
     });
 
@@ -565,6 +590,8 @@ describe('createElement and utils', () => {
           context: null,
           ref: null,
           unmounted: null,
+
+          index: 0,
         },
         parent: null,
         key: null,
@@ -575,6 +602,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
       expect(createElement('div', null, 'child', createMockHostElement(), 'tail')).toEqual({
         flag: SIMP_ELEMENT_FLAG_HOST,
@@ -595,6 +623,7 @@ describe('createElement and utils', () => {
             context: null,
             ref: null,
             unmounted: null,
+            index: 0,
           },
           {
             flag: SIMP_ELEMENT_FLAG_HOST,
@@ -610,6 +639,7 @@ describe('createElement and utils', () => {
             context: null,
             ref: null,
             unmounted: null,
+            index: 1,
           },
           {
             flag: SIMP_ELEMENT_FLAG_TEXT,
@@ -625,6 +655,7 @@ describe('createElement and utils', () => {
             context: null,
             ref: null,
             unmounted: null,
+            index: 2,
           },
         ],
         parent: null,
@@ -636,6 +667,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
       expect(createElement('div', null, ['child', createMockHostElement(), 'tail'])).toEqual({
         flag: SIMP_ELEMENT_FLAG_HOST,
@@ -656,6 +688,7 @@ describe('createElement and utils', () => {
             context: null,
             ref: null,
             unmounted: null,
+            index: 0,
           },
           {
             flag: SIMP_ELEMENT_FLAG_HOST,
@@ -671,6 +704,7 @@ describe('createElement and utils', () => {
             context: null,
             ref: null,
             unmounted: null,
+            index: 1,
           },
           {
             flag: SIMP_ELEMENT_FLAG_TEXT,
@@ -686,6 +720,7 @@ describe('createElement and utils', () => {
             context: null,
             ref: null,
             unmounted: null,
+            index: 2,
           },
         ],
         parent: null,
@@ -697,6 +732,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
     });
 
@@ -716,6 +752,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
     });
 
@@ -738,6 +775,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
     });
 
@@ -764,6 +802,7 @@ describe('createElement and utils', () => {
             context: null,
             ref: null,
             unmounted: null,
+            index: 0,
           },
           {
             flag: SIMP_ELEMENT_FLAG_TEXT,
@@ -779,8 +818,9 @@ describe('createElement and utils', () => {
             context: null,
             ref: null,
             unmounted: null,
+            index: 1,
           },
-          { ...createMockHostElement(), key: '.2' },
+          { ...createMockHostElement(), key: '.2', index: 2 },
         ],
         parent: null,
         key: null,
@@ -790,6 +830,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
       expect(
         createElement('div', {
@@ -802,7 +843,7 @@ describe('createElement and utils', () => {
         type: 'div',
         props: {
           id: 'it',
-          children: ['child1', 'child2', { ...createMockHostElement(), key: '.2' }],
+          children: ['child1', 'child2', { ...createMockHostElement(), key: '.2', index: 2 }],
         },
         children: [
           {
@@ -819,6 +860,7 @@ describe('createElement and utils', () => {
             context: null,
             ref: null,
             unmounted: null,
+            index: 0,
           },
           {
             flag: SIMP_ELEMENT_FLAG_TEXT,
@@ -834,8 +876,9 @@ describe('createElement and utils', () => {
             context: null,
             ref: null,
             unmounted: null,
+            index: 1,
           },
-          { ...createMockHostElement(), key: '.2' },
+          { ...createMockHostElement(), key: '.2', index: 2 },
         ],
         parent: null,
         key: null,
@@ -845,6 +888,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
     });
 
@@ -865,6 +909,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
     });
 
@@ -894,6 +939,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
     });
 
@@ -915,6 +961,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
       expect(hostElement).toEqual({
         flag: SIMP_ELEMENT_FLAG_HOST,
@@ -939,6 +986,7 @@ describe('createElement and utils', () => {
             context: null,
             ref: null,
             unmounted: null,
+            index: 0,
           },
           {
             flag: SIMP_ELEMENT_FLAG_TEXT,
@@ -954,6 +1002,7 @@ describe('createElement and utils', () => {
             context: null,
             ref: null,
             unmounted: null,
+            index: 1,
           },
         ],
         parent: null,
@@ -964,6 +1013,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
     });
 
@@ -987,6 +1037,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
     });
 
@@ -1005,6 +1056,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
       expect(createElement(Fragment, { children: '12' })).toEqual({
         flag: SIMP_ELEMENT_FLAG_FRAGMENT,
@@ -1014,7 +1066,7 @@ describe('createElement and utils', () => {
           childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
           children: '12',
           parent: null,
-          key: '.0',
+          key: null,
           type: null,
           props: null,
           className: null,
@@ -1023,6 +1075,7 @@ describe('createElement and utils', () => {
           context: null,
           ref: null,
           unmounted: null,
+          index: 0,
         },
         parent: null,
         key: null,
@@ -1034,6 +1087,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
       expect(createElement(Fragment, { children: 'ignored children' }, '123')).toEqual({
         flag: SIMP_ELEMENT_FLAG_FRAGMENT,
@@ -1043,7 +1097,7 @@ describe('createElement and utils', () => {
           childFlag: SIMP_ELEMENT_CHILD_FLAG_TEXT,
           children: '123',
           parent: null,
-          key: '.0',
+          key: null,
           type: null,
           props: null,
           className: null,
@@ -1052,6 +1106,7 @@ describe('createElement and utils', () => {
           context: null,
           ref: null,
           unmounted: null,
+          index: 0,
         },
         parent: null,
         key: null,
@@ -1063,6 +1118,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
       expect(createElement(Fragment, null!, '123', '456', createMockHostElement())).toEqual({
         flag: SIMP_ELEMENT_FLAG_FRAGMENT,
@@ -1082,6 +1138,7 @@ describe('createElement and utils', () => {
             context: null,
             ref: null,
             unmounted: null,
+            index: 0,
           },
           {
             flag: SIMP_ELEMENT_FLAG_TEXT,
@@ -1097,6 +1154,7 @@ describe('createElement and utils', () => {
             context: null,
             ref: null,
             unmounted: null,
+            index: 1,
           },
           {
             flag: SIMP_ELEMENT_FLAG_HOST,
@@ -1112,6 +1170,7 @@ describe('createElement and utils', () => {
             context: null,
             ref: null,
             unmounted: null,
+            index: 2,
           },
         ],
         parent: null,
@@ -1124,6 +1183,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
       expect(
         createElement(Fragment, {
@@ -1140,7 +1200,7 @@ describe('createElement and utils', () => {
           type: 'div',
           props: { children: '123' },
           parent: null,
-          key: '',
+          key: null,
           children: null,
           className: null,
           reference: null,
@@ -1148,6 +1208,7 @@ describe('createElement and utils', () => {
           context: null,
           ref: null,
           unmounted: null,
+          index: 0,
         },
         parent: null,
         type: null,
@@ -1158,6 +1219,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
     });
 
@@ -1176,6 +1238,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
       expect(
         createElement(TestContext.Provider, {
@@ -1202,6 +1265,7 @@ describe('createElement and utils', () => {
             context: null,
             ref: null,
             unmounted: null,
+            index: 0,
           },
         },
         parent: null,
@@ -1213,6 +1277,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
       expect(
         createElement(TestContext.Provider, { value: 'PROVIDED_VALUE', children: 'ignored children' }, '123')
@@ -1230,6 +1295,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
       expect(createElement(TestContext.Provider, { key: '123', value: 'PROVIDED_VALUE' }, '123')).toEqual({
         flag: SIMP_ELEMENT_FLAG_FC,
@@ -1245,6 +1311,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
       expect(createElement(TestContext.Provider, { value: 'PROVIDED_VALUE' })).toEqual({
         flag: SIMP_ELEMENT_FLAG_FC,
@@ -1260,6 +1327,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
     });
 
@@ -1282,6 +1350,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       expect(createElement(TestContext.Consumer, { children: MockComponent })).toEqual({
@@ -1298,17 +1367,14 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
 
       expect(
-        createElement(
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          TestContext.Consumer,
-          {
-            key: '123',
-            children: MockComponent,
-          }
-        )
+        createElement(TestContext.Consumer, {
+          key: '123',
+          children: MockComponent,
+        })
       ).toEqual({
         flag: SIMP_ELEMENT_FLAG_FC,
         type: TestContext.Consumer,
@@ -1323,8 +1389,8 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       expect(createElement(TestContext.Consumer)).toEqual({
         flag: SIMP_ELEMENT_FLAG_FC,
         type: TestContext.Consumer,
@@ -1339,6 +1405,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
     });
   });
@@ -1359,6 +1426,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
       expect(normalizeRoot(createMockHostElement(), 42, false).children).toEqual({
         flag: SIMP_ELEMENT_FLAG_TEXT,
@@ -1374,6 +1442,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
       expect(normalizeRoot(createMockHostElement(), 123n, false).children).toEqual({
         flag: SIMP_ELEMENT_FLAG_TEXT,
@@ -1389,6 +1458,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
       expect(normalizeRoot(createMockHostElement(), '', false).children).toBeNull();
       expect(normalizeRoot(createMockHostElement(), true, false).children).toBeNull();
@@ -1424,6 +1494,7 @@ describe('createElement and utils', () => {
             context: null,
             ref: null,
             unmounted: null,
+            index: 0,
           },
           {
             flag: SIMP_ELEMENT_FLAG_TEXT,
@@ -1439,6 +1510,7 @@ describe('createElement and utils', () => {
             context: null,
             ref: null,
             unmounted: null,
+            index: 1,
           },
           {
             flag: SIMP_ELEMENT_FLAG_TEXT,
@@ -1454,6 +1526,7 @@ describe('createElement and utils', () => {
             context: null,
             ref: null,
             unmounted: null,
+            index: 2,
           },
         ],
         parent: null,
@@ -1466,6 +1539,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
     });
 
@@ -1484,6 +1558,7 @@ describe('createElement and utils', () => {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       });
     });
 

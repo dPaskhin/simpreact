@@ -70,15 +70,14 @@ function _pushMountExitFrame(element: SimpElement, meta: SimpRenderFrameMeta): v
 
 export function _pushMountArrayChildrenFrame(element: SimpElement, meta: SimpRenderFrameMeta): void {
   const children = element.children as SimpElement[];
-  let rightSibling = null;
 
   for (let i = children.length - 1; i >= 0; i--) {
     const child = children[i]!;
     child.parent = element;
 
-    _pushMountEnterFrame(child, { ...meta, rightSibling });
+    const rightSibling = children[child.index + 1] ?? meta.rightSibling;
 
-    rightSibling = child;
+    _pushMountEnterFrame(child, { ...meta, rightSibling });
   }
 }
 

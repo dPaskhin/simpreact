@@ -261,11 +261,16 @@ function _patchFunctionalComponent(frame: SimpRenderFrame): void {
     const parentChildren = prevElement!.parent?.children;
 
     if (prevElement!.parent?.childFlag === SIMP_ELEMENT_CHILD_FLAG_LIST) {
-      (parentChildren as SimpElement[]).splice((parentChildren as SimpElement[]).indexOf(prevElement!), 1);
+      const parentChildrenList = parentChildren as SimpElement[];
+      parentChildrenList.splice(prevElement!.index, 1);
 
-      if ((parentChildren as SimpElement[]).length === 1) {
-        prevElement!.parent.children = (parentChildren as SimpElement[])[0];
+      if (parentChildrenList.length === 1) {
+        prevElement!.parent.children = parentChildrenList[0];
         prevElement!.parent.childFlag = SIMP_ELEMENT_CHILD_FLAG_ELEMENT;
+      } else {
+        for (let i = prevElement!.index; i < parentChildrenList.length; i++) {
+          parentChildrenList[i]!.index = i;
+        }
       }
     } else if (prevElement!.parent) {
       prevElement!.parent.childFlag = SIMP_ELEMENT_CHILD_FLAG_EMPTY;

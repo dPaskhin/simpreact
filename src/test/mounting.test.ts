@@ -297,7 +297,7 @@ describe('mounting', () => {
     it('should support array result from Consumer', () => {
       const context = createContext('DEFAULT_VALUE');
 
-      const element = createElement(context.Consumer as any, {
+      const element = createElement(context.Consumer, {
         children: () => [createElement('span', { key: 'a' }), createElement('p', { key: 'b' })],
       });
 

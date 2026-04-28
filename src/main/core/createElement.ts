@@ -60,6 +60,8 @@ export interface SimpElement {
   ref: any;
 
   unmounted: Nullable<boolean>;
+
+  index: number;
 }
 
 export function createElement(type: string | FC, props?: any, ...children: SimpNode[]): SimpElement;
@@ -101,6 +103,7 @@ export function createElement(type: string | FC, props?: any): SimpElement {
             context: null,
             ref: props?.ref ? { value: props.ref } : null,
             unmounted: null,
+            index: 0,
           },
           definedChildren,
           false
@@ -129,6 +132,7 @@ export function createElement(type: string | FC, props?: any): SimpElement {
         context: null,
         ref: props?.ref ? { value: props.ref } : null,
         unmounted: null,
+        index: 0,
       };
     }
     case 'function': {
@@ -150,6 +154,7 @@ export function createElement(type: string | FC, props?: any): SimpElement {
         context: null,
         ref: null,
         unmounted: null,
+        index: 0,
       };
     }
     default: {
@@ -168,6 +173,7 @@ export function createElement(type: string | FC, props?: any): SimpElement {
           context: null,
           ref: null,
           unmounted: null,
+          index: 0,
         },
         definedChildren,
         false
@@ -191,6 +197,7 @@ export function createTextElement(text: SimpText): SimpElement {
     context: null,
     ref: null,
     unmounted: null,
+    index: 0,
   };
 }
 
@@ -222,37 +229,44 @@ export function normalizeChildren(element: SimpElement, children: SimpNode, skip
   return element;
 }
 
-function normalizeNode(child: SimpNode, result: SimpElement[], currentKey = '', skipIgnoredCheck: boolean): void {
+function normalizeNode(
+  child: SimpNode,
+  result: SimpElement[],
+  currentKey: string | null = null,
+  skipIgnoredCheck: boolean
+): void {
   if (!skipIgnoredCheck && isIgnoredNode(child)) {
     return;
   }
 
   if (isSimpText(child)) {
-    child = createTextElement(child);
-    child.key =
-      currentKey ||
-      // Hack to treat a single child as a one-item list for more consistent reconciliation.
-      '.0';
-    result.push(child);
+    const element = createTextElement(child);
+
+    element.key = currentKey;
+    element.index = result.length;
+
+    result.push(element);
     return;
   }
 
   if (Array.isArray(child)) {
     for (let i = 0; i < child.length; i++) {
-      normalizeNode(child[i], result, currentKey + '.' + i, false);
+      normalizeNode(child[i], result, `${currentKey ?? ''}.${i}`, false);
     }
+
     return;
   }
 
-  if ((child as SimpElement).key != null) {
-    currentKey = currentKey.slice(0, -2) + (child as SimpElement).key;
+  const element = child as SimpElement;
+
+  if (element.key != null) {
+    currentKey = `${(currentKey ?? '').slice(0, -2)}${element.key}`;
   }
-  (child as SimpElement).key =
-    currentKey != null
-      ? currentKey
-      : // Hack to treat a single child as a one-item list for more consistent reconciliation.
-        '.0';
-  result.push(child as SimpElement);
+
+  element.key = currentKey;
+  element.index = result.length;
+
+  result.push(element);
 }
 
 export function normalizeRoot(element: SimpElement, node: SimpNode, skipIgnoredCheck: boolean): SimpElement {
