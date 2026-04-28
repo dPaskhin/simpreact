@@ -140,3 +140,61 @@ function findNextLogicalElement(element: SimpElement): Nullable<SimpElement> {
     current = parent;
   }
 }
+
+export function getLongestIncreasingSubsequenceIndexes(sequence: Int32Array): Int32Array {
+  const predecessors = new Int32Array(sequence.length);
+  const result: number[] = [];
+
+  predecessors.fill(-1);
+
+  for (let i = 0; i < sequence.length; i++) {
+    const value = sequence[i]!;
+
+    if (value === 0) {
+      continue;
+    }
+
+    const lastResultIndex = result[result.length - 1];
+
+    if (lastResultIndex == null || sequence[lastResultIndex]! < value) {
+      if (lastResultIndex != null) {
+        predecessors[i] = lastResultIndex;
+      }
+
+      result.push(i);
+      continue;
+    }
+
+    let start = 0;
+    let end = result.length - 1;
+
+    while (start < end) {
+      const middle = (start + end) >> 1;
+
+      if (sequence[result[middle]!]! < value) {
+        start = middle + 1;
+      } else {
+        end = middle;
+      }
+    }
+
+    if (value < sequence[result[start]!]!) {
+      if (start > 0) {
+        predecessors[i] = result[start - 1]!;
+      }
+
+      result[start] = i;
+    }
+  }
+
+  let resultIndex = result.length;
+  let sequenceIndex = result[resultIndex - 1] ?? -1;
+  const indexes = new Int32Array(resultIndex);
+
+  while (resultIndex-- > 0) {
+    indexes[resultIndex] = sequenceIndex;
+    sequenceIndex = predecessors[sequenceIndex]!;
+  }
+
+  return indexes;
+}

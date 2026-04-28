@@ -109,23 +109,11 @@ describe('patching', () => {
       expect((prev.children as SimpElement[])[1]!.reference).toEqual((next.children as SimpElement[])[2]!.reference);
       expect((prev.children as SimpElement[])[2]!.reference).toEqual((next.children as SimpElement[])[0]!.reference);
 
-      expect(testHostAdapter.insertOrAppend).toHaveBeenCalledTimes(3);
-      expect(testHostAdapter.appendChild).toHaveBeenCalledTimes(1);
+      expect(testHostAdapter.insertOrAppend).toHaveBeenCalledTimes(1);
+      expect(testHostAdapter.appendChild).not.toHaveBeenCalled();
 
       expect(testHostAdapter.insertOrAppend).toHaveBeenNthCalledWith(
         1,
-        parent,
-        expect.objectContaining({ nodeName: 'B' }),
-        null
-      );
-      expect(testHostAdapter.insertOrAppend).toHaveBeenNthCalledWith(
-        2,
-        parent,
-        expect.objectContaining({ nodeName: 'A' }),
-        expect.objectContaining({ nodeName: 'B' })
-      );
-      expect(testHostAdapter.insertOrAppend).toHaveBeenNthCalledWith(
-        3,
         parent,
         expect.objectContaining({ nodeName: 'C' }),
         expect.objectContaining({ nodeName: 'A' })

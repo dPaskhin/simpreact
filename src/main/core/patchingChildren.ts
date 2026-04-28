@@ -21,6 +21,7 @@ import {
   _pushUnmountEnterFrame,
   _remove,
 } from './unmounting.js';
+import { getLongestIncreasingSubsequenceIndexes } from './utils.js';
 
 export function _pushPatchChildrenFrame(element: SimpElement, meta: SimpRenderFrameMeta): void {
   meta.renderRuntime.renderStack.push({
@@ -366,9 +367,13 @@ export function _patchKeyedChildren(frame: SimpRenderFrame): void {
     }
   }
 
+  const stableNewIndexes = moved ? getLongestIncreasingSubsequenceIndexes(newIndexToOldIndex) : new Int32Array(0);
+  let stableCursor = 0;
+
   for (let i = nextStart; i <= nextEnd; i++) {
     const nextChild = nextChildren[i]!;
-    const oldIndex = newIndexToOldIndex[nextChild.index - nextStart];
+    const newIndex = nextChild.index - nextStart;
+    const oldIndex = newIndexToOldIndex[newIndex];
 
     if (oldIndex === 0) {
       _pushMountEnterFrame(nextChild, {
@@ -380,8 +385,11 @@ export function _patchKeyedChildren(frame: SimpRenderFrame): void {
     }
 
     const prevChild = prevChildren[oldIndex! - 1]!;
+    const isStable = moved && stableNewIndexes[stableCursor] === newIndex;
 
-    if (moved) {
+    if (isStable) {
+      stableCursor++;
+    } else if (moved) {
       _pushHostOperationPlaceElement(nextChild, {
         ...base,
         prevElement: prevChild,

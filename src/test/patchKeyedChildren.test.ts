@@ -10,7 +10,10 @@ import { findHostReferenceFromElement } from '../main/core/utils.js';
 vi.mock('../main/core/patching.js', () => ({ _pushPatchEnterFrame: vi.fn() }));
 vi.mock('../main/core/mounting.js', () => ({ _pushMountEnterFrame: vi.fn() }));
 vi.mock('../main/core/unmounting.js', () => ({ _remove: vi.fn() }));
-vi.mock('../main/core/utils.js', () => ({ findHostReferenceFromElement: vi.fn() }));
+vi.mock('../main/core/utils.js', async importOriginal => ({
+  ...(await importOriginal<typeof import('../main/core/utils.js')>()),
+  findHostReferenceFromElement: vi.fn(),
+}));
 vi.mock('../main/core/hostOperations.js', () => ({ _pushHostOperationPlaceElement: vi.fn() }));
 
 type HostReference = { id: string };
@@ -173,7 +176,7 @@ describe('patchKeyedChildren', () => {
     expect(runtime.hostAdapter.insertBefore).not.toHaveBeenCalled();
   });
 
-  it('Step 5: reorder only (no mount/remove), still issues HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR for existing nodes in reverse pass', () => {
+  it('Step 5: reorder only (no mount/remove), moves only nodes outside the LIS', () => {
     const prev = [el('a', 'ref:a', 0), el('b', 'ref:b', 1), el('c', 'ref:c', 2)];
     const next = [el('b', undefined, 0), el('a', undefined, 1), el('c', undefined, 2)];
 
@@ -182,7 +185,6 @@ describe('patchKeyedChildren', () => {
     expect(calls).toEqual([
       'placeElementBeforeAnchor(b before right sibling a)',
       'patch(b -> b before right sibling null)',
-      'placeElementBeforeAnchor(a before right sibling c)',
       'patch(a -> a before right sibling null)',
       'patch(c -> c before right sibling null)',
     ]);
@@ -218,7 +220,6 @@ describe('patchKeyedChildren', () => {
       'placeElementBeforeAnchor(b before right sibling e)',
       'patch(b -> b before right sibling null)',
       'mount(e before right sibling a)',
-      'placeElementBeforeAnchor(a before right sibling null)',
       'patch(a -> a before right sibling null)',
     ]);
   });

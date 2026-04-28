@@ -1,5 +1,6 @@
 import { shallowEqual } from '@simpreact/shared';
 import { describe, expect, it } from 'vitest';
+import { getLongestIncreasingSubsequenceIndexes } from '../main/core/utils.js';
 
 describe('shallowEqual', () => {
   describe('objects', () => {
@@ -115,5 +116,35 @@ describe('shallowEqual', () => {
       expect(shallowEqual(arr, arr)).toBe(true); // same reference
       expect(shallowEqual([-0], [+0])).toBe(false);
     });
+  });
+});
+
+describe('getLongestIncreasingSubsequenceIndexes', () => {
+  const lis = (sequence: number[]): number[] => {
+    return Array.from(getLongestIncreasingSubsequenceIndexes(new Int32Array(sequence)));
+  };
+
+  it('returns an empty sequence for empty input', () => {
+    expect(lis([])).toEqual([]);
+  });
+
+  it('ignores zero entries because they represent newly mounted nodes', () => {
+    expect(lis([0, 3, 0, 4, 1, 2, 0])).toEqual([4, 5]);
+  });
+
+  it('returns every index when the non-zero sequence is already increasing', () => {
+    expect(lis([1, 2, 3, 4])).toEqual([0, 1, 2, 3]);
+  });
+
+  it('returns one stable index for a strictly decreasing sequence', () => {
+    expect(lis([4, 3, 2, 1])).toEqual([3]);
+  });
+
+  it('finds the longest stable middle subsequence by indexes', () => {
+    expect(lis([4, 2, 5, 3, 6, 1, 7])).toEqual([1, 3, 4, 6]);
+  });
+
+  it('keeps the earliest duplicate value because the subsequence is strictly increasing', () => {
+    expect(lis([2, 2, 3])).toEqual([0, 2]);
   });
 });

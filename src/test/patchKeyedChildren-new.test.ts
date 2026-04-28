@@ -544,9 +544,7 @@ describe('patchKeyedChildren', () => {
         { key: 'a', phase: PATCH_ENTER.toString() },
         { key: 'd', phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
         { key: 'd', phase: PATCH_ENTER.toString() },
-        { key: 'b', phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
         { key: 'b', phase: PATCH_ENTER.toString() },
-        { key: 'c', phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
         { key: 'c', phase: PATCH_ENTER.toString() },
         { key: 'z', phase: PATCH_ENTER.toString() },
       ]);
@@ -578,9 +576,7 @@ describe('patchKeyedChildren', () => {
         { key: 'c', phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
         { key: 'c', phase: PATCH_ENTER.toString() },
         { key: 'x', phase: MOUNT_ENTER.toString() },
-        { key: 'a', phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
         { key: 'a', phase: PATCH_ENTER.toString() },
-        { key: 'b', phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
         { key: 'b', phase: PATCH_ENTER.toString() },
       ]);
     });
@@ -594,7 +590,6 @@ describe('patchKeyedChildren', () => {
         { key: 'b', phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
         { key: 'b', phase: PATCH_ENTER.toString() },
         { key: 'e', phase: MOUNT_ENTER.toString() },
-        { key: 'a', phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
         { key: 'a', phase: PATCH_ENTER.toString() },
       ]);
 
