@@ -42,8 +42,8 @@ describe('textarea controlled', () => {
       expect(addSpy).toHaveBeenCalledWith('change', expect.any(Function));
 
       removeControlledTextareaEventHandlers(textarea, renderRuntime);
-      expect(removeSpy).toHaveBeenCalledWith('input', expect.any(Function));
-      expect(removeSpy).toHaveBeenCalledWith('change', expect.any(Function));
+      expect(removeSpy).toHaveBeenCalledWith('input', addSpy.mock.calls[0]![1]);
+      expect(removeSpy).toHaveBeenCalledWith('change', addSpy.mock.calls[1]![1]);
     });
   });
 

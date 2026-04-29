@@ -1,4 +1,4 @@
-import { createCreateRoot, createRenderer } from '@simpreact/dom';
+import { createCreateRoot, createRenderer, domAdapter } from '@simpreact/dom';
 import { createElement, SIMP_ELEMENT_FLAG_HOST, type SimpRenderRuntime } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -81,6 +81,27 @@ describe('render', () => {
       root.unmount();
 
       expect(container.hasChildNodes()).toBe(false);
+    });
+
+    it('should clean host element mappings when unmounting the root', () => {
+      const runtime: SimpRenderRuntime = {
+        hostAdapter: domAdapter,
+        renderer(type, element) {
+          return type(element.props || emptyObject);
+        },
+        elementToHostMap: new Map(),
+        renderStack: [],
+      };
+      const root = createCreateRoot(runtime)(container as any);
+
+      root.render(createElement('div', null, createElement('span'), createElement('p')));
+
+      expect(runtime.elementToHostMap.size).toBe(4);
+
+      root.unmount();
+
+      expect(container.hasChildNodes()).toBe(false);
+      expect(runtime.elementToHostMap.size).toBe(0);
     });
   });
 });

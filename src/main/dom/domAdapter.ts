@@ -1,5 +1,5 @@
 import type { HostAdapter } from '@simpreact/internal';
-import { attachElementToDom, getElementFromDom } from './attach-element-to-dom.js';
+import { attachElementToDom, detachElementFromDom, getElementFromDom } from './attach-element-to-dom.js';
 import type { Namespace } from './namespace.js';
 import { defaultNamespace } from './namespace.js';
 import { mountProps, patchProps, unmountProps } from './props/index.js';
@@ -72,6 +72,10 @@ export const domAdapter: HostAdapter<HTMLElement | SVGElement, Text, Namespace> 
 
   getElementFromReference(reference, renderRuntime) {
     return getElementFromDom(reference, renderRuntime);
+  },
+
+  detachElementFromReference(reference, renderRuntime) {
+    detachElementFromDom(reference, renderRuntime);
   },
 
   getHostNamespaces(element, currentNamespace) {

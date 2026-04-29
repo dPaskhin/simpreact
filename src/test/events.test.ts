@@ -107,28 +107,53 @@ describe('events', () => {
     });
 
     it('adds event listener if handler is provided', () => {
-      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any, renderRuntime);
+      patchDelegatedEvent(eventType, null, handler, eventHandlerCounts as any, renderRuntime);
       expect(document.addEventListener).toHaveBeenCalledWith(eventType, expect.any(Function));
     });
 
-    it('does not add duplicate event listener if already added', () => {
-      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any, renderRuntime);
-      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any, renderRuntime);
-      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any, renderRuntime);
-      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any, renderRuntime);
-      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any, renderRuntime);
+    it('does not change listener count when delegated handler is replaced', () => {
+      const nextHandler = vi.fn();
+
+      patchDelegatedEvent(eventType, null, handler, eventHandlerCounts as any, renderRuntime);
+      patchDelegatedEvent(eventType, handler, nextHandler, eventHandlerCounts as any, renderRuntime);
+
       expect(document.addEventListener).toHaveBeenCalledTimes(1);
-      expect(eventHandlerCounts.click).toBe(5);
+      expect(document.removeEventListener).not.toHaveBeenCalled();
+      expect(eventHandlerCounts.click).toBe(1);
+    });
+
+    it('keeps document listener until all delegated handlers are removed', () => {
+      const firstHandler = vi.fn();
+      const secondHandler = vi.fn();
+      const nextFirstHandler = vi.fn();
+
+      patchDelegatedEvent(eventType, null, firstHandler, eventHandlerCounts as any, renderRuntime);
+      patchDelegatedEvent(eventType, null, secondHandler, eventHandlerCounts as any, renderRuntime);
+      patchDelegatedEvent(eventType, firstHandler, nextFirstHandler, eventHandlerCounts as any, renderRuntime);
+
+      expect(document.addEventListener).toHaveBeenCalledTimes(1);
+      expect(eventHandlerCounts.click).toBe(2);
+
+      patchDelegatedEvent(eventType, secondHandler, null, eventHandlerCounts as any, renderRuntime);
+
+      expect(document.removeEventListener).not.toHaveBeenCalled();
+      expect(eventHandlerCounts.click).toBe(1);
+
+      patchDelegatedEvent(eventType, nextFirstHandler, null, eventHandlerCounts as any, renderRuntime);
+
+      expect(document.removeEventListener).toHaveBeenCalledTimes(1);
+      expect(document.removeEventListener).toHaveBeenCalledWith(eventType, expect.any(Function));
+      expect(eventHandlerCounts.click).toBe(0);
     });
 
     it('removes event listener when handler is removed and count reaches zero', () => {
-      patchDelegatedEvent(eventType, handler, eventHandlerCounts as any, renderRuntime);
-      patchDelegatedEvent(eventType, null, eventHandlerCounts as any, renderRuntime);
+      patchDelegatedEvent(eventType, null, handler, eventHandlerCounts as any, renderRuntime);
+      patchDelegatedEvent(eventType, handler, null, eventHandlerCounts as any, renderRuntime);
       expect(document.removeEventListener).toHaveBeenCalledWith(eventType, expect.any(Function));
     });
 
     it('does not throw if handler is null initially (no-op)', () => {
-      expect(() => patchDelegatedEvent(eventType, null, eventHandlerCounts as any, renderRuntime)).not.toThrow();
+      expect(() => patchDelegatedEvent(eventType, null, null, eventHandlerCounts as any, renderRuntime)).not.toThrow();
       expect(eventHandlerCounts.click).toBe(0);
     });
   });

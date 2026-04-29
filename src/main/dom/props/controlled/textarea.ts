@@ -27,6 +27,17 @@ function createControlledTextareaChangeHandler(renderRuntime: SimpRenderRuntime)
   };
 }
 
+const controlledTextareaChangeHandlersByRuntime = new WeakMap<SimpRenderRuntime, (event: Event) => void>();
+
+function getControlledTextareaChangeHandler(renderRuntime: SimpRenderRuntime): (event: Event) => void {
+  let handler = controlledTextareaChangeHandlersByRuntime.get(renderRuntime);
+  if (!handler) {
+    handler = createControlledTextareaChangeHandler(renderRuntime);
+    controlledTextareaChangeHandlersByRuntime.set(renderRuntime, handler);
+  }
+  return handler;
+}
+
 function createControlledTextareaInputHandler(renderRuntime: SimpRenderRuntime): (event: Event) => void {
   return event => {
     let element = renderRuntime.hostAdapter.getElementFromReference(event.target, renderRuntime);
@@ -48,17 +59,28 @@ function createControlledTextareaInputHandler(renderRuntime: SimpRenderRuntime):
   };
 }
 
+const controlledTextareaInputHandlersByRuntime = new WeakMap<SimpRenderRuntime, (event: Event) => void>();
+
+function getControlledTextareaInputHandler(renderRuntime: SimpRenderRuntime): (event: Event) => void {
+  let handler = controlledTextareaInputHandlersByRuntime.get(renderRuntime);
+  if (!handler) {
+    handler = createControlledTextareaInputHandler(renderRuntime);
+    controlledTextareaInputHandlersByRuntime.set(renderRuntime, handler);
+  }
+  return handler;
+}
+
 export function addControlledTextareaEventHandlers(dom: HTMLTextAreaElement, renderRuntime: SimpRenderRuntime): void {
-  dom.addEventListener('input', createControlledTextareaInputHandler(renderRuntime));
-  dom.addEventListener('change', createControlledTextareaChangeHandler(renderRuntime));
+  dom.addEventListener('input', getControlledTextareaInputHandler(renderRuntime));
+  dom.addEventListener('change', getControlledTextareaChangeHandler(renderRuntime));
 }
 
 export function removeControlledTextareaEventHandlers(
   dom: HTMLTextAreaElement,
   renderRuntime: SimpRenderRuntime
 ): void {
-  dom.removeEventListener('input', createControlledTextareaInputHandler(renderRuntime));
-  dom.removeEventListener('change', createControlledTextareaChangeHandler(renderRuntime));
+  dom.removeEventListener('input', getControlledTextareaInputHandler(renderRuntime));
+  dom.removeEventListener('change', getControlledTextareaChangeHandler(renderRuntime));
 }
 
 export function syncControlledTextareaProps(element: SimpElement, props: Dict, mounting = false): void {

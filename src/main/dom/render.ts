@@ -31,8 +31,8 @@ export function createRenderer(
       }
     } else {
       if (!element) {
-        // TODO: detach element from host reference.
         unmount(currentRootElement.children as SimpElement, renderRuntime);
+        renderRuntime.hostAdapter.detachElementFromReference(container, renderRuntime);
         renderRuntime.hostAdapter.clearNode(container);
       } else {
         const prevChildren = currentRootElement.children as SimpElement;

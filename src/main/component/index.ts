@@ -80,6 +80,9 @@ lifecycleEventBus.subscribe(event => {
       pendingEffectStates: null,
       effectStates: null,
     };
+  } else if (event.type === 'beforeRender') {
+    store.renderContext.effects = [];
+    store.renderContext.catchers = [];
   }
 
   if (event.type === 'afterRender' && store.renderContext.effects) {

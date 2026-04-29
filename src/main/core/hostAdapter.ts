@@ -38,6 +38,8 @@ export interface HostAdapter<HostRef = unknown, HostTextRef = unknown, NS = stri
     renderRuntime: SimpRenderRuntime
   ): void;
 
+  detachElementFromReference(reference: HostRef | HostTextRef, renderRuntime: SimpRenderRuntime): void;
+
   getElementFromReference(reference: HostRef | HostTextRef, renderRuntime: SimpRenderRuntime): Nullable<SimpElement>;
 
   getHostNamespaces(

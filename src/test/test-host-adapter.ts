@@ -56,5 +56,9 @@ export const testHostAdapter: HostAdapter<Element, Text> = {
     return (reference as any).__SIMP_ELEMENT__;
   }),
 
+  detachElementFromReference: vi.fn(reference => {
+    delete (reference as any).__SIMP_ELEMENT__;
+  }),
+
   getHostNamespaces: vi.fn(() => ({ self: '', children: '' })),
 };

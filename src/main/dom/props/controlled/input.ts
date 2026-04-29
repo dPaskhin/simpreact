@@ -31,6 +31,17 @@ function createControlledInputInputHandler(renderRuntime: SimpRenderRuntime): (e
   };
 }
 
+const controlledInputInputHandlersByRuntime = new WeakMap<SimpRenderRuntime, (event: Event) => void>();
+
+function getControlledInputInputHandler(renderRuntime: SimpRenderRuntime): (event: Event) => void {
+  let handler = controlledInputInputHandlersByRuntime.get(renderRuntime);
+  if (!handler) {
+    handler = createControlledInputInputHandler(renderRuntime);
+    controlledInputInputHandlersByRuntime.set(renderRuntime, handler);
+  }
+  return handler;
+}
+
 function createControlledInputChangeHandler(renderRuntime: SimpRenderRuntime): (event: Event) => void {
   return event => {
     let element = renderRuntime.hostAdapter.getElementFromReference(event.target, renderRuntime);
@@ -52,19 +63,30 @@ function createControlledInputChangeHandler(renderRuntime: SimpRenderRuntime): (
   };
 }
 
+const controlledInputChangeHandlersByRuntime = new WeakMap<SimpRenderRuntime, (event: Event) => void>();
+
+function getControlledInputChangeHandler(renderRuntime: SimpRenderRuntime): (event: Event) => void {
+  let handler = controlledInputChangeHandlersByRuntime.get(renderRuntime);
+  if (!handler) {
+    handler = createControlledInputChangeHandler(renderRuntime);
+    controlledInputChangeHandlersByRuntime.set(renderRuntime, handler);
+  }
+  return handler;
+}
+
 export function addControlledInputEventHandlers(dom: HTMLInputElement, renderRuntime: SimpRenderRuntime): void {
   if (isCheckedType(dom.type)) {
-    dom.addEventListener('change', createControlledInputChangeHandler(renderRuntime));
+    dom.addEventListener('change', getControlledInputChangeHandler(renderRuntime));
   } else {
-    dom.addEventListener('input', createControlledInputInputHandler(renderRuntime));
+    dom.addEventListener('input', getControlledInputInputHandler(renderRuntime));
   }
 }
 
 export function removeControlledInputEventHandlers(dom: HTMLInputElement, renderRuntime: SimpRenderRuntime): void {
   if (isCheckedType(dom.type)) {
-    dom.removeEventListener('change', createControlledInputChangeHandler(renderRuntime));
+    dom.removeEventListener('change', getControlledInputChangeHandler(renderRuntime));
   } else {
-    dom.removeEventListener('input', createControlledInputInputHandler(renderRuntime));
+    dom.removeEventListener('input', getControlledInputInputHandler(renderRuntime));
   }
 }
 

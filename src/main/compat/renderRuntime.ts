@@ -10,3 +10,6 @@ export const renderRuntime: SimpRenderRuntime = {
   elementToHostMap: new Map(),
   renderStack: [],
 };
+
+// TODO
+(window as any).__SIMP_RUNTIME__ = renderRuntime;

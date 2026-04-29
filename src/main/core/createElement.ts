@@ -30,10 +30,6 @@ export interface SimpElementStore {
   [key: string]: unknown;
 }
 
-export function createElementStore(): SimpElementStore {
-  return { latestElement: null, hostNamespace: null };
-}
-
 export interface SimpElement {
   flag: number;
 

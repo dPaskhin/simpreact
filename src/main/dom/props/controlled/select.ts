@@ -34,12 +34,23 @@ function createControlledInputChangeHandler(renderRuntime: SimpRenderRuntime): (
   };
 }
 
+const controlledSelectChangeHandlersByRuntime = new WeakMap<SimpRenderRuntime, (event: Event) => void>();
+
+function getControlledSelectChangeHandler(renderRuntime: SimpRenderRuntime): (event: Event) => void {
+  let handler = controlledSelectChangeHandlersByRuntime.get(renderRuntime);
+  if (!handler) {
+    handler = createControlledInputChangeHandler(renderRuntime);
+    controlledSelectChangeHandlersByRuntime.set(renderRuntime, handler);
+  }
+  return handler;
+}
+
 export function addControlledSelectEventHandlers(dom: HTMLSelectElement, renderRuntime: SimpRenderRuntime): void {
-  dom.addEventListener('change', createControlledInputChangeHandler(renderRuntime));
+  dom.addEventListener('change', getControlledSelectChangeHandler(renderRuntime));
 }
 
 export function removeControlledSelectEventHandlers(dom: HTMLSelectElement, renderRuntime: SimpRenderRuntime): void {
-  dom.removeEventListener('change', createControlledInputChangeHandler(renderRuntime));
+  dom.removeEventListener('change', getControlledSelectChangeHandler(renderRuntime));
 }
 
 export function syncControlledSelectProps(element: SimpElement, props: Dict, mounting = false): void {

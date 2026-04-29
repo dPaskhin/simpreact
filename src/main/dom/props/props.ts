@@ -64,6 +64,10 @@ export function unmountProps(
     return;
   }
 
+  if (isFormElement(element) && isFormElementControlled(element.props)) {
+    removeControlledFormElementEventHandlers(element, renderRuntime);
+  }
+
   for (const propName in element.props) {
     if (isPropNameEventName(propName)) {
       patchEvent(propName, element.props[propName], null, dom, renderRuntime);

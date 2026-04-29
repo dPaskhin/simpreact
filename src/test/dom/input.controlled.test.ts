@@ -61,7 +61,7 @@ describe('input controlled', () => {
       addControlledInputEventHandlers(input, renderRuntime);
       expect(add).toHaveBeenCalledWith('change', expect.any(Function));
       removeControlledInputEventHandlers(input, renderRuntime);
-      expect(remove).toHaveBeenCalledWith('change', expect.any(Function));
+      expect(remove).toHaveBeenCalledWith('change', add.mock.calls[0]![1]);
     });
     it('adds and removes input for text', () => {
       const input = createInput('text');
@@ -70,7 +70,7 @@ describe('input controlled', () => {
       addControlledInputEventHandlers(input, renderRuntime);
       expect(add).toHaveBeenCalledWith('input', expect.any(Function));
       removeControlledInputEventHandlers(input, renderRuntime);
-      expect(remove).toHaveBeenCalledWith('input', expect.any(Function));
+      expect(remove).toHaveBeenCalledWith('input', add.mock.calls[0]![1]);
     });
   });
 

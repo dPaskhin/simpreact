@@ -37,6 +37,7 @@ export function _unmount(frame: SimpRenderFrame): void {
     if ((current.flag & SIMP_ELEMENT_FLAG_HOST) !== 0) {
       unmountRef(current);
       frame.meta.renderRuntime.hostAdapter.unmountProps(current.reference, current, frame.meta.renderRuntime);
+      frame.meta.renderRuntime.hostAdapter.detachElementFromReference(current.reference, frame.meta.renderRuntime);
     }
 
     return;
@@ -73,7 +74,7 @@ export function _unmount(frame: SimpRenderFrame): void {
     _pushUnmountEnterFrame(current.children as SimpElement, frame.meta.renderRuntime);
     return;
   }
-  if (current.childFlag === SIMP_ELEMENT_CHILD_FLAG_ELEMENT) {
+  if (current.childFlag === SIMP_ELEMENT_CHILD_FLAG_LIST) {
     _pushUnmountArrayChildrenFrame(current, frame.meta.renderRuntime);
   }
 }

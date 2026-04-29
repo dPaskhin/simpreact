@@ -53,7 +53,7 @@ describe('select controlled', () => {
       addControlledSelectEventHandlers(select, renderRuntime);
       expect(add).toHaveBeenCalledWith('change', expect.any(Function));
       removeControlledSelectEventHandlers(select, renderRuntime);
-      expect(remove).toHaveBeenCalledWith('change', expect.any(Function));
+      expect(remove).toHaveBeenCalledWith('change', add.mock.calls[0]![1]);
     });
   });
 

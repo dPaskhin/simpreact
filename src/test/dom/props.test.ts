@@ -3,6 +3,7 @@ import { type SimpRenderRuntime, unmount } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { patchDangerInnerHTML } from '../../main/dom/props/dangerInnerHTML.js';
+import { mountProps, unmountProps } from '../../main/dom/props/props.js';
 import { testHostAdapter } from '../test-host-adapter.js';
 
 vi.mock('../../main/core/unmounting.js', () => ({
@@ -135,5 +136,20 @@ describe('patchDangerInnerHTML', () => {
 
     expect(dom.innerHTML).toBe('same');
     expect(unmount).not.toHaveBeenCalled();
+  });
+});
+
+describe('unmountProps', () => {
+  it('removes controlled form element event handlers', () => {
+    const input = document.createElement('input');
+    const add = vi.spyOn(input, 'addEventListener');
+    const remove = vi.spyOn(input, 'removeEventListener');
+    const element = createElement('input', { value: 'hello' });
+    element.reference = input;
+
+    mountProps(input, element, 'http://www.w3.org/1999/xhtml', renderRuntime);
+    unmountProps(input, element, renderRuntime);
+
+    expect(remove).toHaveBeenCalledWith('input', add.mock.calls[0]![1]);
   });
 });

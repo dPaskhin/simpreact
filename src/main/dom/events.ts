@@ -183,7 +183,13 @@ export function patchEvent(
   name = name.replace(captureRegex, '').substring(2).toLowerCase();
 
   if (delegatedEventTypes.has(name)) {
-    patchDelegatedEvent(name as DelegatedEventType, nextValue, getEventHandlerCounts(renderRuntime), renderRuntime);
+    patchDelegatedEvent(
+      name as DelegatedEventType,
+      prevValue,
+      nextValue,
+      getEventHandlerCounts(renderRuntime),
+      renderRuntime
+    );
   } else {
     patchNormalEvent(name, prevValue, nextValue, dom, isCapture);
   }
@@ -191,17 +197,21 @@ export function patchEvent(
 
 export function patchDelegatedEvent(
   eventType: DelegatedEventType,
-  handler: any,
+  prevHandler: any,
+  nextHandler: any,
   eventHandlerCounts: Record<DelegatedEventType, number>,
   renderRuntime: SimpRenderRuntime
 ): void {
   const dispatcher = getDelegatedEventDispatcher(renderRuntime);
 
-  if (typeof handler === 'function') {
+  if (typeof prevHandler !== 'function' && typeof nextHandler === 'function') {
     if (++eventHandlerCounts[eventType]! === 1) {
       document.addEventListener(eventType, dispatcher);
     }
-  } else {
+    return;
+  }
+
+  if (typeof prevHandler === 'function' && typeof nextHandler !== 'function') {
     if (eventHandlerCounts[eventType] !== 0 && --eventHandlerCounts[eventType]! === 0) {
       document.removeEventListener(eventType, dispatcher);
     }

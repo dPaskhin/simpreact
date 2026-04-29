@@ -25,3 +25,9 @@ export function getElementFromDom(
 
   return renderRuntime.elementToHostMap.get(target) as SimpElement;
 }
+
+export function detachElementFromDom(dom: Node, renderRuntime: SimpRenderRuntime): void {
+  if (renderRuntime.elementToHostMap.has(dom)) {
+    renderRuntime.elementToHostMap.delete(dom);
+  }
+}
