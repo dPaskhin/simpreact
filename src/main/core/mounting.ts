@@ -179,7 +179,7 @@ function _mountFunctionalElement(frame: SimpRenderFrame): void {
     element.unmounted = false;
   }
 
-  element.store = { latestElement: null, hostNamespace: null };
+  element.store = { latestElement: null, hostNamespace: null, forceRerender: false };
   element.store.latestElement = element;
 
   if (hostNamespace) {

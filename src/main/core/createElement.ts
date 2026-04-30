@@ -27,6 +27,8 @@ export interface SimpElementStore {
 
   hostNamespace: Nullable<string>;
 
+  forceRerender: boolean;
+
   [key: string]: unknown;
 }
 

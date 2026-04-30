@@ -1,6 +1,5 @@
 import type { SimpElement, SimpElementStore } from './createElement.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
-import { isMemo } from './memo.js';
 import { patch } from './patching.js';
 import type { SimpRenderRuntime } from './runtime.js';
 import { findParentReferenceFromElement } from './utils.js';
@@ -103,17 +102,19 @@ function flushQueue(queue: Set<SimpElementStore>, renderRuntime: SimpRenderRunti
 }
 
 function performRerender(element: SimpElement, renderRuntime: SimpRenderRuntime) {
-  if (isMemo(element.type)) {
-    element.type._isForcedUpdate = true;
-  }
+  element.store!.forceRerender = true;
 
-  patch(
-    element,
-    element,
-    findParentReferenceFromElement(element),
-    null,
-    element.context || null,
-    element.store!.hostNamespace,
-    renderRuntime
-  );
+  try {
+    patch(
+      element,
+      element,
+      findParentReferenceFromElement(element),
+      null,
+      element.context || null,
+      element.store!.hostNamespace,
+      renderRuntime
+    );
+  } finally {
+    element.store!.forceRerender = false;
+  }
 }

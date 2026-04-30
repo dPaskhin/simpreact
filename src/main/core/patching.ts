@@ -196,7 +196,7 @@ function _patchFunctionalComponent(frame: SimpRenderFrame): void {
     return;
   }
 
-  nextElement.store = prevElement!.store || { latestElement: null, hostNamespace: null };
+  nextElement.store = prevElement!.store || { latestElement: null, hostNamespace: null, forceRerender: false };
   nextElement.store.latestElement = nextElement;
 
   if (hostNamespace) {
@@ -205,17 +205,13 @@ function _patchFunctionalComponent(frame: SimpRenderFrame): void {
 
   if (
     isMemo(nextElement.type) &&
-    !nextElement.type._isForcedUpdate &&
+    !nextElement.store.forceRerender &&
     nextElement.type._compare(prevElement!.props, nextElement.props)
   ) {
     nextElement.childFlag = prevElement!.childFlag;
     nextElement.children = prevElement!.children;
     nextElement.context = prevElement!.context;
     return;
-  }
-
-  if (isMemo(nextElement.type)) {
-    nextElement.type._isForcedUpdate = false;
   }
 
   nextElement.context = prevElement!.context || context;

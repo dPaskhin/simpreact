@@ -1,6 +1,6 @@
 import { createCreateRoot } from '@simpreact/dom';
 import { createUseEffect, createUseRef, createUseRerender } from '@simpreact/hooks';
-import { createElement, type SimpRenderRuntime, withSyncRerender } from '@simpreact/internal';
+import { createElement, memo, type SimpRenderRuntime, withSyncRerender } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { describe, expect, it, vi } from 'vitest';
 import { dispatchDelegatedEvent } from '../main/dom/events.js';
@@ -21,6 +21,47 @@ const useRef = createUseRef(renderRuntime);
 const useRerender = createUseRerender(renderRuntime);
 
 describe('rerender (integration tests)', () => {
+  it('should skip root memo FC when root renders equal props', () => {
+    const renderFn = vi.fn();
+
+    const App = memo(function App(props: { label: string }) {
+      renderFn(props.label);
+      return createElement('root', null, props.label);
+    });
+
+    const root = createRoot(document.createElement('div'));
+
+    root.render(createElement(App, { label: 'A' }));
+    root.render(createElement(App, { label: 'A' }));
+
+    expect(renderFn).toHaveBeenCalledTimes(1);
+    expect(renderFn).toHaveBeenLastCalledWith('A');
+  });
+
+  it('should rerender memo FC when it schedules its own rerender', async () => {
+    const renderFn = vi.fn();
+
+    const App = memo(function App() {
+      const rerender = useRerender();
+
+      renderFn();
+
+      useEffect(() => {
+        rerender();
+      }, []);
+
+      return createElement('root');
+    });
+
+    createRoot(document.createElement('div')).render(createElement(App));
+
+    expect(renderFn).toHaveBeenCalledTimes(1);
+
+    await Promise.resolve();
+
+    expect(renderFn).toHaveBeenCalledTimes(2);
+  });
+
   it('should batch several rerenders of one FC element (effect)', async () => {
     const renderFn = vi.fn();
 
