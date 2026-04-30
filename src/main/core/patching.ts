@@ -172,7 +172,7 @@ function _patchFunctionalComponent(frame: PatchFrame): void {
     return;
   }
 
-  nextElement.store = prevElement.store || { latestElement: null, hostNamespace: null, forceRerender: false };
+  nextElement.store = prevElement.store!;
   nextElement.store.latestElement = nextElement;
 
   if (hostNamespace) {
@@ -192,7 +192,7 @@ function _patchFunctionalComponent(frame: PatchFrame): void {
 
   nextElement.context = prevElement.context || context;
 
-  const { children: prevChildren, childFlag: prevChildFlag } = prevElement;
+  const prevElementSnapshot = prevElement === nextElement ? { ...prevElement } : prevElement;
 
   let nextChildren;
   let triedToRerenderUnsubscribe;
@@ -284,8 +284,7 @@ function _patchFunctionalComponent(frame: PatchFrame): void {
   });
 
   _pushPatchChildrenFrame(nextElement, {
-    // TODO: avoid creating a new object here
-    prevElement: { ...prevElement, children: prevChildren, childFlag: prevChildFlag } as SimpElement,
+    prevElement: prevElementSnapshot,
     renderRuntime,
     hostNamespace,
     rightSibling,
