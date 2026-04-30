@@ -10,7 +10,7 @@ import {
   type SimpElement,
 } from './createElement.js';
 import { lifecycleEventBus } from './lifecycleEventBus.js';
-import { processStack, type SimpRenderFrame, UNMOUNT_ENTER, UNMOUNT_EXIT } from './processStack.js';
+import { processStack, UNMOUNT_ENTER, UNMOUNT_EXIT, type UnmountFrame } from './processStack.js';
 import { unmountRef } from './ref.js';
 import type { SimpRenderRuntime } from './runtime.js';
 import { isHostLike } from './utils.js';
@@ -25,10 +25,10 @@ export function unmount(element: SimpElement, renderRuntime: SimpRenderRuntime):
   processStack(renderRuntime);
 }
 
-export function _unmount(frame: SimpRenderFrame): void {
+export function _unmount(frame: UnmountFrame): void {
   const current = frame.node;
 
-  if (frame.phase === UNMOUNT_EXIT) {
+  if (frame.kind === UNMOUNT_EXIT) {
     if ((current.flag & SIMP_ELEMENT_FLAG_FC) !== 0) {
       current.unmounted = true;
       lifecycleEventBus.publish({ type: 'unmounted', element: current, renderRuntime: frame.meta.renderRuntime });
@@ -84,15 +84,9 @@ export function _unmount(frame: SimpRenderFrame): void {
 export function _pushUnmountEnterFrame(element: SimpElement, renderRuntime: SimpRenderRuntime): void {
   renderRuntime.renderStack.push({
     node: element,
-    phase: UNMOUNT_ENTER,
+    kind: UNMOUNT_ENTER,
     meta: {
       renderRuntime,
-      rightSibling: null,
-      context: null,
-      hostNamespace: null,
-      prevElement: null,
-      parentReference: null,
-      placeHolderElement: null,
     },
   });
 }
@@ -100,15 +94,9 @@ export function _pushUnmountEnterFrame(element: SimpElement, renderRuntime: Simp
 export function _pushUnmountExitFrame(element: SimpElement, renderRuntime: SimpRenderRuntime): void {
   renderRuntime.renderStack.push({
     node: element,
-    phase: UNMOUNT_EXIT,
+    kind: UNMOUNT_EXIT,
     meta: {
       renderRuntime,
-      rightSibling: null,
-      context: null,
-      hostNamespace: null,
-      prevElement: null,
-      parentReference: null,
-      placeHolderElement: null,
     },
   });
 }

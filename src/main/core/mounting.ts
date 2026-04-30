@@ -10,13 +10,7 @@ import {
 } from './createElement.js';
 import { _pushHostOperationPlaceElement } from './hostOperations.js';
 import { type LifecycleEvent, lifecycleEventBus } from './lifecycleEventBus.js';
-import {
-  MOUNT_ENTER,
-  MOUNT_EXIT,
-  processStack,
-  type SimpRenderFrame,
-  type SimpRenderFrameMeta,
-} from './processStack.js';
+import { MOUNT_ENTER, MOUNT_EXIT, type MountFrame, type MountFrameMeta, processStack } from './processStack.js';
 import { applyRef } from './ref.js';
 import { MOUNTING_PHASE, type SimpRenderRuntime } from './runtime.js';
 import { bitScanForwardIndex } from './utils.js';
@@ -42,33 +36,32 @@ export function mount(
     hostNamespace,
     renderRuntime,
     placeHolderElement: null,
-    prevElement: null,
   });
 
   processStack(renderRuntime);
 }
 
-export function _mount(frame: SimpRenderFrame): void {
+export function _mount(frame: MountFrame): void {
   mountHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
 }
 
-export function _pushMountEnterFrame(element: SimpElement, meta: SimpRenderFrameMeta): void {
+export function _pushMountEnterFrame(element: SimpElement, meta: MountFrameMeta): void {
   meta.renderRuntime.renderStack.push({
     node: element,
-    phase: MOUNT_ENTER,
+    kind: MOUNT_ENTER,
     meta,
   });
 }
 
-function _pushMountExitFrame(element: SimpElement, meta: SimpRenderFrameMeta): void {
+function _pushMountExitFrame(element: SimpElement, meta: MountFrameMeta): void {
   meta.renderRuntime.renderStack.push({
     node: element,
-    phase: MOUNT_EXIT,
+    kind: MOUNT_EXIT,
     meta,
   });
 }
 
-export function _pushMountArrayChildrenFrame(element: SimpElement, meta: SimpRenderFrameMeta): void {
+export function _pushMountArrayChildrenFrame(element: SimpElement, meta: MountFrameMeta): void {
   const children = element.children as SimpElement[];
 
   for (let i = children.length - 1; i >= 0; i--) {
@@ -81,11 +74,11 @@ export function _pushMountArrayChildrenFrame(element: SimpElement, meta: SimpRen
   }
 }
 
-function _mountHostElement(frame: SimpRenderFrame): void {
+function _mountHostElement(frame: MountFrame): void {
   const element = frame.node;
   const { parentReference, rightSibling, context, hostNamespace, renderRuntime } = frame.meta;
 
-  if (frame.phase === MOUNT_EXIT) {
+  if (frame.kind === MOUNT_EXIT) {
     if (element.childFlag === SIMP_ELEMENT_CHILD_FLAG_TEXT) {
       renderRuntime.hostAdapter.setTextContent(element.reference, element.props.children);
     }
@@ -101,12 +94,8 @@ function _mountHostElement(frame: SimpRenderFrame): void {
     if (parentReference) {
       _pushHostOperationPlaceElement(element, {
         renderRuntime,
-        hostNamespace: null,
         rightSibling,
-        context: null,
         parentReference,
-        placeHolderElement: null,
-        prevElement: null,
       });
     }
 
@@ -130,7 +119,6 @@ function _mountHostElement(frame: SimpRenderFrame): void {
     context,
     parentReference,
     placeHolderElement: null,
-    prevElement: null,
   });
 
   switch (element.childFlag) {
@@ -142,7 +130,6 @@ function _mountHostElement(frame: SimpRenderFrame): void {
         context,
         parentReference: hostReference,
         placeHolderElement: null,
-        prevElement: null,
       });
       break;
     }
@@ -156,17 +143,16 @@ function _mountHostElement(frame: SimpRenderFrame): void {
         context,
         parentReference: hostReference,
         placeHolderElement: null,
-        prevElement: null,
       });
     }
   }
 }
 
-function _mountFunctionalElement(frame: SimpRenderFrame): void {
+function _mountFunctionalElement(frame: MountFrame): void {
   const element = frame.node;
   const { parentReference, rightSibling, context, hostNamespace, renderRuntime } = frame.meta;
 
-  if (frame.phase === MOUNT_EXIT) {
+  if (frame.kind === MOUNT_EXIT) {
     lifecycleEventBus.publish({ type: 'mounted', element, renderRuntime });
     return;
   }
@@ -253,7 +239,6 @@ function _mountFunctionalElement(frame: SimpRenderFrame): void {
     context: null,
     parentReference: null,
     placeHolderElement: null,
-    prevElement: null,
   });
 
   if (element.children) {
@@ -267,32 +252,27 @@ function _mountFunctionalElement(frame: SimpRenderFrame): void {
       context: element.context,
       parentReference,
       placeHolderElement: null,
-      prevElement: null,
     });
   }
 }
 
-function _mountTextElement(frame: SimpRenderFrame): void {
+function _mountTextElement(frame: MountFrame): void {
   const { renderRuntime, parentReference } = frame.meta;
 
   frame.node.reference = renderRuntime.hostAdapter.createTextReference(frame.node.children as string);
 
   _pushHostOperationPlaceElement(frame.node, {
     renderRuntime,
-    hostNamespace: null,
     rightSibling: frame.meta.rightSibling,
-    context: null,
     parentReference,
-    placeHolderElement: null,
-    prevElement: null,
   });
 }
 
-function _mountPortal(frame: SimpRenderFrame): void {
+function _mountPortal(frame: MountFrame): void {
   const element = frame.node;
   const { parentReference, rightSibling, context, renderRuntime } = frame.meta;
 
-  if (frame.phase === MOUNT_EXIT) {
+  if (frame.kind === MOUNT_EXIT) {
     element.reference = frame.meta.placeHolderElement!.reference;
     return;
   }
@@ -306,7 +286,6 @@ function _mountPortal(frame: SimpRenderFrame): void {
     parentReference: null,
     hostNamespace: null,
     placeHolderElement,
-    prevElement: null,
   });
 
   if (element.children) {
@@ -320,7 +299,6 @@ function _mountPortal(frame: SimpRenderFrame): void {
       parentReference: element.ref,
       hostNamespace: renderRuntime.hostAdapter.getHostNamespaces(child, undefined)?.self,
       placeHolderElement: null,
-      prevElement: null,
     });
   }
 
@@ -331,11 +309,10 @@ function _mountPortal(frame: SimpRenderFrame): void {
     parentReference,
     hostNamespace: null,
     placeHolderElement: null,
-    prevElement: null,
   });
 }
 
-function _mountFragment(frame: SimpRenderFrame): void {
+function _mountFragment(frame: MountFrame): void {
   const element = frame.node;
   const { parentReference, hostNamespace, context, renderRuntime, rightSibling } = frame.meta;
 
@@ -348,7 +325,6 @@ function _mountFragment(frame: SimpRenderFrame): void {
         context,
         parentReference,
         placeHolderElement: null,
-        prevElement: null,
       });
 
       break;
@@ -362,7 +338,6 @@ function _mountFragment(frame: SimpRenderFrame): void {
         context,
         parentReference,
         placeHolderElement: null,
-        prevElement: null,
       });
   }
 }

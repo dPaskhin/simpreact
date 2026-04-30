@@ -13,13 +13,7 @@ import { type LifecycleEvent, lifecycleEventBus } from './lifecycleEventBus.js';
 import { isMemo } from './memo.js';
 import { _pushMountEnterFrame } from './mounting.js';
 import { _pushPatchChildrenFrame } from './patchingChildren.js';
-import {
-  PATCH_ENTER,
-  PATCH_EXIT,
-  processStack,
-  type SimpRenderFrame,
-  type SimpRenderFrameMeta,
-} from './processStack.js';
+import { PATCH_ENTER, PATCH_EXIT, type PatchFrame, type PatchFrameMeta, processStack } from './processStack.js';
 import { applyRef } from './ref.js';
 import { type SimpRenderRuntime, UPDATING_PHASE } from './runtime.js';
 import { _clearElementHostReference, _pushUnmountEnterFrame, _remove } from './unmounting.js';
@@ -53,28 +47,28 @@ export function patch(
   processStack(renderRuntime);
 }
 
-export function _pushPatchEnterFrame(element: SimpElement, meta: SimpRenderFrameMeta): void {
+export function _pushPatchEnterFrame(element: SimpElement, meta: PatchFrameMeta): void {
   meta.renderRuntime.renderStack.push({
     node: element,
-    phase: PATCH_ENTER,
+    kind: PATCH_ENTER,
     meta,
   });
 }
 
-export function _pushPatchExitFrame(element: SimpElement, meta: SimpRenderFrameMeta): void {
+export function _pushPatchExitFrame(element: SimpElement, meta: PatchFrameMeta): void {
   meta.renderRuntime.renderStack.push({
     node: element,
-    phase: PATCH_EXIT,
+    kind: PATCH_EXIT,
     meta,
   });
 }
 
-export function _patch(frame: SimpRenderFrame): void {
+export function _patch(frame: PatchFrame): void {
   const nextElement = frame.node;
   const { prevElement } = frame.meta;
 
   // Early return if the elements are different type or have different keys.
-  if (prevElement!.type !== nextElement.type || prevElement!.key !== nextElement.key) {
+  if (prevElement.type !== nextElement.type || prevElement.key !== nextElement.key) {
     _replaceWithNewElement(frame);
     return;
   }
@@ -82,22 +76,17 @@ export function _patch(frame: SimpRenderFrame): void {
   patchHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
 }
 
-function _replaceWithNewElement(frame: SimpRenderFrame): void {
+function _replaceWithNewElement(frame: PatchFrame): void {
   const nextElement = frame.node;
   const { prevElement, parentReference, context, hostNamespace, renderRuntime } = frame.meta;
 
-  _pushUnmountEnterFrame(prevElement!, renderRuntime);
+  _pushUnmountEnterFrame(prevElement, renderRuntime);
 
-  nextElement.parent = prevElement!.parent;
-  if ((nextElement.flag & SIMP_ELEMENT_FLAG_HOST) !== 0 && (prevElement!.flag & SIMP_ELEMENT_FLAG_HOST) !== 0) {
-    _pushHostOperationReplaceElement(nextElement, {
+  nextElement.parent = prevElement.parent;
+  if ((nextElement.flag & SIMP_ELEMENT_FLAG_HOST) !== 0 && (prevElement.flag & SIMP_ELEMENT_FLAG_HOST) !== 0) {
+    _pushHostOperationReplaceElement(nextElement, renderRuntime, {
       prevElement,
-      renderRuntime,
       parentReference,
-      rightSibling: null,
-      hostNamespace: null,
-      placeHolderElement: null,
-      context: null,
     });
 
     _pushMountEnterFrame(nextElement, {
@@ -106,7 +95,6 @@ function _replaceWithNewElement(frame: SimpRenderFrame): void {
       renderRuntime,
       parentReference: null!,
       rightSibling: null,
-      prevElement: null,
       placeHolderElement: null,
     });
   } else {
@@ -117,26 +105,19 @@ function _replaceWithNewElement(frame: SimpRenderFrame): void {
       hostNamespace,
       context,
       parentReference,
-      prevElement: null,
       placeHolderElement: null,
     });
   }
 }
 
-function _patchHostElement(frame: SimpRenderFrame): void {
+function _patchHostElement(frame: PatchFrame): void {
   const nextElement = frame.node;
   const { prevElement, context, hostNamespace, renderRuntime } = frame.meta;
 
-  if (frame.phase === PATCH_EXIT) {
-    renderRuntime.hostAdapter.patchProps(
-      nextElement.reference,
-      prevElement!,
-      nextElement,
-      renderRuntime,
-      hostNamespace
-    );
+  if (frame.kind === PATCH_EXIT) {
+    renderRuntime.hostAdapter.patchProps(nextElement.reference, prevElement, nextElement, renderRuntime, hostNamespace);
 
-    if (prevElement!.className !== nextElement.className) {
+    if (prevElement.className !== nextElement.className) {
       renderRuntime.hostAdapter.setClassname(nextElement.reference, nextElement.className, hostNamespace);
     }
 
@@ -145,22 +126,18 @@ function _patchHostElement(frame: SimpRenderFrame): void {
     return;
   }
 
-  nextElement.ref = prevElement!.ref;
-  nextElement.reference = prevElement!.reference;
+  nextElement.ref = prevElement.ref;
+  nextElement.reference = prevElement.reference;
   renderRuntime.hostAdapter.attachElementToReference(nextElement, nextElement.reference, renderRuntime);
 
-  renderRuntime.renderStack.push({
-    node: nextElement,
-    phase: PATCH_EXIT,
-    meta: {
-      prevElement,
-      renderRuntime,
-      hostNamespace,
-      rightSibling: null,
-      context: null,
-      parentReference: null,
-      placeHolderElement: null,
-    },
+  _pushPatchExitFrame(nextElement, {
+    prevElement,
+    renderRuntime,
+    hostNamespace,
+    rightSibling: null,
+    context: null,
+    parentReference: null,
+    placeHolderElement: null,
   });
 
   _pushPatchChildrenFrame(nextElement, {
@@ -174,29 +151,28 @@ function _patchHostElement(frame: SimpRenderFrame): void {
   });
 }
 
-function _patchFunctionalComponent(frame: SimpRenderFrame): void {
+function _patchFunctionalComponent(frame: PatchFrame): void {
   const nextElement = frame.node;
   const { prevElement, context, renderRuntime, hostNamespace, rightSibling, parentReference } = frame.meta;
 
-  if (frame.phase === PATCH_EXIT) {
+  if (frame.kind === PATCH_EXIT) {
     lifecycleEventBus.publish({ type: 'updated', element: nextElement, renderRuntime });
     return;
   }
 
-  if (prevElement!.unmounted) {
+  if (prevElement.unmounted) {
     _pushMountEnterFrame(nextElement, {
       rightSibling,
       renderRuntime,
       hostNamespace,
       context,
       parentReference,
-      prevElement: null,
       placeHolderElement: null,
     });
     return;
   }
 
-  nextElement.store = prevElement!.store || { latestElement: null, hostNamespace: null, forceRerender: false };
+  nextElement.store = prevElement.store || { latestElement: null, hostNamespace: null, forceRerender: false };
   nextElement.store.latestElement = nextElement;
 
   if (hostNamespace) {
@@ -206,17 +182,17 @@ function _patchFunctionalComponent(frame: SimpRenderFrame): void {
   if (
     isMemo(nextElement.type) &&
     !nextElement.store.forceRerender &&
-    nextElement.type._compare(prevElement!.props, nextElement.props)
+    nextElement.type._compare(prevElement.props, nextElement.props)
   ) {
-    nextElement.childFlag = prevElement!.childFlag;
-    nextElement.children = prevElement!.children;
-    nextElement.context = prevElement!.context;
+    nextElement.childFlag = prevElement.childFlag;
+    nextElement.children = prevElement.children;
+    nextElement.context = prevElement.context;
     return;
   }
 
-  nextElement.context = prevElement!.context || context;
+  nextElement.context = prevElement.context || context;
 
-  const { children: prevChildren, childFlag: prevChildFlag } = prevElement!;
+  const { children: prevChildren, childFlag: prevChildFlag } = prevElement;
 
   let nextChildren;
   let triedToRerenderUnsubscribe;
@@ -255,26 +231,26 @@ function _patchFunctionalComponent(frame: SimpRenderFrame): void {
 
     normalizeRoot(nextElement, nextChildren, false);
   } catch (error) {
-    const parentChildren = prevElement!.parent?.children;
+    const parentChildren = prevElement.parent?.children;
 
-    if (prevElement!.parent?.childFlag === SIMP_ELEMENT_CHILD_FLAG_LIST) {
+    if (prevElement.parent?.childFlag === SIMP_ELEMENT_CHILD_FLAG_LIST) {
       const parentChildrenList = parentChildren as SimpElement[];
-      parentChildrenList.splice(prevElement!.index, 1);
+      parentChildrenList.splice(prevElement.index, 1);
 
       if (parentChildrenList.length === 1) {
-        prevElement!.parent.children = parentChildrenList[0];
-        prevElement!.parent.childFlag = SIMP_ELEMENT_CHILD_FLAG_ELEMENT;
+        prevElement.parent.children = parentChildrenList[0];
+        prevElement.parent.childFlag = SIMP_ELEMENT_CHILD_FLAG_ELEMENT;
       } else {
-        for (let i = prevElement!.index; i < parentChildrenList.length; i++) {
+        for (let i = prevElement.index; i < parentChildrenList.length; i++) {
           parentChildrenList[i]!.index = i;
         }
       }
-    } else if (prevElement!.parent) {
-      prevElement!.parent.childFlag = SIMP_ELEMENT_CHILD_FLAG_EMPTY;
-      prevElement!.parent.children = null;
+    } else if (prevElement.parent) {
+      prevElement.parent.childFlag = SIMP_ELEMENT_CHILD_FLAG_EMPTY;
+      prevElement.parent.children = null;
     }
 
-    _remove(prevElement!, parentReference, renderRuntime);
+    _remove(prevElement, parentReference, renderRuntime);
 
     const event: LifecycleEvent = {
       type: 'errored',
@@ -297,18 +273,14 @@ function _patchFunctionalComponent(frame: SimpRenderFrame): void {
     renderRuntime.currentRenderingFCElement = null;
   }
 
-  renderRuntime.renderStack.push({
-    node: nextElement,
-    phase: PATCH_EXIT,
-    meta: {
-      prevElement,
-      renderRuntime,
-      hostNamespace,
-      rightSibling: null,
-      context: null,
-      parentReference: null,
-      placeHolderElement: null,
-    },
+  _pushPatchExitFrame(nextElement, {
+    prevElement,
+    renderRuntime,
+    hostNamespace,
+    rightSibling: null,
+    context: null,
+    parentReference: null,
+    placeHolderElement: null,
   });
 
   _pushPatchChildrenFrame(nextElement, {
@@ -323,32 +295,32 @@ function _patchFunctionalComponent(frame: SimpRenderFrame): void {
   });
 }
 
-function _patchTextElement(frame: SimpRenderFrame): void {
+function _patchTextElement(frame: PatchFrame): void {
   const nextElement = frame.node;
   const { prevElement, renderRuntime } = frame.meta;
 
-  nextElement.reference = prevElement!.reference;
+  nextElement.reference = prevElement.reference;
 
-  if (nextElement.children !== prevElement!.children) {
+  if (nextElement.children !== prevElement.children) {
     renderRuntime.hostAdapter.setTextContent(nextElement.reference, nextElement.children as string);
   }
 }
 
-function _patchPortal(frame: SimpRenderFrame): void {
+function _patchPortal(frame: PatchFrame): void {
   const nextElement = frame.node;
   const { prevElement, renderRuntime, context } = frame.meta;
 
-  const prevContainer = prevElement!.ref;
+  const prevContainer = prevElement.ref;
   const nextContainer = nextElement.ref;
   const nextChildren = nextElement.children as SimpElement;
 
-  if (frame.phase === PATCH_EXIT) {
+  if (frame.kind === PATCH_EXIT) {
     renderRuntime.hostAdapter.removeChild(prevContainer, nextChildren.reference);
     renderRuntime.hostAdapter.insertOrAppend(nextContainer, nextChildren.reference, null);
     return;
   }
 
-  nextElement.reference = prevElement!.reference;
+  nextElement.reference = prevElement.reference;
 
   if (prevContainer !== nextContainer && nextChildren != null) {
     _pushPatchExitFrame(nextElement, {
@@ -373,7 +345,7 @@ function _patchPortal(frame: SimpRenderFrame): void {
   });
 }
 
-function _patchFragment(frame: SimpRenderFrame): void {
+function _patchFragment(frame: PatchFrame): void {
   const nextElement = frame.node;
   const { prevElement, renderRuntime, context, parentReference, hostNamespace, rightSibling } = frame.meta;
 

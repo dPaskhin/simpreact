@@ -1,4 +1,4 @@
-import { SIMP_ELEMENT_FLAG_HOST, type SimpRenderFrame } from '@simpreact/internal';
+import { PATCH_KEYED_CHILDREN, type PatchChildrenFrame, SIMP_ELEMENT_FLAG_HOST } from '@simpreact/internal';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { _pushHostOperationPlaceElement } from '../main/core/hostOperations.js';
 import { _pushMountEnterFrame } from '../main/core/mounting.js';
@@ -45,12 +45,12 @@ function makeFrame(
   next: SimpElement[],
   parent: HostReference,
   runtime: SimpRenderRuntime
-): SimpRenderFrame {
+): PatchChildrenFrame {
   return {
     node: {
       children: next,
     } as any,
-    phase: 0,
+    kind: PATCH_KEYED_CHILDREN,
     meta: {
       prevElement: { children: prev } as any,
       parentReference: parent,
@@ -83,9 +83,9 @@ describe('patchKeyedChildren', () => {
     };
 
     vi.mocked(_pushPatchEnterFrame).mockImplementation((element, meta) => {
-      element.reference = meta.prevElement!.reference;
+      element.reference = meta.prevElement.reference;
       calls.push(
-        `patch(${meta.prevElement!.key} -> ${element.key} before right sibling ${meta.rightSibling?.key || 'null'})`
+        `patch(${meta.prevElement.key} -> ${element.key} before right sibling ${meta.rightSibling?.key || 'null'})`
       );
     });
 

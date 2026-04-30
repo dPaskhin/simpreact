@@ -1,4 +1,10 @@
-import { createElement, HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR, MOUNT_ENTER, PATCH_ENTER } from '@simpreact/internal';
+import {
+  createElement,
+  HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR,
+  MOUNT_ENTER,
+  PATCH_ENTER,
+  PATCH_KEYED_CHILDREN,
+} from '@simpreact/internal';
 import { beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
 import { _pushMountEnterFrame } from '../main/core/mounting.js';
 import { _pushPatchEnterFrame } from '../main/core/patching.js';
@@ -56,7 +62,7 @@ function makeFrame(prevChildren: ReturnType<typeof createElement>[], nextChildre
 
   const frame = {
     node: nextElement,
-    phase: {} as any,
+    kind: PATCH_KEYED_CHILDREN,
     meta: {
       prevElement,
       parentReference,
@@ -275,7 +281,7 @@ describe('patchKeyedChildren', () => {
       const { frame, renderRuntime } = makeFrame(prev, next);
       _patchKeyedChildren(frame);
 
-      const placedPhases = renderRuntime.renderStack.map((f: any) => f.phase);
+      const placedPhases = renderRuntime.renderStack.map((f: any) => f.kind);
       expect(placedPhases).toContain(HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR);
     });
 
@@ -286,7 +292,7 @@ describe('patchKeyedChildren', () => {
       const { frame, renderRuntime } = makeFrame(prev, next);
       _patchKeyedChildren(frame);
 
-      const placedPhases = renderRuntime.renderStack.map((f: any) => f.phase);
+      const placedPhases = renderRuntime.renderStack.map((f: any) => f.kind);
       expect(placedPhases).not.toContain(HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR);
     });
 
@@ -310,7 +316,7 @@ describe('patchKeyedChildren', () => {
       expect(removeSpy).not.toHaveBeenCalled();
       expect(mountSpy).not.toHaveBeenCalled();
       expect(patchedKeys()).toEqual(expect.arrayContaining(['a', 'b']));
-      const placedPhases = renderRuntime.renderStack.map((f: any) => f.phase);
+      const placedPhases = renderRuntime.renderStack.map((f: any) => f.kind);
       expect(placedPhases).toContain(HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR);
     });
   });
@@ -361,14 +367,14 @@ describe('patchKeyedChildren', () => {
       expect(prevsByKey['b']).toBe(prevB);
     });
 
-    it('passes PATCH_ENTER as the phase on every patch frame', () => {
+    it('passes PATCH_ENTER as the kind on every patch frame', () => {
       const { frame } = makeFrame([el('a'), el('b')], [el('a'), el('b')]);
       _patchKeyedChildren(frame);
 
       expect(patchSpy.mock.calls.length).toBe(2);
     });
 
-    it('passes MOUNT_ENTER as the phase on every mount frame', () => {
+    it('passes MOUNT_ENTER as the kind on every mount frame', () => {
       const { frame } = makeFrame([], [el('a'), el('b')]);
       _patchKeyedChildren(frame);
 
@@ -431,7 +437,7 @@ describe('patchKeyedChildren', () => {
   // frame types: HOST_OPS via renderStack.push, mount/patch via spies.
 
   describe('frame execution order', () => {
-    type FrameRecord = { phase: string; key: string | null };
+    type FrameRecord = { kind: string; key: string | null };
 
     /**
      * Runs _patchKeyedChildren and returns every frame push in push order,
@@ -447,17 +453,17 @@ describe('patchKeyedChildren', () => {
       const renderRuntime = {
         renderStack: {
           push(frame: any) {
-            log.push({ phase: String(frame.phase), key: frame.node.key });
+            log.push({ kind: String(frame.kind), key: frame.node.key });
           },
         } as any,
       };
 
       // Spy implementations append to the same log
       mountSpy.mockImplementation((element: any) => {
-        log.push({ phase: String(MOUNT_ENTER), key: element.key });
+        log.push({ kind: String(MOUNT_ENTER), key: element.key });
       });
       patchSpy.mockImplementation((element: any) => {
-        log.push({ phase: String(PATCH_ENTER), key: element.key });
+        log.push({ kind: String(PATCH_ENTER), key: element.key });
       });
 
       const prevElement = createElement('ul', null, ...prevChildren);
@@ -467,7 +473,7 @@ describe('patchKeyedChildren', () => {
 
       const frame = {
         node: nextElement,
-        phase: {} as any,
+        kind: PATCH_KEYED_CHILDREN,
         meta: {
           prevElement,
           parentReference: { type: 'parent' } as any,
@@ -494,14 +500,14 @@ describe('patchKeyedChildren', () => {
     it('step 3: prefix patch is pushed before suffix patch', () => {
       const log = runAndCollect([el('a'), el('b'), el('c'), el('d')], [el('a'), el('d')]);
 
-      const patchLog = log.filter(f => f.phase === String(PATCH_ENTER)).map(f => f.key);
+      const patchLog = log.filter(f => f.kind === String(PATCH_ENTER)).map(f => f.key);
       expect(patchLog).toEqual(['a', 'd']);
     });
 
     it('step 3: multi-node suffix is pushed in straight list order, prefix pushed first', () => {
       const log = runAndCollect([el('a'), el('b'), el('c'), el('d'), el('e')], [el('a'), el('d'), el('e')]);
 
-      const patchLog = log.filter(f => f.phase === String(PATCH_ENTER)).map(f => f.key);
+      const patchLog = log.filter(f => f.kind === String(PATCH_ENTER)).map(f => f.key);
       expect(patchLog).toEqual(['a', 'd', 'e']);
     });
 
@@ -510,7 +516,7 @@ describe('patchKeyedChildren', () => {
     it('step 4: mount frames are pushed in straight list order', () => {
       const log = runAndCollect([], [el('a'), el('b'), el('c')]);
 
-      const mountLog = log.filter(f => f.phase === String(MOUNT_ENTER)).map(f => f.key);
+      const mountLog = log.filter(f => f.kind === String(MOUNT_ENTER)).map(f => f.key);
       expect(mountLog).toEqual(['a', 'b', 'c']);
     });
 
@@ -518,10 +524,10 @@ describe('patchKeyedChildren', () => {
       const log = runAndCollect([el('a'), el('e')], [el('a'), el('b'), el('c'), el('e')]);
 
       expect(log).toEqual([
-        { phase: '3', key: 'a' },
-        { phase: '1', key: 'b' },
-        { phase: '1', key: 'c' },
-        { phase: '3', key: 'e' },
+        { kind: '3', key: 'a' },
+        { kind: '1', key: 'b' },
+        { kind: '1', key: 'c' },
+        { kind: '3', key: 'e' },
       ]);
     });
 
@@ -530,7 +536,7 @@ describe('patchKeyedChildren', () => {
     it('step 5: middle frames are pushed in straight next-list order', () => {
       const log = runAndCollect([el('b'), el('c'), el('d')], [el('d'), el('b'), el('c')]);
 
-      const patchLog = log.filter(f => f.phase === String(PATCH_ENTER)).map(f => f.key);
+      const patchLog = log.filter(f => f.kind === String(PATCH_ENTER)).map(f => f.key);
       expect(patchLog).toEqual(['d', 'b', 'c']);
     });
 
@@ -541,12 +547,12 @@ describe('patchKeyedChildren', () => {
       );
 
       expect(log).toEqual([
-        { key: 'a', phase: PATCH_ENTER.toString() },
-        { key: 'd', phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
-        { key: 'd', phase: PATCH_ENTER.toString() },
-        { key: 'b', phase: PATCH_ENTER.toString() },
-        { key: 'c', phase: PATCH_ENTER.toString() },
-        { key: 'z', phase: PATCH_ENTER.toString() },
+        { key: 'a', kind: PATCH_ENTER.toString() },
+        { key: 'd', kind: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
+        { key: 'd', kind: PATCH_ENTER.toString() },
+        { key: 'b', kind: PATCH_ENTER.toString() },
+        { key: 'c', kind: PATCH_ENTER.toString() },
+        { key: 'z', kind: PATCH_ENTER.toString() },
       ]);
     });
 
@@ -562,8 +568,8 @@ describe('patchKeyedChildren', () => {
       const patchPhase = String(PATCH_ENTER);
 
       for (let i = 0; i < log.length - 1; i++) {
-        if (log[i]!.phase === placePhase) {
-          expect(log[i + 1]!.phase).toBe(patchPhase);
+        if (log[i]!.kind === placePhase) {
+          expect(log[i + 1]!.kind).toBe(patchPhase);
           expect(log[i + 1]!.key).toBe(log[i]!.key);
         }
       }
@@ -573,11 +579,11 @@ describe('patchKeyedChildren', () => {
       const log = runAndCollect([el('a'), el('b'), el('c')], [el('c'), el('x'), el('a'), el('b')]);
 
       expect(log).toEqual([
-        { key: 'c', phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
-        { key: 'c', phase: PATCH_ENTER.toString() },
-        { key: 'x', phase: MOUNT_ENTER.toString() },
-        { key: 'a', phase: PATCH_ENTER.toString() },
-        { key: 'b', phase: PATCH_ENTER.toString() },
+        { key: 'c', kind: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
+        { key: 'c', kind: PATCH_ENTER.toString() },
+        { key: 'x', kind: MOUNT_ENTER.toString() },
+        { key: 'a', kind: PATCH_ENTER.toString() },
+        { key: 'b', kind: PATCH_ENTER.toString() },
       ]);
     });
 
@@ -585,12 +591,12 @@ describe('patchKeyedChildren', () => {
       const log = runAndCollect([el('a'), el('b'), el('c'), el('d')], [el('d'), el('b'), el('e'), el('a')]);
 
       expect(log).toEqual([
-        { key: 'd', phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
-        { key: 'd', phase: PATCH_ENTER.toString() },
-        { key: 'b', phase: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
-        { key: 'b', phase: PATCH_ENTER.toString() },
-        { key: 'e', phase: MOUNT_ENTER.toString() },
-        { key: 'a', phase: PATCH_ENTER.toString() },
+        { key: 'd', kind: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
+        { key: 'd', kind: PATCH_ENTER.toString() },
+        { key: 'b', kind: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR.toString() },
+        { key: 'b', kind: PATCH_ENTER.toString() },
+        { key: 'e', kind: MOUNT_ENTER.toString() },
+        { key: 'a', kind: PATCH_ENTER.toString() },
       ]);
 
       // Stale node 'c' must be removed
@@ -607,7 +613,7 @@ describe('patchKeyedChildren', () => {
       const log = runAndCollect([el('p'), el('a'), el('b'), el('s')], [el('q'), el('a'), el('b'), el('r')]);
 
       const placePhase = String(HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR);
-      expect(log.filter(f => f.phase === placePhase)).toHaveLength(0);
+      expect(log.filter(f => f.kind === placePhase)).toHaveLength(0);
     });
 
     // -- rightSibling chain in step 5 mount frames --------------------------
@@ -682,7 +688,7 @@ describe('patchKeyedChildren', () => {
       expect(removeSpy).not.toHaveBeenCalled();
       expect(mountSpy).not.toHaveBeenCalled();
       expect(patchedKeys()).toEqual(expect.arrayContaining(['a', 'b', 'c', 'd']));
-      const placedPhases = renderRuntime.renderStack.map((f: any) => f.phase);
+      const placedPhases = renderRuntime.renderStack.map((f: any) => f.kind);
       expect(placedPhases).toContain(HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR);
     });
 
