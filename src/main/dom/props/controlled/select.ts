@@ -1,10 +1,5 @@
 import type { SimpElement, SimpRenderRuntime } from '@simpreact/internal';
-import {
-  flushSyncRerender,
-  lockSyncRendering,
-  SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
-  SIMP_ELEMENT_CHILD_FLAG_LIST,
-} from '@simpreact/internal';
+import { SIMP_ELEMENT_CHILD_FLAG_ELEMENT, SIMP_ELEMENT_CHILD_FLAG_LIST, withSyncRerender } from '@simpreact/internal';
 import type { Dict } from '@simpreact/shared';
 import { emptyObject } from '@simpreact/shared';
 
@@ -20,10 +15,11 @@ function createControlledInputChangeHandler(renderRuntime: SimpRenderRuntime): (
       return;
     }
 
-    if (element.props['onChange']) {
-      lockSyncRendering();
-      element.props['onChange'](event);
-      flushSyncRerender(renderRuntime);
+    const onChange = element.props['onChange'];
+    if (onChange) {
+      withSyncRerender(renderRuntime, () => {
+        onChange(event);
+      });
 
       element = renderRuntime.hostAdapter.getElementFromReference(event.target, renderRuntime);
     }

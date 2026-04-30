@@ -5,35 +5,54 @@ import { patch } from './patching.js';
 import type { SimpRenderRuntime } from './runtime.js';
 import { findParentReferenceFromElement } from './utils.js';
 
+interface RerenderSpecificData {
+  syncQueue: Set<SimpElementStore>;
+  asyncQueue: Set<SimpElementStore>;
+  syncLockDepth: number;
+  isAsyncFlushScheduled: boolean;
+}
+
+const rerenderSpecificDataByRuntime = new WeakMap<SimpRenderRuntime, RerenderSpecificData>();
+
+function getRerenderSpecificData(renderRuntime: SimpRenderRuntime): RerenderSpecificData {
+  let data = rerenderSpecificDataByRuntime.get(renderRuntime);
+  if (!data) {
+    data = {
+      asyncQueue: new Set(),
+      syncQueue: new Set(),
+      syncLockDepth: 0,
+      isAsyncFlushScheduled: false,
+    };
+    rerenderSpecificDataByRuntime.set(renderRuntime, data);
+  }
+  return data;
+}
+
 lifecycleEventBus.subscribe(event => {
+  const data = getRerenderSpecificData(event.renderRuntime);
+
   if (event.type === 'afterRender' || event.type === 'errored' || event.type === 'unmounted') {
-    elementStoresAsyncRerender.delete(event.element.store!);
-    elementStoresSyncRerender.delete(event.element.store!);
+    data.asyncQueue.delete(event.element.store!);
+    data.syncQueue.delete(event.element.store!);
   }
 });
 
-let loopRunning = false;
+function scheduleAsyncFlush(renderRuntime: SimpRenderRuntime) {
+  const data = getRerenderSpecificData(renderRuntime);
 
-const elementStoresAsyncRerender = new Set<SimpElementStore>();
-
-function startScheduler(renderRuntime: SimpRenderRuntime) {
-  if (loopRunning) {
+  if (data.isAsyncFlushScheduled) {
     return;
   }
 
-  loopRunning = true;
+  data.isAsyncFlushScheduled = true;
 
   const process = () => {
-    if (elementStoresAsyncRerender.size === 0) {
-      loopRunning = false;
+    if (data.asyncQueue.size === 0) {
+      data.isAsyncFlushScheduled = false;
       return;
     }
 
-    for (const store of elementStoresAsyncRerender) {
-      elementStoresAsyncRerender.delete(store);
-
-      _rerender(store.latestElement!, renderRuntime);
-    }
+    flushQueue(data.asyncQueue, renderRuntime);
 
     queueMicrotask(process);
   };
@@ -42,44 +61,48 @@ function startScheduler(renderRuntime: SimpRenderRuntime) {
 }
 
 export function rerender(element: SimpElement, renderRuntime: SimpRenderRuntime) {
+  const data = getRerenderSpecificData(renderRuntime);
+
   if (element.unmounted) {
     console.warn('The component is unmounted.');
+    return;
   }
 
   lifecycleEventBus.publish({ type: 'triedToRerender', element, renderRuntime });
 
-  if (isSyncRenderingLocked) {
-    elementStoresSyncRerender.add(element.store!);
+  if (data.syncLockDepth > 0) {
+    data.syncQueue.add(element.store!);
     return;
   }
 
-  elementStoresAsyncRerender.add(element.store!);
-  startScheduler(renderRuntime);
+  data.asyncQueue.add(element.store!);
+  scheduleAsyncFlush(renderRuntime);
 }
 
-let isSyncRenderingLocked = false;
+export function withSyncRerender(renderRuntime: SimpRenderRuntime, callback: () => void): void {
+  const data = getRerenderSpecificData(renderRuntime);
 
-const elementStoresSyncRerender = new Set<SimpElementStore>();
+  data.syncLockDepth++;
 
-export function lockSyncRendering() {
-  isSyncRenderingLocked = true;
-}
+  try {
+    callback();
+  } finally {
+    data.syncLockDepth--;
 
-export function flushSyncRerender(renderRuntime: SimpRenderRuntime) {
-  isSyncRenderingLocked = false;
-
-  if (elementStoresSyncRerender.size === 0) {
-    return;
-  }
-
-  for (const store of elementStoresSyncRerender) {
-    elementStoresSyncRerender.delete(store);
-
-    _rerender(store.latestElement!, renderRuntime);
+    if (data.syncLockDepth === 0) {
+      flushQueue(data.syncQueue, renderRuntime);
+    }
   }
 }
 
-function _rerender(element: SimpElement, renderRuntime: SimpRenderRuntime) {
+function flushQueue(queue: Set<SimpElementStore>, renderRuntime: SimpRenderRuntime): void {
+  for (const store of queue) {
+    queue.delete(store);
+    performRerender(store.latestElement!, renderRuntime);
+  }
+}
+
+function performRerender(element: SimpElement, renderRuntime: SimpRenderRuntime) {
   if (isMemo(element.type)) {
     element.type._isForcedUpdate = true;
   }

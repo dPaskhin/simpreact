@@ -1,5 +1,5 @@
 import type { SimpElement, SimpRenderRuntime } from '@simpreact/internal';
-import { flushSyncRerender, lockSyncRendering } from '@simpreact/internal';
+import { withSyncRerender } from '@simpreact/internal';
 import type { Dict } from '@simpreact/shared';
 
 export function isCheckedType(type: string): boolean {
@@ -18,12 +18,13 @@ function createControlledInputInputHandler(renderRuntime: SimpRenderRuntime): (e
       return;
     }
 
-    if (element.props['onInput']) {
-      lockSyncRendering();
+    const onInput = element.props['onInput'];
+    if (onInput) {
+      withSyncRerender(renderRuntime, () => {
+        onInput(event);
+      });
+      element = renderRuntime.hostAdapter.getElementFromReference(event.target, renderRuntime);
     }
-    element.props['onInput'](event);
-    flushSyncRerender(renderRuntime);
-    element = renderRuntime.hostAdapter.getElementFromReference(event.target, renderRuntime);
 
     if (element) {
       syncControlledInputProps(element, element.props);
@@ -50,10 +51,11 @@ function createControlledInputChangeHandler(renderRuntime: SimpRenderRuntime): (
       return;
     }
 
-    if (element.props['onChange']) {
-      lockSyncRendering();
-      element.props['onChange'](event);
-      flushSyncRerender(renderRuntime);
+    const onChange = element.props['onChange'];
+    if (onChange) {
+      withSyncRerender(renderRuntime, () => {
+        onChange(event);
+      });
       element = renderRuntime.hostAdapter.getElementFromReference(event.target, renderRuntime);
     }
 
