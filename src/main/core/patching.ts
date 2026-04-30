@@ -9,7 +9,7 @@ import {
   type SimpElement,
 } from './createElement.js';
 import { _pushHostOperationReplaceElement } from './hostOperations.js';
-import { type LifecycleEvent, lifecycleEventBus, UPDATING_PHASE } from './lifecycleEventBus.js';
+import { type LifecycleEvent, lifecycleEventBus } from './lifecycleEventBus.js';
 import { isMemo } from './memo.js';
 import { _pushMountEnterFrame } from './mounting.js';
 import { _pushPatchChildrenFrame } from './patchingChildren.js';
@@ -21,7 +21,7 @@ import {
   type SimpRenderFrameMeta,
 } from './processStack.js';
 import { applyRef } from './ref.js';
-import type { SimpRenderRuntime } from './runtime.js';
+import { type SimpRenderRuntime, UPDATING_PHASE } from './runtime.js';
 import { _clearElementHostReference, _pushUnmountEnterFrame, _remove } from './unmounting.js';
 import { bitScanForwardIndex } from './utils.js';
 
@@ -222,6 +222,9 @@ function _patchFunctionalComponent(frame: SimpRenderFrame): void {
   let triedToRerenderUnsubscribe;
 
   try {
+    renderRuntime.renderPhase = UPDATING_PHASE;
+    renderRuntime.currentRenderingFCElement = nextElement;
+
     let triedToRerender = false;
     let rerenderCounter = 0;
     triedToRerenderUnsubscribe = lifecycleEventBus.subscribe(event => {
@@ -238,16 +241,14 @@ function _patchFunctionalComponent(frame: SimpRenderFrame): void {
       lifecycleEventBus.publish({
         type: 'beforeRender',
         element: nextElement,
-        phase: UPDATING_PHASE,
         renderRuntime,
       });
 
-      nextChildren = renderRuntime.renderer(nextElement.type as FC, nextElement);
+      nextChildren = renderRuntime.renderer(nextElement.type as FC, nextElement, renderRuntime);
 
       lifecycleEventBus.publish({
         type: 'afterRender',
         element: nextElement,
-        phase: UPDATING_PHASE,
         renderRuntime,
       });
     } while (triedToRerender);
@@ -279,7 +280,6 @@ function _patchFunctionalComponent(frame: SimpRenderFrame): void {
       type: 'errored',
       element: nextElement,
       error,
-      phase: UPDATING_PHASE,
       handled: false,
       renderRuntime,
     };
@@ -293,6 +293,8 @@ function _patchFunctionalComponent(frame: SimpRenderFrame): void {
     return;
   } finally {
     triedToRerenderUnsubscribe!();
+    renderRuntime.renderPhase = null;
+    renderRuntime.currentRenderingFCElement = null;
   }
 
   renderRuntime.renderStack.push({

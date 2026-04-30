@@ -11,6 +11,8 @@ const renderRuntime: SimpRenderRuntime = {
   },
   renderStack: [],
   elementToHostMap: new Map(),
+  renderPhase: null,
+  currentRenderingFCElement: null,
 };
 
 const createRoot = createCreateRoot(renderRuntime);

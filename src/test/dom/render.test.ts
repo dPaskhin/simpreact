@@ -11,6 +11,8 @@ const renderRuntime: SimpRenderRuntime = {
   },
   elementToHostMap: new Map(),
   renderStack: [],
+  renderPhase: null,
+  currentRenderingFCElement: null,
 };
 
 const createRoot = createCreateRoot(renderRuntime);
@@ -91,6 +93,8 @@ describe('render', () => {
         },
         elementToHostMap: new Map(),
         renderStack: [],
+        renderPhase: null,
+        currentRenderingFCElement: null,
       };
       const root = createCreateRoot(runtime)(container as any);
 

@@ -9,7 +9,7 @@ import {
   type SimpElement,
 } from './createElement.js';
 import { _pushHostOperationPlaceElement } from './hostOperations.js';
-import { type LifecycleEvent, lifecycleEventBus, MOUNTING_PHASE } from './lifecycleEventBus.js';
+import { type LifecycleEvent, lifecycleEventBus } from './lifecycleEventBus.js';
 import {
   MOUNT_ENTER,
   MOUNT_EXIT,
@@ -18,7 +18,7 @@ import {
   type SimpRenderFrameMeta,
 } from './processStack.js';
 import { applyRef } from './ref.js';
-import type { SimpRenderRuntime } from './runtime.js';
+import { MOUNTING_PHASE, type SimpRenderRuntime } from './runtime.js';
 import { bitScanForwardIndex } from './utils.js';
 
 const mountHandlers = [_mountHostElement, _mountFunctionalElement, _mountTextElement, _mountPortal, _mountFragment];
@@ -192,6 +192,9 @@ function _mountFunctionalElement(frame: SimpRenderFrame): void {
   let triedToRerenderUnsubscribe: () => void;
 
   try {
+    renderRuntime.renderPhase = MOUNTING_PHASE;
+    renderRuntime.currentRenderingFCElement = element;
+
     let triedToRerender = false;
     let rerenderCounter = 0;
     triedToRerenderUnsubscribe = lifecycleEventBus.subscribe(event => {
@@ -208,16 +211,14 @@ function _mountFunctionalElement(frame: SimpRenderFrame): void {
       lifecycleEventBus.publish({
         type: 'beforeRender',
         element,
-        phase: MOUNTING_PHASE,
         renderRuntime,
       });
 
-      children = renderRuntime.renderer(element.type as FC, element);
+      children = renderRuntime.renderer(element.type as FC, element, renderRuntime);
 
       lifecycleEventBus.publish({
         type: 'afterRender',
         element,
-        phase: MOUNTING_PHASE,
         renderRuntime,
       });
     } while (triedToRerender);
@@ -228,7 +229,6 @@ function _mountFunctionalElement(frame: SimpRenderFrame): void {
       type: 'errored',
       element,
       error,
-      phase: MOUNTING_PHASE,
       handled: false,
       renderRuntime,
     };
@@ -242,6 +242,8 @@ function _mountFunctionalElement(frame: SimpRenderFrame): void {
     return;
   } finally {
     triedToRerenderUnsubscribe!();
+    renderRuntime.renderPhase = null;
+    renderRuntime.currentRenderingFCElement = null;
   }
 
   _pushMountExitFrame(element, {

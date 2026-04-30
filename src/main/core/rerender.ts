@@ -59,8 +59,9 @@ function scheduleAsyncFlush(renderRuntime: SimpRenderRuntime) {
   queueMicrotask(process);
 }
 
-export function rerender(element: SimpElement, renderRuntime: SimpRenderRuntime) {
+export function rerender(store: SimpElementStore, renderRuntime: SimpRenderRuntime) {
   const data = getRerenderSpecificData(renderRuntime);
+  const element = store.latestElement!;
 
   if (element.unmounted) {
     console.warn('The component is unmounted.');
@@ -70,11 +71,11 @@ export function rerender(element: SimpElement, renderRuntime: SimpRenderRuntime)
   lifecycleEventBus.publish({ type: 'triedToRerender', element, renderRuntime });
 
   if (data.syncLockDepth > 0) {
-    data.syncQueue.add(element.store!);
+    data.syncQueue.add(store);
     return;
   }
 
-  data.asyncQueue.add(element.store!);
+  data.asyncQueue.add(store);
   scheduleAsyncFlush(renderRuntime);
 }
 

@@ -23,6 +23,8 @@ const renderRuntime: SimpRenderRuntime = {
   },
   elementToHostMap: new Map(),
   renderStack: [],
+  renderPhase: null,
+  currentRenderingFCElement: null,
 };
 
 describe('input controlled', () => {

@@ -13,6 +13,7 @@ import { lifecycleEventBus } from './lifecycleEventBus.js';
 import { processStack, type SimpRenderFrame, UNMOUNT_ENTER, UNMOUNT_EXIT } from './processStack.js';
 import { unmountRef } from './ref.js';
 import type { SimpRenderRuntime } from './runtime.js';
+import { isHostLike } from './utils.js';
 
 export function unmount(element: SimpElement, renderRuntime: SimpRenderRuntime): void {
   if (renderRuntime.renderStack.length !== 0) {
@@ -31,6 +32,7 @@ export function _unmount(frame: SimpRenderFrame): void {
     if ((current.flag & SIMP_ELEMENT_FLAG_FC) !== 0) {
       current.unmounted = true;
       lifecycleEventBus.publish({ type: 'unmounted', element: current, renderRuntime: frame.meta.renderRuntime });
+      current.store = null;
       return;
     }
 
@@ -125,11 +127,7 @@ export function _clearElementHostReference(
   renderRuntime: SimpRenderRuntime
 ): void {
   while (element != null) {
-    if (
-      (element.flag & SIMP_ELEMENT_FLAG_HOST) !== 0 ||
-      (element.flag & SIMP_ELEMENT_FLAG_TEXT) !== 0 ||
-      (element.flag & SIMP_ELEMENT_FLAG_PORTAL) !== 0
-    ) {
+    if (isHostLike(element.flag)) {
       renderRuntime.hostAdapter.removeChild(parentHostReference, element.reference!);
       return;
     }

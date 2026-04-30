@@ -3,7 +3,6 @@ import {
   createElement,
   Fragment,
   lifecycleEventBus,
-  MOUNTING_PHASE,
   mount,
   patch,
   type SimpElement,
@@ -20,6 +19,8 @@ const renderRuntime: SimpRenderRuntime = {
   },
   elementToHostMap: new Map(),
   renderStack: [],
+  renderPhase: null,
+  currentRenderingFCElement: null,
 };
 
 const createContext = createCreateContext(renderRuntime);
@@ -230,13 +231,11 @@ describe('patching', () => {
       expect(listener).toHaveBeenCalledWith({
         type: 'beforeRender',
         element: next,
-        phase: MOUNTING_PHASE,
         renderRuntime,
       });
       expect(listener).toHaveBeenCalledWith({
         type: 'afterRender',
         element: next,
-        phase: MOUNTING_PHASE,
         renderRuntime,
       });
       expect(listener).toHaveBeenCalledTimes(4);

@@ -1,112 +1,96 @@
-import type { SimpElement, SimpElementStore, SimpNode, SimpRenderRuntime } from '@simpreact/internal';
-import { lifecycleEventBus, MOUNTING_PHASE, rerender } from '@simpreact/internal';
+import {
+  lifecycleEventBus,
+  MOUNTING_PHASE,
+  rerender,
+  type SimpElementStore,
+  type SimpNode,
+  type SimpRenderRuntime,
+} from '@simpreact/internal';
+import type { Nullable } from '@simpreact/shared';
 
-interface ContextSpecificData {
-  renderPhase: number;
-  currentElement: SimpElement;
+// There is an assertion throughout in the module that context is Map<SimpContext, SimpContextEntry>
+// which is a weak point since there may happen to appear new contexts types in other features.
+interface SimpContextEntry {
+  value: unknown;
+  subs: Set<SimpElementStore>;
 }
 
-const contextSpecificDataByRuntime = new WeakMap<SimpRenderRuntime, ContextSpecificData>();
+type Provider = (props: { value: unknown; children: SimpNode }) => SimpNode;
+type Consumer = (props: { children: (value: unknown) => SimpNode }) => SimpNode;
 
-function getContextSpecificData(renderRuntime: SimpRenderRuntime): ContextSpecificData {
-  let data = contextSpecificDataByRuntime.get(renderRuntime);
-  if (!data) {
-    data = { renderPhase: null!, currentElement: null! };
-    contextSpecificDataByRuntime.set(renderRuntime, data);
-  }
-  return data;
+interface SimpContext {
+  defaultValue: unknown;
+  Provider: Provider;
+  Consumer: Consumer;
 }
 
-type SimpContextEntry = { value: any; subs: Set<SimpElementStore> };
-
-type Provider<T = any> = (props: { value: T; children: SimpNode }) => SimpNode;
-type Consumer<T = any> = (props: { children: (value: T) => SimpNode }) => SimpNode;
-
-interface SimpContext<T = any> {
-  defaultValue: T;
-  Provider: Provider<T>;
-  Consumer: Consumer<T>;
+export interface CreateContext {
+  (defaultValue: unknown): SimpContext;
 }
 
 lifecycleEventBus.subscribe(event => {
-  const data = getContextSpecificData(event.renderRuntime);
-
-  if (event.type === 'beforeRender') {
-    data.currentElement = event.element;
-    data.renderPhase = event.phase;
-  }
-  if (event.type === 'afterRender') {
-    data.currentElement = null!;
-    data.renderPhase = null!;
-  }
   if (event.type === 'unmounted' && event.element.context) {
-    event.element.context.forEach((value: SimpContextEntry) => value.subs.delete(event.element.store!));
+    const contextMap = event.element.context as Map<SimpContext, SimpContextEntry>;
+    for (const entry of contextMap.values()) {
+      entry.subs.delete(event.element.store!);
+    }
   }
 });
 
-export interface CreateContext {
-  <T>(defaultValue: T): SimpContext<T>;
-}
-
 export function createCreateContext(renderRuntime: SimpRenderRuntime): CreateContext {
-  const data = getContextSpecificData(renderRuntime);
-
-  return <T>(defaultValue: T) => {
-    const context: SimpContext<T> = {
+  return defaultValue => {
+    const context: SimpContext = {
       defaultValue,
 
       Provider(props) {
-        const { currentElement, renderPhase } = data;
+        const currentElement = renderRuntime.currentRenderingFCElement!;
+        const renderPhase = renderRuntime.renderPhase;
+        let contextMap = currentElement.context as Nullable<Map<SimpContext, SimpContextEntry>>;
 
-        if (!currentElement.context) {
-          currentElement.context = new Map();
-        } else if (renderPhase === MOUNTING_PHASE) {
-          currentElement.context = new Map(currentElement.context);
+        if (!contextMap) {
+          currentElement.context = contextMap = new Map();
+        }
+        if (contextMap && renderPhase === MOUNTING_PHASE) {
+          currentElement.context = contextMap = new Map(currentElement.context);
         }
 
         if (renderPhase === MOUNTING_PHASE) {
-          currentElement.context.set(context, {
-            value: props.value,
-            subs: new Set(),
-          });
+          contextMap.set(context, { value: props.value, subs: new Set() });
           return props.children;
         }
 
-        let contextEntry = currentElement!.context.get(context);
+        const entry = contextMap.get(context);
 
-        if (!contextEntry) {
-          contextEntry = { value: props.value, subs: new Set() };
-          currentElement.context.set(context, contextEntry);
+        if (!entry) {
+          contextMap.set(context, { value: props.value, subs: new Set() });
           return props.children;
         }
 
-        if (Object.is(contextEntry.value, props.value)) {
+        if (Object.is(entry.value, props.value)) {
           return props.children;
         }
 
-        contextEntry.value = props.value;
+        entry.value = props.value;
 
-        for (const sub of contextEntry.subs) {
-          rerender(sub.latestElement!, renderRuntime);
+        for (const sub of entry.subs) {
+          rerender(sub, renderRuntime);
         }
 
         return props.children;
       },
 
       Consumer(props) {
-        const { currentElement } = data;
-        const contextEntry = currentElement.context?.get(context);
+        const currentElement = renderRuntime.currentRenderingFCElement!;
+        const contextMap = currentElement.context as Nullable<Map<SimpContext, SimpContextEntry>>;
+        const store = currentElement.store!;
+        const entry = contextMap?.get(context);
 
-        if (!contextEntry) {
-          // No provider above: just use the default value, don't subscribe
+        if (!entry) {
           return props.children(defaultValue);
         }
 
-        if (!contextEntry.subs.has(currentElement.store!)) {
-          contextEntry.subs.add(currentElement.store!);
-        }
-
-        return props.children(contextEntry.value);
+        entry.subs.add(store);
+        return props.children(entry.value);
       },
     };
 
@@ -115,24 +99,21 @@ export function createCreateContext(renderRuntime: SimpRenderRuntime): CreateCon
 }
 
 export interface UseContext {
-  <T>(context: SimpContext<T>): T;
+  (context: SimpContext): unknown;
 }
 
 export function createUseContext(renderRuntime: SimpRenderRuntime): UseContext {
-  const data = getContextSpecificData(renderRuntime);
+  return context => {
+    const currentElement = renderRuntime.currentRenderingFCElement!;
+    const contextMap = currentElement.context as Nullable<Map<SimpContext, SimpContextEntry>>;
+    const store = currentElement.store!;
+    const entry = contextMap?.get(context);
 
-  return <T>(context: SimpContext<T>): T => {
-    const { currentElement } = data;
-    const contextEntry = currentElement.context?.get(context);
-
-    if (!contextEntry) {
+    if (!entry) {
       return context.defaultValue;
     }
 
-    if (!contextEntry.subs.has(currentElement.store!)) {
-      contextEntry.subs.add(currentElement.store!);
-    }
-
-    return contextEntry.value;
+    entry.subs.add(store);
+    return entry.value;
   };
 }

@@ -39,6 +39,8 @@ const renderRuntime: SimpRenderRuntime = {
   },
   elementToHostMap: new Map(),
   renderStack: [],
+  renderPhase: null,
+  currentRenderingFCElement: null,
 };
 
 const createContext = createCreateContext(renderRuntime);

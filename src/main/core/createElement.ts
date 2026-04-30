@@ -24,12 +24,8 @@ export const SIMP_ELEMENT_CHILD_FLAG_TEXT = 1 << 4;
 // for tracking them consistently across rerenders.
 export interface SimpElementStore {
   latestElement: Nullable<SimpElement>;
-
   hostNamespace: Nullable<string>;
-
   forceRerender: boolean;
-
-  [key: string]: unknown;
 }
 
 export interface SimpElement {

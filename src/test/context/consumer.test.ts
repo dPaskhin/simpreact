@@ -16,9 +16,6 @@ describe('Context.Consumer', () => {
   let useState: ReturnType<typeof createUseState>;
 
   beforeEach(() => {
-    document.body.innerHTML = '';
-    // TODO: remove this hack when the render runtime has the map of elements to their host references.
-    (document.body as any).__SIMP_ELEMENT__ = undefined;
     renderRuntime = {
       hostAdapter: domAdapter,
       renderer(type, element) {
@@ -26,6 +23,8 @@ describe('Context.Consumer', () => {
       },
       renderStack: [],
       elementToHostMap: new Map(),
+      currentRenderingFCElement: null,
+      renderPhase: null,
     };
 
     createContext = createCreateContext(renderRuntime);
@@ -82,11 +81,7 @@ describe('Context.Consumer', () => {
       ]);
     }
 
-    try {
-      render(createElement(App), document.body);
-    } catch (e) {
-      console.error('jerer', e);
-    }
+    render(createElement(App), document.body);
 
     // initial
     expect(document.body.querySelector('[data-testid="v"]')!.textContent).toBe('A');

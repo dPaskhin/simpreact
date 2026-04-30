@@ -2,11 +2,19 @@ import {
   rerender as _rerender,
   lifecycleEventBus,
   type RefObject,
+  SIMP_ELEMENT_FLAG_FC,
   type SimpElement,
+  type SimpElementStore,
   type SimpRenderRuntime,
 } from '@simpreact/internal';
-import type { DependencyList, Effect, EffectState, Maybe, Nullable } from '@simpreact/shared';
-import { callOrGet, shallowEqual } from '@simpreact/shared';
+import {
+  callOrGet,
+  type DependencyList,
+  type Effect,
+  type EffectState,
+  type Nullable,
+  shallowEqual,
+} from '@simpreact/shared';
 
 export type Dispatch<A> = (value: A) => void;
 export type SetStateAction<S> = S | ((prevState: S) => S);
@@ -21,67 +29,60 @@ type StateHookState<S = any> = [S, Dispatch<SetStateAction<S>>];
 
 type HookState = EffectState | RerenderHookState | RefHookState | StateHookState;
 
-interface HooksSpecificData {
-  currentIndex: number;
-  currentElement: HooksSimpElement;
+interface HooksSpecificStore {
+  hooksIndex: number;
+  hookStates: Nullable<HookState[]>;
+  effectsHookStates: Nullable<EffectState[]>;
+  catchHandlers: Nullable<Array<(error: any) => void>>;
 }
 
-const hooksSpecificDataByRuntime = new WeakMap<SimpRenderRuntime, HooksSpecificData>();
+const hooksSpecificStoreByElementStore = new WeakMap<SimpElementStore, HooksSpecificStore>();
 
-function getHooksSpecificData(renderRuntime: SimpRenderRuntime): HooksSpecificData {
-  let data = hooksSpecificDataByRuntime.get(renderRuntime);
-  if (!data) {
-    data = { currentIndex: 0, currentElement: null! };
-    hooksSpecificDataByRuntime.set(renderRuntime, data);
+function getHooksSpecificStore(store: SimpElementStore): HooksSpecificStore {
+  let hooksSpecificStore = hooksSpecificStoreByElementStore.get(store);
+  if (!hooksSpecificStore) {
+    hooksSpecificStore = { hooksIndex: 0, hookStates: null, effectsHookStates: null, catchHandlers: null };
+    hooksSpecificStoreByElementStore.set(store, hooksSpecificStore);
   }
-  return data;
-}
-
-interface HooksSimpElement extends SimpElement {
-  store: SimpElement['store'] &
-    Nullable<{
-      hookStates: Nullable<HookState[]>;
-      effectsHookStates: Nullable<EffectState[]>;
-      catchHandlers: Nullable<Array<(error: any) => void>>;
-    }>;
+  return hooksSpecificStore;
 }
 
 lifecycleEventBus.subscribe(event => {
-  const data = getHooksSpecificData(event.renderRuntime);
-
-  if (event.type === 'beforeRender') {
-    data.currentIndex = 0;
-    data.currentElement = event.element as HooksSimpElement;
-
-    if (data.currentElement.store?.catchHandlers) {
-      data.currentElement.store.catchHandlers = null;
-    }
-    if (data.currentElement.store?.effectsHookStates) {
-      data.currentElement.store.effectsHookStates = null;
-    }
+  if ((event.element.flag & SIMP_ELEMENT_FLAG_FC) === 0) {
+    return;
   }
-  if (event.type === 'afterRender' || event.type === 'errored') {
-    data.currentElement = null!;
-    data.currentIndex = 0;
-  }
-  if (event.type === 'mounted') {
-    const element = event.element as HooksSimpElement;
 
-    if (element.store?.effectsHookStates) {
-      const effects = element.store.effectsHookStates;
-      element.store.effectsHookStates = null;
+  let store = getHooksSpecificStore(event.element.store!);
+
+  switch (event.type) {
+    case 'beforeRender': {
+      store.hooksIndex = 0;
+      store.catchHandlers = null;
+      store.effectsHookStates = null;
+      break;
+    }
+    case 'afterRender': {
+      store.hooksIndex = 0;
+      break;
+    }
+    case 'mounted': {
+      if (!store.effectsHookStates) {
+        break;
+      }
+      const effects = store.effectsHookStates;
+      store.effectsHookStates = null;
 
       for (const state of effects) {
         state.cleanup = state.effect() || null;
       }
+      break;
     }
-  }
-  if (event.type === 'updated') {
-    const element = event.element as HooksSimpElement;
-
-    if (element.store?.effectsHookStates) {
-      const effects = element.store.effectsHookStates;
-      element.store.effectsHookStates = null;
+    case 'updated': {
+      if (!store.effectsHookStates) {
+        break;
+      }
+      const effects = store.effectsHookStates;
+      store.effectsHookStates = null;
 
       for (const state of effects) {
         if (typeof state.cleanup === 'function') {
@@ -89,42 +90,57 @@ lifecycleEventBus.subscribe(event => {
         }
         state.cleanup = state.effect() || null;
       }
+      break;
     }
-  }
-  if (event.type === 'unmounted') {
-    const element = event.element as HooksSimpElement;
-    if (element.store?.hookStates) {
-      const hookStates = element.store.hookStates;
-      element.store.hookStates = null;
+    case 'unmounted': {
+      if (!store.hookStates) {
+        break;
+      }
+      const hookStates = store.hookStates;
+      store.hookStates = null;
 
       for (const state of hookStates) {
         if (state && 'cleanup' in state && typeof state.cleanup === 'function') {
           state.cleanup();
         }
       }
+      break;
     }
-  }
-  if (event.type === 'errored' && !event.handled) {
-    let element = event.element as Nullable<HooksSimpElement>;
-    let curError = event.error;
-    let catchers: Maybe<Array<(error: any) => void>> = null;
+    case 'errored': {
+      store.hooksIndex = 0;
 
-    while (element) {
-      if (!(catchers = element.store?.catchHandlers)) {
-        element = element.parent as Nullable<HooksSimpElement>;
-        continue;
+      if (event.handled) {
+        break;
       }
 
-      try {
-        for (let i = 0; i < catchers.length; i++) {
-          catchers[i]!(curError);
+      let element: Nullable<SimpElement> = event.element;
+      let curError = event.error;
+      let catchers: Nullable<Array<(error: any) => void>> = null;
+
+      while (element) {
+        if ((element.flag & SIMP_ELEMENT_FLAG_FC) === 0) {
+          element = element.parent;
+          continue;
         }
-        curError = null;
-        event.handled = true;
-        break;
-      } catch (error) {
-        element = element.parent as Nullable<HooksSimpElement>;
-        curError = error;
+
+        store = getHooksSpecificStore(element.store!);
+        catchers = store.catchHandlers;
+
+        if (!catchers) {
+          element = element.parent;
+          continue;
+        }
+
+        try {
+          for (let i = 0; i < catchers.length; i++) {
+            catchers[i]!(curError);
+          }
+          event.handled = true;
+          break;
+        } catch (error) {
+          element = element.parent;
+          curError = error;
+        }
       }
     }
   }
@@ -136,33 +152,31 @@ export interface UseRef {
   <T = undefined>(initialValue?: T): RefObject<T | undefined>;
 }
 export function createUseRef(renderRuntime: SimpRenderRuntime): UseRef {
-  const data = getHooksSpecificData(renderRuntime);
-
   return initialValue => {
-    const hookStates = getOrCreateHookStates(data.currentElement);
+    const store = getHooksSpecificStore(renderRuntime.currentRenderingFCElement!.store!);
+    const hookStates = getOrCreateHookStates(store);
 
-    if (!hookStates[data.currentIndex]) {
-      hookStates[data.currentIndex] = { current: initialValue };
+    if (!hookStates[store.hooksIndex]) {
+      hookStates[store.hooksIndex] = { current: initialValue };
     }
 
-    return hookStates[data.currentIndex++] as RefObject<typeof initialValue>;
+    return hookStates[store.hooksIndex++] as RefObject<typeof initialValue>;
   };
 }
 
 export function createUseRerender(renderRuntime: SimpRenderRuntime): () => RerenderHookState {
-  const data = getHooksSpecificData(renderRuntime);
-
   return () => {
-    const hookStates = getOrCreateHookStates(data.currentElement);
+    const store = getHooksSpecificStore(renderRuntime.currentRenderingFCElement!.store!);
+    const hookStates = getOrCreateHookStates(store);
 
-    if (!hookStates[data.currentIndex]) {
-      const elementStore = data.currentElement.store;
-      hookStates[data.currentIndex] = function rerender() {
-        _rerender(elementStore!.latestElement!, renderRuntime);
+    if (!hookStates[store.hooksIndex]) {
+      const elementStore = renderRuntime.currentRenderingFCElement!.store!;
+      hookStates[store.hooksIndex] = function rerender() {
+        _rerender(elementStore, renderRuntime);
       };
     }
 
-    return hookStates[data.currentIndex++] as RerenderHookState;
+    return hookStates[store.hooksIndex++] as RerenderHookState;
   };
 }
 
@@ -174,14 +188,13 @@ export interface UseState {
   ): [S | undefined, Dispatch<SetStateAction<S | undefined>>];
 }
 export function createUseState(renderRuntime: SimpRenderRuntime): UseState {
-  const data = getHooksSpecificData(renderRuntime);
-
   return (initialState => {
-    const hookStates = getOrCreateHookStates(data.currentElement);
+    const store = getHooksSpecificStore(renderRuntime.currentRenderingFCElement!.store!);
+    const hookStates = getOrCreateHookStates(store);
 
-    if (!hookStates[data.currentIndex]) {
-      const elementStore = data.currentElement.store;
-      const state: StateHookState = (hookStates[data.currentIndex] = [undefined!, undefined!]);
+    if (!hookStates[store.hooksIndex]) {
+      const elementStore = renderRuntime.currentRenderingFCElement!.store!;
+      const state: StateHookState = (hookStates[store.hooksIndex] = [undefined!, undefined!]);
 
       state[0] = callOrGet(initialState)!;
       state[1] = function dispatch(action) {
@@ -192,24 +205,23 @@ export function createUseState(renderRuntime: SimpRenderRuntime): UseState {
         }
 
         state[0] = nextValue;
-        _rerender(elementStore!.latestElement!, renderRuntime);
+        _rerender(elementStore, renderRuntime);
       };
     }
 
-    return hookStates[data.currentIndex++];
+    return hookStates[store.hooksIndex++];
   }) as UseState;
 }
 
 export function createUseEffect(renderRuntime: SimpRenderRuntime): (effect: Effect, deps?: DependencyList) => void {
-  const data = getHooksSpecificData(renderRuntime);
-
   return (effect, deps) => {
-    const hookStates = getOrCreateHookStates(data.currentElement);
+    const store = getHooksSpecificStore(renderRuntime.currentRenderingFCElement!.store!);
+    const hookStates = getOrCreateHookStates(store);
 
-    let state = hookStates[data.currentIndex] as EffectState | undefined;
+    let state = hookStates[store.hooksIndex] as EffectState | undefined;
 
     if (!state) {
-      state = hookStates[data.currentIndex] = {
+      state = hookStates[store.hooksIndex] = {
         effect,
         deps: null,
         cleanup: null,
@@ -219,41 +231,39 @@ export function createUseEffect(renderRuntime: SimpRenderRuntime): (effect: Effe
     if (!shallowEqual(deps, state.deps)) {
       state.effect = effect;
       state.deps = deps || null;
-      getOrCreateEffectHookStates(data.currentElement).push(state);
+      getOrCreateEffectHookStates(store).push(state);
     }
 
-    data.currentIndex++;
+    store.hooksIndex++;
   };
 }
 
 export function createUseCatch(renderRuntime: SimpRenderRuntime): (cb: (error: any) => void) => void {
-  const data = getHooksSpecificData(renderRuntime);
-
   return cb => {
-    const { currentElement } = data;
+    const store = getHooksSpecificStore(renderRuntime.currentRenderingFCElement!.store!);
 
-    if (!currentElement.store!.catchHandlers) {
-      currentElement.store!.catchHandlers = [];
+    if (!store.catchHandlers) {
+      store.catchHandlers = [];
     }
 
-    currentElement.store!.catchHandlers!.push(cb);
+    store.catchHandlers!.push(cb);
   };
 }
 
-function getOrCreateHookStates(element: HooksSimpElement) {
-  if (!element.store!.hookStates) {
-    element.store!.hookStates = [];
+function getOrCreateHookStates(store: HooksSpecificStore) {
+  if (!store.hookStates) {
+    store.hookStates = [];
   }
 
-  return element.store!.hookStates;
+  return store.hookStates;
 }
 
-function getOrCreateEffectHookStates(element: HooksSimpElement) {
-  if (!element.store!.effectsHookStates) {
-    element.store!.effectsHookStates = [];
+function getOrCreateEffectHookStates(store: HooksSpecificStore) {
+  if (!store.effectsHookStates) {
+    store.effectsHookStates = [];
   }
 
-  return element.store!.effectsHookStates;
+  return store.effectsHookStates;
 }
 
 export default {

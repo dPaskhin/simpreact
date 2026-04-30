@@ -3,7 +3,6 @@ import {
   createElement,
   createTextElement,
   lifecycleEventBus,
-  MOUNTING_PHASE,
   mount,
   type SimpElement,
   type SimpRenderRuntime,
@@ -19,6 +18,8 @@ const renderRuntime: SimpRenderRuntime = {
   },
   elementToHostMap: new Map(),
   renderStack: [],
+  renderPhase: null,
+  currentRenderingFCElement: null,
 };
 
 const createContext = createCreateContext(renderRuntime);
@@ -129,13 +130,11 @@ describe('mounting', () => {
       expect(listener).toHaveBeenCalledWith({
         type: 'beforeRender',
         element,
-        phase: MOUNTING_PHASE,
         renderRuntime,
       });
       expect(listener).toHaveBeenCalledWith({
         type: 'afterRender',
         element,
-        phase: MOUNTING_PHASE,
         renderRuntime,
       });
       expect(listener).toHaveBeenCalledWith({ type: 'mounted', element, renderRuntime });

@@ -13,6 +13,8 @@ const renderRuntime: SimpRenderRuntime = {
   },
   elementToHostMap: new Map(),
   renderStack: [],
+  renderPhase: null,
+  currentRenderingFCElement: null,
 };
 
 const createRoot = createCreateRoot(renderRuntime);
@@ -246,6 +248,8 @@ describe('rerender (integration tests)', () => {
       },
       elementToHostMap: new Map(),
       renderStack: [],
+      renderPhase: null,
+      currentRenderingFCElement: null,
     };
     const secondCreateRoot = createCreateRoot(secondRenderRuntime);
     const secondUseRerender = createUseRerender(secondRenderRuntime);

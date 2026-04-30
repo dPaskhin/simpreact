@@ -9,6 +9,8 @@ export const renderRuntime: SimpRenderRuntime = {
   },
   elementToHostMap: new Map(),
   renderStack: [],
+  currentRenderingFCElement: null,
+  renderPhase: null,
 };
 
 // TODO
