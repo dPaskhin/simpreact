@@ -47,6 +47,8 @@ function getHooksSpecificStore(store: SimpElementStore): HooksSpecificStore {
   return hooksSpecificStore;
 }
 
+(window as any).__SIMP_HOOKS_SPECIFIC_STORE_BY_ELEMENT_STORE__ = hooksSpecificStoreByElementStore;
+
 lifecycleEventBus.subscribe(event => {
   if ((event.element.flag & SIMP_ELEMENT_FLAG_FC) === 0) {
     return;

@@ -13,5 +13,9 @@ export const renderRuntime: SimpRenderRuntime = {
   renderPhase: null,
 };
 
+export default {
+  renderRuntime,
+};
+
 // TODO
 (window as any).__SIMP_RUNTIME__ = renderRuntime;

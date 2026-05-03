@@ -71,8 +71,8 @@ export function placeElementBeforeAnchor(
   }
 }
 
-export function resolveAnchorReference(rightSibling: Nullable<SimpElement>): unknown | null {
-  let current: Nullable<SimpElement> = rightSibling;
+export function resolveAnchorReference(subtreeRightBoundary: Nullable<SimpElement>): unknown | null {
+  let current: Nullable<SimpElement> = subtreeRightBoundary;
 
   while (current != null) {
     const reference = findHostReferenceFromElement(current);

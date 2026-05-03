@@ -1,4 +1,4 @@
-import type { Maybe, Nullable } from '@simpreact/shared';
+import type { Many, Maybe, Nullable } from '@simpreact/shared';
 import {
   type FC,
   normalizeRoot,
@@ -25,7 +25,7 @@ export function patch(
   prevElement: SimpElement,
   nextElement: SimpElement,
   parentReference: unknown,
-  rightSibling: Nullable<SimpElement>,
+  subtreeRightBoundary: Nullable<SimpElement>,
   context: unknown,
   hostNamespace: Maybe<string>,
   renderRuntime: SimpRenderRuntime
@@ -38,10 +38,9 @@ export function patch(
     prevElement,
     parentReference,
     renderRuntime,
-    rightSibling,
+    subtreeRightBoundary,
     context,
     hostNamespace,
-    placeHolderElement: null,
   });
 
   processStack(renderRuntime);
@@ -94,13 +93,13 @@ function _replaceWithNewElement(frame: PatchFrame): void {
       hostNamespace,
       renderRuntime,
       parentReference: null!,
-      rightSibling: null,
+      subtreeRightBoundary: null,
       placeHolderElement: null,
     });
   } else {
     _clearElementHostReference(prevElement, parentReference, renderRuntime);
     _pushMountEnterFrame(nextElement, {
-      rightSibling: frame.meta.rightSibling,
+      subtreeRightBoundary: frame.meta.subtreeRightBoundary,
       renderRuntime,
       hostNamespace,
       context,
@@ -112,7 +111,7 @@ function _replaceWithNewElement(frame: PatchFrame): void {
 
 function _patchHostElement(frame: PatchFrame): void {
   const nextElement = frame.node;
-  const { prevElement, context, hostNamespace, renderRuntime } = frame.meta;
+  const { prevElement, context, hostNamespace, renderRuntime, subtreeRightBoundary, parentReference } = frame.meta;
 
   if (frame.kind === PATCH_EXIT) {
     renderRuntime.hostAdapter.patchProps(nextElement.reference, prevElement, nextElement, renderRuntime, hostNamespace);
@@ -134,26 +133,28 @@ function _patchHostElement(frame: PatchFrame): void {
     prevElement,
     renderRuntime,
     hostNamespace,
-    rightSibling: null,
-    context: null,
-    parentReference: null,
-    placeHolderElement: null,
+    subtreeRightBoundary,
+    context,
+    parentReference,
   });
 
   _pushPatchChildrenFrame(nextElement, {
-    prevElement,
-    renderRuntime,
+    prevParentElement: prevElement,
+    nextChildren: nextElement.children as Nullable<Many<SimpElement>>,
+    prevChildren: prevElement.children as Nullable<Many<SimpElement>>,
+    nextParentChildFlag: nextElement.childFlag,
+    prevParentChildFlag: prevElement.childFlag,
+    subtreeRightBoundary,
     hostNamespace: renderRuntime.hostAdapter.getHostNamespaces(nextElement, hostNamespace)?.children,
-    rightSibling: null,
     context,
     parentReference: nextElement.reference,
-    placeHolderElement: null,
+    renderRuntime,
   });
 }
 
 function _patchFunctionalComponent(frame: PatchFrame): void {
   const nextElement = frame.node;
-  const { prevElement, context, renderRuntime, hostNamespace, rightSibling, parentReference } = frame.meta;
+  const { prevElement, context, renderRuntime, hostNamespace, subtreeRightBoundary, parentReference } = frame.meta;
 
   if (frame.kind === PATCH_EXIT) {
     lifecycleEventBus.publish({ type: 'updated', element: nextElement, renderRuntime });
@@ -162,7 +163,7 @@ function _patchFunctionalComponent(frame: PatchFrame): void {
 
   if (prevElement.unmounted) {
     _pushMountEnterFrame(nextElement, {
-      rightSibling,
+      subtreeRightBoundary,
       renderRuntime,
       hostNamespace,
       context,
@@ -230,6 +231,7 @@ function _patchFunctionalComponent(frame: PatchFrame): void {
     } while (triedToRerender);
 
     normalizeRoot(nextElement, nextChildren, false);
+    nextChildren = nextElement.children;
   } catch (error) {
     const parentChildren = prevElement.parent?.children;
 
@@ -277,20 +279,22 @@ function _patchFunctionalComponent(frame: PatchFrame): void {
     prevElement,
     renderRuntime,
     hostNamespace,
-    rightSibling: null,
-    context: null,
-    parentReference: null,
-    placeHolderElement: null,
+    subtreeRightBoundary,
+    context,
+    parentReference,
   });
 
   _pushPatchChildrenFrame(nextElement, {
-    prevElement: prevElementSnapshot,
+    subtreeRightBoundary,
+    prevParentChildFlag: prevElementSnapshot.childFlag,
+    nextParentChildFlag: nextElement.childFlag,
+    prevChildren: prevElementSnapshot.children as Nullable<Many<SimpElement>>,
+    nextChildren: nextChildren as Nullable<Many<SimpElement>>,
     renderRuntime,
     hostNamespace,
-    rightSibling,
-    context,
     parentReference,
-    placeHolderElement: null,
+    context,
+    prevParentElement: prevElementSnapshot,
   });
 }
 
@@ -307,7 +311,7 @@ function _patchTextElement(frame: PatchFrame): void {
 
 function _patchPortal(frame: PatchFrame): void {
   const nextElement = frame.node;
-  const { prevElement, renderRuntime, context } = frame.meta;
+  const { prevElement, renderRuntime, context, subtreeRightBoundary, hostNamespace, parentReference } = frame.meta;
 
   const prevContainer = prevElement.ref;
   const nextContainer = nextElement.ref;
@@ -325,36 +329,41 @@ function _patchPortal(frame: PatchFrame): void {
     _pushPatchExitFrame(nextElement, {
       prevElement,
       renderRuntime,
-      hostNamespace: null,
-      rightSibling: null,
-      context: null,
-      parentReference: null,
-      placeHolderElement: null,
+      hostNamespace,
+      subtreeRightBoundary,
+      context,
+      parentReference,
     });
   }
 
   _pushPatchChildrenFrame(nextElement, {
-    prevElement,
-    renderRuntime,
-    hostNamespace: renderRuntime.hostAdapter.getHostNamespaces(nextChildren, undefined)?.self,
-    rightSibling: null,
+    prevParentElement: prevElement,
     context,
     parentReference: nextContainer,
-    placeHolderElement: null,
+    hostNamespace: renderRuntime.hostAdapter.getHostNamespaces(nextChildren, undefined)?.self,
+    renderRuntime,
+    prevChildren: prevElement.children as Nullable<Many<SimpElement>>,
+    nextChildren,
+    nextParentChildFlag: nextElement.childFlag,
+    prevParentChildFlag: prevElement.childFlag,
+    subtreeRightBoundary,
   });
 }
 
 function _patchFragment(frame: PatchFrame): void {
   const nextElement = frame.node;
-  const { prevElement, renderRuntime, context, parentReference, hostNamespace, rightSibling } = frame.meta;
+  const { prevElement, renderRuntime, context, parentReference, hostNamespace, subtreeRightBoundary } = frame.meta;
 
   _pushPatchChildrenFrame(nextElement, {
-    prevElement,
-    parentReference,
-    rightSibling,
+    subtreeRightBoundary,
     context,
+    parentReference,
+    prevParentChildFlag: prevElement.childFlag,
+    nextParentChildFlag: nextElement.childFlag,
+    nextChildren: nextElement.children as Nullable<Many<SimpElement>>,
+    prevChildren: prevElement.children as Nullable<Many<SimpElement>>,
     renderRuntime,
     hostNamespace,
-    placeHolderElement: null,
+    prevParentElement: prevElement,
   });
 }

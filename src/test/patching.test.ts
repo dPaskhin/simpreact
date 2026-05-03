@@ -243,6 +243,102 @@ describe('patching', () => {
   });
 
   describe('patch children', () => {
+    describe('host element', () => {
+      it('preserves keyed child when children change from list to single element', () => {
+        const prev = createElement(
+          'div',
+          null,
+          createElement('a', { id: 'prev', key: 'keep' }),
+          createElement('b', { key: 'remove' })
+        );
+        mount(prev, parent, null, null, null, renderRuntime);
+
+        const prevKeptChild = (prev.children as SimpElement[])[0]!;
+        const prevKeptReference = prevKeptChild.reference;
+
+        const next = createElement('div', null, createElement('a', { id: 'next', key: 'keep' }));
+
+        // Restore mocks before accumulation of host provider methods invokes.
+        vi.resetAllMocks();
+
+        patch(prev, next, parent, null, null, null, renderRuntime);
+
+        const nextKeptChild = next.children as SimpElement;
+
+        expect(nextKeptChild.reference).toBe(prevKeptReference);
+        expect(Array.from((next.reference as Element).children).map(c => c.nodeName)).toEqual(['A']);
+        expect(testHostAdapter.patchProps).toHaveBeenCalledWith(
+          prevKeptReference,
+          prevKeptChild,
+          nextKeptChild,
+          renderRuntime,
+          ''
+        );
+        expect(testHostAdapter.mountProps).not.toHaveBeenCalledWith(
+          prevKeptReference,
+          nextKeptChild,
+          renderRuntime,
+          ''
+        );
+      });
+
+      it('preserves keyed child when children change from single element to list', () => {
+        const prev = createElement('div', null, createElement('a', { id: 'prev', key: 'keep' }));
+        mount(prev, parent, null, null, null, renderRuntime);
+
+        const prevKeptChild = prev.children as SimpElement;
+        const prevKeptReference = prevKeptChild.reference;
+
+        const next = createElement(
+          'div',
+          null,
+          createElement('a', { id: 'next', key: 'keep' }),
+          createElement('b', { key: 'add' })
+        );
+
+        // Restore mocks before accumulation of host provider methods invokes.
+        vi.resetAllMocks();
+
+        patch(prev, next, parent, null, null, null, renderRuntime);
+
+        const nextKeptChild = (next.children as SimpElement[])[0]!;
+
+        expect(nextKeptChild.reference).toBe(prevKeptReference);
+        expect(Array.from((next.reference as Element).children).map(c => c.nodeName)).toEqual(['A', 'B']);
+        expect(testHostAdapter.patchProps).toHaveBeenCalledWith(
+          prevKeptReference,
+          prevKeptChild,
+          nextKeptChild,
+          renderRuntime,
+          ''
+        );
+        expect(testHostAdapter.mountProps).not.toHaveBeenCalledWith(
+          prevKeptReference,
+          nextKeptChild,
+          renderRuntime,
+          ''
+        );
+      });
+
+      it('unmounts previous single child when children change from element to text', () => {
+        const prev = createElement('div', null, createElement('a', { id: 'prev' }));
+        mount(prev, parent, null, null, null, renderRuntime);
+
+        const prevChild = prev.children as SimpElement;
+        const prevChildReference = prevChild.reference;
+        const next = createElement('div', null, 'next text');
+
+        // Restore mocks before accumulation of host provider methods invokes.
+        vi.resetAllMocks();
+
+        patch(prev, next, parent, null, null, null, renderRuntime);
+
+        expect((next.reference as Element).textContent).toBe('next text');
+        expect(testHostAdapter.unmountProps).toHaveBeenCalledWith(prevChildReference, prevChild, renderRuntime);
+        expect(testHostAdapter.detachElementFromReference).toHaveBeenCalledWith(prevChildReference, renderRuntime);
+      });
+    });
+
     describe('fragment', () => {
       it('fragment children - from many elements to single element', () => {
         const prev = createElement(

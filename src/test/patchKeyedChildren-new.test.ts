@@ -4,6 +4,7 @@ import {
   MOUNT_ENTER,
   PATCH_ENTER,
   PATCH_KEYED_CHILDREN,
+  type PatchChildrenFrameMeta,
 } from '@simpreact/internal';
 import { beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
 import { _pushMountEnterFrame } from '../main/core/mounting.js';
@@ -49,8 +50,7 @@ function makeFrame(prevChildren: ReturnType<typeof createElement>[], nextChildre
   };
 
   const parentReference = { type: 'parent' } as any;
-  const parentAnchorReference = { type: 'anchor' } as any;
-  const rightSibling = null;
+  const subtreeRightBoundary = null;
   const context = {} as any;
   const hostNamespace = 'html' as any;
 
@@ -64,15 +64,17 @@ function makeFrame(prevChildren: ReturnType<typeof createElement>[], nextChildre
     node: nextElement,
     kind: PATCH_KEYED_CHILDREN,
     meta: {
-      prevElement,
+      prevParentChildFlag: prevElement.childFlag,
+      nextParentChildFlag: nextElement.childFlag,
+      nextChildren,
+      prevChildren,
+      subtreeRightBoundary,
+      prevParentElement: prevElement,
       parentReference,
-      parentAnchorReference,
-      renderRuntime,
-      rightSibling,
-      context,
       hostNamespace,
-      placeHolderElement: null,
-    },
+      renderRuntime,
+      context,
+    } as PatchChildrenFrameMeta,
   } as any;
 
   return { frame, renderRuntime };
@@ -219,17 +221,17 @@ describe('patchKeyedChildren', () => {
       expect(patchSpy).toHaveBeenCalledTimes(2);
     });
 
-    it('mounts nodes with correct rightSibling chain (insertion order)', () => {
+    it('mounts nodes with correct subtreeRightBoundary chain (insertion order)', () => {
       const next = [el('a'), el('b'), el('c')];
       const { frame } = makeFrame([], next);
       _patchKeyedChildren(frame);
 
       const calls = mountSpy.mock.calls.map((c: any) => ({
         key: c[0].key,
-        rightSibling: c[1].rightSibling,
+        subtreeRightBoundary: c[1].subtreeRightBoundary,
       }));
 
-      const byKey = Object.fromEntries(calls.map((c: any) => [c.key, c.rightSibling]));
+      const byKey = Object.fromEntries(calls.map((c: any) => [c.key, c.subtreeRightBoundary]));
       expect(byKey['c']).toBeNull();
       expect(byKey['b']?.key).toBe('c');
       expect(byKey['a']?.key).toBe('b');
@@ -393,11 +395,11 @@ describe('patchKeyedChildren', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 8. rightSibling uses correct nextEnd index in step 5
+  // 8. subtreeRightBoundary uses correct nextEnd index in step 5
   // ---------------------------------------------------------------------------
 
-  describe('rightSibling uses correct nextEnd index in step 5', () => {
-    it('initialises rightSibling from nextEnd+1, when suffix trimming leaves unequal middle lengths', () => {
+  describe('subtreeRightBoundary uses correct nextEnd index in step 5', () => {
+    it('initialises subtreeRightBoundary from nextEnd+1, when suffix trimming leaves unequal middle lengths', () => {
       // prev: [b, c, d, tail]   next: [e, tail]
       //
       // Suffix scan consumes 'tail' from both → prevEnd=2 (d), nextEnd=0 (e).
@@ -405,7 +407,7 @@ describe('patchKeyedChildren', () => {
       // Buggy:   nextChildren[prevEnd + 1] = nextChildren[3] = undefined → null fallback
       // Correct: nextChildren[nextEnd + 1] = nextChildren[1] = tail element
       //
-      // 'e' is new → gets mounted. Its rightSibling must be the 'tail' element,
+      // 'e' is new → gets mounted. Its subtreeRightBoundary must be the 'tail' element,
       // not null (which would insert it at the end of the parent instead of before tail).
       const tail = el('tail');
       const prev = [el('b'), el('c'), el('d'), tail];
@@ -417,9 +419,9 @@ describe('patchKeyedChildren', () => {
       const mountCall = (mountSpy.mock.calls as any[]).find((c: any) => c[0].key === 'e');
       expect(mountCall).toBeDefined();
 
-      const rightSibling = mountCall[1].rightSibling;
-      expect(rightSibling).not.toBeNull();
-      expect(rightSibling?.key).toBe('tail');
+      const subtreeRightBoundary = mountCall[1].subtreeRightBoundary;
+      expect(subtreeRightBoundary).not.toBeNull();
+      expect(subtreeRightBoundary?.key).toBe('tail');
     });
   });
 
@@ -475,15 +477,17 @@ describe('patchKeyedChildren', () => {
         node: nextElement,
         kind: PATCH_KEYED_CHILDREN,
         meta: {
-          prevElement,
-          parentReference: { type: 'parent' } as any,
-          parentAnchorReference: { type: 'anchor' } as any,
-          renderRuntime,
-          rightSibling: null,
+          prevParentChildFlag: prevElement.childFlag,
+          nextParentChildFlag: nextElement.childFlag,
+          prevParentElement: prevElement,
+          subtreeRightBoundary: null,
+          prevChildren,
+          nextChildren,
           context: {} as any,
-          hostNamespace: 'html' as any,
-          placeHolderElement: null,
-        },
+          parentReference: { type: 'parent' } as any,
+          renderRuntime,
+          hostNamespace: 'html',
+        } as PatchChildrenFrameMeta,
       } as any;
 
       _patchKeyedChildren(frame);
@@ -524,10 +528,10 @@ describe('patchKeyedChildren', () => {
       const log = runAndCollect([el('a'), el('e')], [el('a'), el('b'), el('c'), el('e')]);
 
       expect(log).toEqual([
-        { kind: '3', key: 'a' },
-        { kind: '1', key: 'b' },
-        { kind: '1', key: 'c' },
-        { kind: '3', key: 'e' },
+        { kind: PATCH_ENTER.toString(), key: 'a' },
+        { kind: MOUNT_ENTER.toString(), key: 'b' },
+        { kind: MOUNT_ENTER.toString(), key: 'c' },
+        { kind: PATCH_ENTER.toString(), key: 'e' },
       ]);
     });
 
@@ -616,23 +620,23 @@ describe('patchKeyedChildren', () => {
       expect(log.filter(f => f.kind === placePhase)).toHaveLength(0);
     });
 
-    // -- rightSibling chain in step 5 mount frames --------------------------
+    // -- subtreeRightBoundary chain in step 5 mount frames --------------------------
 
-    it('step 5: each new mount frame carries the next virtual element as rightSibling', () => {
+    it('step 5: each new mount frame carries the next virtual element as subtreeRightBoundary', () => {
       // prev: [a, b, c]   next: [x, y, z]  — full replacement, all go through step 5
-      // Loop reversed i=2(z), i=1(y), i=0(x). rightSibling starts as null.
-      //   MOUNT(z): rightSibling=null  → rightSibling becomes z
-      //   MOUNT(y): rightSibling=z     → rightSibling becomes y
-      //   MOUNT(x): rightSibling=y
+      // Loop reversed i=2(z), i=1(y), i=0(x). subtreeRightBoundary starts as null.
+      //   MOUNT(z): subtreeRightBoundary=null  → subtreeRightBoundary becomes z
+      //   MOUNT(y): subtreeRightBoundary=z     → subtreeRightBoundary becomes y
+      //   MOUNT(x): subtreeRightBoundary=y
       // Push order in spy: z→null, y→z, x→y
       const { frame } = makeFrame([el('a'), el('b'), el('c')], [el('x'), el('y'), el('z')]);
       _patchKeyedChildren(frame);
 
       const calls = (mountSpy.mock.calls as any[]).map((c: any) => ({
         key: c[0].key as string,
-        rightSibling: c[1].rightSibling as any,
+        subtreeRightBoundary: c[1].subtreeRightBoundary as any,
       }));
-      const byKey = Object.fromEntries(calls.map(c => [c.key, c.rightSibling]));
+      const byKey = Object.fromEntries(calls.map(c => [c.key, c.subtreeRightBoundary]));
 
       expect(byKey['z']).toBeNull();
       expect(byKey['y']?.key).toBe('z');

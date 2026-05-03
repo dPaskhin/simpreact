@@ -49,8 +49,7 @@ export function createCreateContext(renderRuntime: SimpRenderRuntime): CreateCon
 
         if (!contextMap) {
           currentElement.context = contextMap = new Map();
-        }
-        if (contextMap && renderPhase === MOUNTING_PHASE) {
+        } else if (renderPhase === MOUNTING_PHASE) {
           currentElement.context = contextMap = new Map(currentElement.context);
         }
 

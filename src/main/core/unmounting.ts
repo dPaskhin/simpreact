@@ -13,6 +13,7 @@ import { lifecycleEventBus } from './lifecycleEventBus.js';
 import { processStack, UNMOUNT_ENTER, UNMOUNT_EXIT, type UnmountFrame } from './processStack.js';
 import { unmountRef } from './ref.js';
 import type { SimpRenderRuntime } from './runtime.js';
+import { _pushUnmountChildrenFrame } from './unmountingChildren.js';
 import { isHostLike } from './utils.js';
 
 export function unmount(element: SimpElement, renderRuntime: SimpRenderRuntime): void {
@@ -53,7 +54,7 @@ export function _unmount(frame: UnmountFrame): void {
     _pushUnmountExitFrame(current, frame.meta.renderRuntime);
 
     if (current.children) {
-      _pushUnmountEnterFrame(current.children as SimpElement, frame.meta.renderRuntime);
+      _pushUnmountChildrenFrame(current, frame.meta);
     }
 
     return;
@@ -72,22 +73,14 @@ export function _unmount(frame: UnmountFrame): void {
     _pushUnmountExitFrame(current, frame.meta.renderRuntime);
   }
 
-  if (current.childFlag === SIMP_ELEMENT_CHILD_FLAG_ELEMENT) {
-    _pushUnmountEnterFrame(current.children as SimpElement, frame.meta.renderRuntime);
-    return;
-  }
-  if (current.childFlag === SIMP_ELEMENT_CHILD_FLAG_LIST) {
-    _pushUnmountArrayChildrenFrame(current, frame.meta.renderRuntime);
-  }
+  _pushUnmountChildrenFrame(current, frame.meta);
 }
 
 export function _pushUnmountEnterFrame(element: SimpElement, renderRuntime: SimpRenderRuntime): void {
   renderRuntime.renderStack.push({
     node: element,
     kind: UNMOUNT_ENTER,
-    meta: {
-      renderRuntime,
-    },
+    meta: { renderRuntime },
   });
 }
 
@@ -95,18 +88,8 @@ export function _pushUnmountExitFrame(element: SimpElement, renderRuntime: SimpR
   renderRuntime.renderStack.push({
     node: element,
     kind: UNMOUNT_EXIT,
-    meta: {
-      renderRuntime,
-    },
+    meta: { renderRuntime },
   });
-}
-
-export function _pushUnmountArrayChildrenFrame(element: SimpElement, renderRuntime: SimpRenderRuntime): void {
-  const children = element.children as SimpElement[];
-
-  for (let i = children.length - 1; i >= 0; i -= 1) {
-    _pushUnmountEnterFrame(children[i]!, renderRuntime);
-  }
 }
 
 export function _clearElementHostReference(
