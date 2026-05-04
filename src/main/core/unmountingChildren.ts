@@ -16,12 +16,12 @@ export function _unmountChildren(frame: UnmountChildrenFrame): void {
       const children = frame.node.children as SimpElement[];
 
       for (let i = children.length - 1; i >= 0; i -= 1) {
-        _pushUnmountEnterFrame(children[i]!, frame.meta.renderRuntime);
+        _pushUnmountEnterFrame(children[i]!, frame.meta);
       }
 
       break;
     case SIMP_ELEMENT_CHILD_FLAG_ELEMENT:
-      _pushUnmountEnterFrame(frame.node.children as SimpElement, frame.meta.renderRuntime);
+      _pushUnmountEnterFrame(frame.node.children as SimpElement, frame.meta);
       break;
   }
 }

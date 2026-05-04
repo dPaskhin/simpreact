@@ -16,8 +16,8 @@ import { _pushPatchChildrenFrame } from './patchingChildren.js';
 import { PATCH_ENTER, PATCH_EXIT, type PatchFrame, type PatchFrameMeta, processStack } from './processStack.js';
 import { applyRef } from './ref.js';
 import { type SimpRenderRuntime, UPDATING_PHASE } from './runtime.js';
-import { _clearElementHostReference, _pushUnmountEnterFrame, _remove } from './unmounting.js';
-import { bitScanForwardIndex } from './utils.js';
+import { _pushUnmountEnterFrame } from './unmounting.js';
+import { _clearElementHostReference, bitScanForwardIndex } from './utils.js';
 
 const patchHandlers = [_patchHostElement, _patchFunctionalComponent, _patchTextElement, _patchPortal, _patchFragment];
 
@@ -79,7 +79,7 @@ function _replaceWithNewElement(frame: PatchFrame): void {
   const nextElement = frame.node;
   const { prevElement, parentReference, context, hostNamespace, renderRuntime } = frame.meta;
 
-  _pushUnmountEnterFrame(prevElement, renderRuntime);
+  _pushUnmountEnterFrame(prevElement, frame.meta);
 
   nextElement.parent = prevElement.parent;
   if ((nextElement.flag & SIMP_ELEMENT_FLAG_HOST) !== 0 && (prevElement.flag & SIMP_ELEMENT_FLAG_HOST) !== 0) {
@@ -252,7 +252,8 @@ function _patchFunctionalComponent(frame: PatchFrame): void {
       prevElement.parent.children = null;
     }
 
-    _remove(prevElement, parentReference, renderRuntime);
+    _clearElementHostReference(prevElement, parentReference, renderRuntime);
+    _pushUnmountEnterFrame(prevElement, frame.meta);
 
     const event: LifecycleEvent = {
       type: 'errored',

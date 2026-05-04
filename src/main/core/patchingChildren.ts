@@ -16,9 +16,9 @@ import {
   type PatchChildrenFrame,
   type PatchChildrenFrameMeta,
 } from './processStack.js';
-import { _remove } from './unmounting.js';
+import { _pushUnmountEnterFrame } from './unmounting.js';
 import { _pushUnmountChildrenFrame } from './unmountingChildren.js';
-import { getLongestIncreasingSubsequenceIndexes, isHostLike } from './utils.js';
+import { _clearElementHostReference, getLongestIncreasingSubsequenceIndexes, isHostLike } from './utils.js';
 
 export function _pushPatchChildrenFrame(parent: SimpElement, meta: PatchChildrenFrameMeta): void {
   meta.renderRuntime.renderStack.push({
@@ -145,7 +145,8 @@ export function _patchChildren(frame: PatchChildrenFrame): void {
           break;
         }
         default: {
-          _remove(prevChildren as SimpElement, parentReference, renderRuntime);
+          _clearElementHostReference(prevChildren as SimpElement, parentReference, renderRuntime);
+          _pushUnmountEnterFrame(prevChildren as SimpElement, frame.meta);
         }
       }
       break;
@@ -297,7 +298,10 @@ export function _patchKeyedChildren(frame: PatchChildrenFrame): void {
     pushPrefixPatches();
 
     for (let i = prevStart; i <= prevEnd; i++) {
-      _remove(getChild(prevChildren, i), parentReference, renderRuntime);
+      const child = getChild(prevChildren, i);
+
+      _clearElementHostReference(child, parentReference, renderRuntime);
+      _pushUnmountEnterFrame(child, frame.meta);
     }
 
     pushSuffixPatches();
@@ -368,7 +372,10 @@ export function _patchKeyedChildren(frame: PatchChildrenFrame): void {
 
   for (let i = prevStart; i <= prevEnd; i++) {
     if (!matchedPrev[i - prevStart]) {
-      _remove(getChild(prevChildren, i), parentReference, renderRuntime);
+      const child = getChild(prevChildren, i);
+
+      _clearElementHostReference(child, parentReference, renderRuntime);
+      _pushUnmountEnterFrame(child, frame.meta);
     }
   }
 

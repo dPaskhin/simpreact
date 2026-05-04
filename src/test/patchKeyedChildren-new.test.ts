@@ -10,7 +10,7 @@ import { beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest'
 import { _pushMountEnterFrame } from '../main/core/mounting.js';
 import { _pushPatchEnterFrame } from '../main/core/patching.js';
 import { _patchKeyedChildren } from '../main/core/patchingChildren.js';
-import { _remove } from '../main/core/unmounting.js';
+import { _clearElementHostReference } from '../main/core/utils.js';
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -26,10 +26,14 @@ vi.mock('../main/core/patching.js', () => ({
 }));
 
 vi.mock('../main/core/unmounting.js', () => ({
-  _remove: vi.fn(),
   _pushUnmountEnterFrame: vi.fn(),
   _pushUnmountArrayChildrenFrame: vi.fn(),
   clearElementHostReference: vi.fn(),
+}));
+
+vi.mock('../main/core/utils.js', async importOriginal => ({
+  ...(await importOriginal()),
+  _clearElementHostReference: vi.fn(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -86,18 +90,18 @@ function makeFrame(prevChildren: ReturnType<typeof createElement>[], nextChildre
 
 let mountSpy: MockInstance;
 let patchSpy: MockInstance;
-let removeSpy: MockInstance;
+let clearElementHostReferenceSpy: MockInstance;
 
 const patchedKeys = () => patchSpy.mock.calls.map((c: any) => c[0].key);
 const mountedKeys = () => mountSpy.mock.calls.map((c: any) => c[0].key);
-const removedKeys = () => removeSpy.mock.calls.map((c: any) => c[0].key);
+const removedKeys = () => clearElementHostReferenceSpy.mock.calls.map((c: any) => c[0].key);
 
 describe('patchKeyedChildren', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mountSpy = _pushMountEnterFrame as unknown as MockInstance;
     patchSpy = _pushPatchEnterFrame as unknown as MockInstance;
-    removeSpy = _remove as unknown as MockInstance;
+    clearElementHostReferenceSpy = _clearElementHostReference as unknown as MockInstance;
   });
 
   // ---------------------------------------------------------------------------
@@ -112,7 +116,7 @@ describe('patchKeyedChildren', () => {
 
       _patchKeyedChildren(frame);
 
-      expect(removeSpy).not.toHaveBeenCalled();
+      expect(clearElementHostReferenceSpy).not.toHaveBeenCalled();
       expect(mountSpy).not.toHaveBeenCalled();
       expect(patchSpy).toHaveBeenCalledTimes(3);
       expect(patchedKeys()).toEqual(expect.arrayContaining(['a', 'b', 'c']));
@@ -122,7 +126,7 @@ describe('patchKeyedChildren', () => {
       const { frame } = makeFrame([el('a')], [el('a')]);
       _patchKeyedChildren(frame);
       expect(patchSpy).toHaveBeenCalledTimes(1);
-      expect(removeSpy).not.toHaveBeenCalled();
+      expect(clearElementHostReferenceSpy).not.toHaveBeenCalled();
       expect(mountSpy).not.toHaveBeenCalled();
     });
   });
@@ -135,7 +139,7 @@ describe('patchKeyedChildren', () => {
     it('does nothing when both lists are empty', () => {
       const { frame } = makeFrame([], []);
       _patchKeyedChildren(frame);
-      expect(removeSpy).not.toHaveBeenCalled();
+      expect(clearElementHostReferenceSpy).not.toHaveBeenCalled();
       expect(mountSpy).not.toHaveBeenCalled();
       expect(patchSpy).not.toHaveBeenCalled();
     });
@@ -151,7 +155,7 @@ describe('patchKeyedChildren', () => {
       const { frame } = makeFrame(prev, []);
       _patchKeyedChildren(frame);
 
-      expect(removeSpy).toHaveBeenCalledTimes(3);
+      expect(clearElementHostReferenceSpy).toHaveBeenCalledTimes(3);
       expect(removedKeys()).toEqual(expect.arrayContaining(['a', 'b', 'c']));
       expect(mountSpy).not.toHaveBeenCalled();
       expect(patchSpy).not.toHaveBeenCalled();
@@ -166,7 +170,7 @@ describe('patchKeyedChildren', () => {
       _patchKeyedChildren(frame);
 
       expect(removedKeys()).toEqual(expect.arrayContaining(['b', 'c', 'd']));
-      expect(removeSpy).toHaveBeenCalledTimes(3);
+      expect(clearElementHostReferenceSpy).toHaveBeenCalledTimes(3);
       expect(patchSpy).toHaveBeenCalledTimes(2);
       expect(mountSpy).not.toHaveBeenCalled();
     });
@@ -194,7 +198,7 @@ describe('patchKeyedChildren', () => {
 
       expect(mountSpy).toHaveBeenCalledTimes(3);
       expect(mountedKeys()).toEqual(expect.arrayContaining(['a', 'b', 'c']));
-      expect(removeSpy).not.toHaveBeenCalled();
+      expect(clearElementHostReferenceSpy).not.toHaveBeenCalled();
       expect(patchSpy).not.toHaveBeenCalled();
     });
 
@@ -208,7 +212,7 @@ describe('patchKeyedChildren', () => {
       expect(mountedKeys()).toEqual(expect.arrayContaining(['b', 'c', 'd']));
       expect(mountSpy).toHaveBeenCalledTimes(3);
       expect(patchSpy).toHaveBeenCalledTimes(2);
-      expect(removeSpy).not.toHaveBeenCalled();
+      expect(clearElementHostReferenceSpy).not.toHaveBeenCalled();
     });
 
     it('mounts a single appended node', () => {
@@ -263,7 +267,7 @@ describe('patchKeyedChildren', () => {
       _patchKeyedChildren(frame);
 
       expect(mountedKeys()).toContain('z');
-      expect(removeSpy).not.toHaveBeenCalled();
+      expect(clearElementHostReferenceSpy).not.toHaveBeenCalled();
     });
 
     it('removes a node that disappeared from next', () => {
@@ -315,7 +319,7 @@ describe('patchKeyedChildren', () => {
       const { frame, renderRuntime } = makeFrame(prev, next);
       _patchKeyedChildren(frame);
 
-      expect(removeSpy).not.toHaveBeenCalled();
+      expect(clearElementHostReferenceSpy).not.toHaveBeenCalled();
       expect(mountSpy).not.toHaveBeenCalled();
       expect(patchedKeys()).toEqual(expect.arrayContaining(['a', 'b']));
       const placedPhases = renderRuntime.renderStack.map((f: any) => f.kind);
@@ -604,8 +608,8 @@ describe('patchKeyedChildren', () => {
       ]);
 
       // Stale node 'c' must be removed
-      expect(removeSpy).toHaveBeenCalledTimes(1);
-      expect((removeSpy.mock.calls[0] as any)[0].key).toBe('c');
+      expect(clearElementHostReferenceSpy).toHaveBeenCalledTimes(1);
+      expect((clearElementHostReferenceSpy.mock.calls[0] as any)[0].key).toBe('c');
     });
 
     it('step 5: no PLACE frames emitted when relative order is preserved (moved=false)', () => {
@@ -667,7 +671,7 @@ describe('patchKeyedChildren', () => {
       _patchKeyedChildren(frame);
 
       expect(mountedKeys()).toContain('.new');
-      expect(removeSpy).not.toHaveBeenCalled();
+      expect(clearElementHostReferenceSpy).not.toHaveBeenCalled();
       expect(patchSpy).toHaveBeenCalledTimes(N);
     });
 
@@ -689,7 +693,7 @@ describe('patchKeyedChildren', () => {
       const { frame, renderRuntime } = makeFrame(prev, next);
       _patchKeyedChildren(frame);
 
-      expect(removeSpy).not.toHaveBeenCalled();
+      expect(clearElementHostReferenceSpy).not.toHaveBeenCalled();
       expect(mountSpy).not.toHaveBeenCalled();
       expect(patchedKeys()).toEqual(expect.arrayContaining(['a', 'b', 'c', 'd']));
       const placedPhases = renderRuntime.renderStack.map((f: any) => f.kind);
