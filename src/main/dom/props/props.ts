@@ -1,5 +1,5 @@
 import type { SimpElement, SimpRenderRuntime } from '@simpreact/internal';
-import { emptyObject, type Maybe } from '@simpreact/shared';
+import { emptyObject } from '@simpreact/shared';
 import { isPropNameEventName, patchEvent } from '../events.js';
 import type { Namespace } from '../namespace.js';
 import { defaultNamespace } from '../namespace.js';
@@ -21,16 +21,7 @@ export function mountProps(
 ): void {
   if (!isFormElement(element)) {
     for (const propName in element.props) {
-      patchDefaultElementPropAndAttrs(
-        propName,
-        dom,
-        null,
-        element,
-        null,
-        element.props[propName],
-        namespace,
-        renderRuntime
-      );
+      patchDefaultElementPropAndAttrs(propName, dom, element, null, element.props[propName], namespace, renderRuntime);
     }
     return;
   }
@@ -91,16 +82,7 @@ export function patchProps(
       const nextValue = nextProps[propName];
 
       if (prevValue !== nextValue) {
-        patchDefaultElementPropAndAttrs(
-          propName,
-          dom,
-          prevElement,
-          nextElement,
-          prevValue,
-          nextValue,
-          namespace,
-          renderRuntime
-        );
+        patchDefaultElementPropAndAttrs(propName, dom, nextElement, prevValue, nextValue, namespace, renderRuntime);
       }
     }
 
@@ -109,7 +91,6 @@ export function patchProps(
         patchDefaultElementPropAndAttrs(
           propName,
           dom,
-          prevElement,
           nextElement,
           prevProps[propName],
           null,
@@ -231,7 +212,6 @@ function patchFormElementsPropAndAttrs(
 function patchDefaultElementPropAndAttrs(
   propName: string,
   dom: HTMLElement | SVGElement,
-  prevElement: Maybe<SimpElement>,
   nextElement: SimpElement,
   prevValue: any,
   nextValue: any,
@@ -273,7 +253,7 @@ function patchDefaultElementPropAndAttrs(
       break;
 
     case 'dangerouslySetInnerHTML':
-      patchDangerInnerHTML(prevValue, nextValue, prevElement, nextElement, dom, renderRuntime);
+      patchDangerInnerHTML(prevValue, nextValue, nextElement, dom);
       break;
 
     default:
