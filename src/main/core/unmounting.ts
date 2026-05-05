@@ -13,8 +13,6 @@ const unmountHandlers = [
   noop,
   _unmountPortalElement,
   _unmountFragmentElement,
-  noop,
-  noop,
 ];
 
 export function unmount(element: SimpElement, renderRuntime: SimpRenderRuntime): void {
