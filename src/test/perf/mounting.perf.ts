@@ -5,17 +5,17 @@ import * as Preact from 'preact';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { describe, measure, test } from 'toofast';
-import * as SimpReact from '../../../lib/compat/index.js';
+import { createElement, createRoot } from '../../../lib/compat/index.js';
 
 describe('Mounting', () => {
   test('simpreact', () => {
     const App = () => {
-      return SimpReact.createElement(
+      return createElement(
         'ul',
         null,
-        SimpReact.createElement('li', null, 'first'),
-        SimpReact.createElement('li', null, 'second'),
-        SimpReact.createElement('li', null, 'third')
+        createElement('li', null, 'first'),
+        createElement('li', null, 'second'),
+        createElement('li', null, 'third')
       );
     };
 
@@ -28,7 +28,7 @@ describe('Mounting', () => {
         },
       },
       () => {
-        SimpReact.createRoot(container).render(SimpReact.createElement(App));
+        createRoot(container).render(createElement(App) as any);
       }
     );
   });

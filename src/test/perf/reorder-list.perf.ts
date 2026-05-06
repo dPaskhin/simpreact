@@ -5,7 +5,7 @@ import * as Preact from 'preact';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { beforeEach, describe, measure, test } from 'toofast';
-import * as SimpReact from '../../../lib/compat/index.js';
+import { createElement, createRoot } from '../../../lib/compat/index.js';
 
 describe('Reorder list items', () => {
   let container: HTMLElement;
@@ -19,23 +19,19 @@ describe('Reorder list items', () => {
     const items2 = ['d', 'c', 'b', 'a'];
 
     const App = (items: string[]) => {
-      return SimpReact.createElement(
-        'ul',
-        null,
-        ...items.map(text => SimpReact.createElement('li', { key: text }, text))
-      );
+      return createElement('ul', null, ...items.map(text => createElement('li', { key: text }, text)));
     };
 
-    const root = SimpReact.createRoot(container);
+    const root = createRoot(container);
 
     measure(
       {
         beforeIteration() {
-          root.render(App(items1));
+          root.render(App(items1) as any);
         },
       },
       () => {
-        root.render(App(items2));
+        root.render(App(items2) as any);
       }
     );
   });

@@ -1,8 +1,5 @@
-import type { FC, SimpNode } from '@simpreact/core';
-
-export type Cleanup = () => void;
-export type Effect = () => void | Cleanup;
-export type DependencyList = readonly unknown[];
+import type { FC, SimpElement, SimpNode } from '@simpreact/core';
+import type { DependencyList, Effect } from '@simpreact/shared';
 
 export interface ComponentRenderContext<S = {}> {
   state: S;
@@ -11,6 +8,8 @@ export interface ComponentRenderContext<S = {}> {
   catchers: Array<(error: any) => void>;
 }
 
-declare function component<P = {}, S = {}>(Component: (props: P, ctx: ComponentRenderContext<S>) => SimpNode): FC<P>;
+export declare function component<P = {}, S = {}>(
+  Component: (props: P, ctx: ComponentRenderContext<S>) => SimpNode
+): FC<P>;
 
-export function componentRenderer(component: FC, element: SimpElement): SimpNode;
+export declare function componentRenderer(component: FC, element: SimpElement): SimpNode;

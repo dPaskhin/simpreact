@@ -8,9 +8,9 @@ export type Dict<T = any> = Record<string, T>;
 
 export type SimpText = string | number | bigint;
 
-type Subscriber<Event> = (event: Event) => boolean | void;
+export type Subscriber<Event> = (event: Event) => boolean | void;
 
-declare class EventBus<Event = void> {
+export declare class EventBus<Event = void> {
   public publish(event: Event): void;
 
   public subscribe(subscriber: Subscriber<Event>): () => void;
@@ -26,10 +26,14 @@ export interface EffectState {
   deps: Nullable<DependencyList>;
 }
 
-declare function isSimpText(value: unknown): value is SimpText;
+export declare function isSimpText(value: unknown): value is SimpText;
 
-declare function noop(): void;
+export declare function noop(): void;
 
-declare function callOrGet<T, A extends any[]>(value: T | ((...args: A) => T), ...args: A): T;
+export declare function callOrGet<T, A extends any[]>(value: T | ((...args: A) => T), ...args: A): T;
 
-declare function shallowEqual(objA: any, objB: any): boolean;
+export declare function shallowEqual(objA: any, objB: any): boolean;
+
+export declare const emptyObject: Readonly<Record<never, never>>;
+export declare const emptyMap: ReadonlyMap<never, never>;
+export declare const emptyArray: ReadonlyArray<never>;

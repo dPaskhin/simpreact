@@ -5,7 +5,7 @@ import * as Preact from 'preact';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { beforeEach, describe, measure, test } from 'toofast';
-import * as SimpReact from '../../../lib/compat/index.js';
+import { createElement, createRoot } from '../../../lib/compat/index.js';
 
 describe('Large flat list updating', () => {
   let container: HTMLElement;
@@ -16,14 +16,10 @@ describe('Large flat list updating', () => {
 
   test('simpreact', () => {
     const App = ({ items }: { items: { id: number; text: string }[] }) => {
-      return SimpReact.createElement(
-        'ul',
-        null,
-        ...items.map(item => SimpReact.createElement('li', { key: item.id }, item.text))
-      );
+      return createElement('ul', null, ...items.map(item => createElement('li', { key: item.id }, item.text)));
     };
 
-    const root = SimpReact.createRoot(container);
+    const root = createRoot(container);
 
     const initialItems = Array.from({ length: 5000 }, (_, i) => ({
       id: i,
@@ -36,11 +32,11 @@ describe('Large flat list updating', () => {
     measure(
       {
         beforeIteration() {
-          root.render(SimpReact.createElement(App, { items: initialItems }));
+          root.render(createElement(App, { items: initialItems }) as any);
         },
       },
       () => {
-        root.render(SimpReact.createElement(App, { items: updatedItems }));
+        root.render(createElement(App, { items: updatedItems }) as any);
       }
     );
   });

@@ -1,8 +1,8 @@
-import * as SimpReactJSXRuntime from '@simpreact/jsx-runtime';
+import { jsx as _jsx, jsxDEV as _jsxDEV, jsxs as _jsxs } from '@simpreact/jsx-runtime';
 
-export const jsx = SimpReactJSXRuntime.jsx;
-export const jsxDEV = SimpReactJSXRuntime.jsxDEV;
-export const jsxs = SimpReactJSXRuntime.jsxs;
+export const jsx = _jsx;
+export const jsxDEV = _jsxDEV;
+export const jsxs = _jsxs;
 
 export default {
   jsx,

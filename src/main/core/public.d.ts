@@ -1,6 +1,8 @@
 import type { Nullable, SimpText } from '@simpreact/shared';
 import type { HostAdapter } from './hostAdapter.js';
 
+export { HostAdapter } from './hostAdapter.js';
+
 export type ComponentType<P = {}> = FunctionalComponent<P>;
 
 export type RefObject<T> = { current: T };
@@ -27,27 +29,32 @@ export interface SimpElement<P = unknown, T extends string | FunctionalComponent
 
 export type SimpNode = SimpElement | SimpText | Array<SimpNode> | boolean | null | undefined;
 
-declare function createElement<P extends {}, T>(
+export declare function createElement<P extends {}, T>(
   type: string,
   props?: (RefAttributes<T> & P) | null,
   ...children: SimpNode[]
 ): SimpElement<P>;
-declare function createElement<P extends {}>(
+export declare function createElement<P extends {}>(
   type: FunctionalComponent<P>,
   props?: (Attributes & P) | null,
   ...children: SimpNode[]
 ): SimpElement<P>;
 
-declare function createPortal<HostRef = {}>(children: SimpNode, container: HostRef): SimpElement;
+export declare function createPortal<HostRef = {}>(children: SimpNode, container: HostRef): SimpElement;
 
-declare function Fragment(props: PropsWithChildren): SimpElement;
+export declare function Fragment(props: PropsWithChildren): SimpElement;
 
 export type FunctionalComponent<P = {}> = (props: P) => SimpNode;
 export type FC<P = {}> = FunctionalComponent<P>;
 
 export type PropsWithChildren<P = {}> = P & { children?: SimpNode | undefined };
 
-declare function memo<P = {}>(Component: FC<P>, compare?: (objA: Readonly<P>, objB: Readonly<P>) => boolean): FC<P>;
+export declare function memo<P = {}>(
+  Component: FC<P>,
+  compare?: (objA: Readonly<P>, objB: Readonly<P>) => boolean
+): FC<P>;
+
+export declare function withSyncRerender(runtime: SimpRenderRuntime, callback: () => void): void;
 
 export interface SimpRuntimeFCRenderer {
   (component: FC, element: SimpElement): SimpNode;

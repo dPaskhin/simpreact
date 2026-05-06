@@ -5,7 +5,7 @@ import * as Preact from 'preact';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { beforeEach, describe, measure, test } from 'toofast';
-import * as SimpReact from '../../../lib/compat/index.js';
+import { createElement, createRoot } from '../../../lib/compat/index.js';
 
 describe('Update existing list items', () => {
   let container: HTMLElement;
@@ -16,23 +16,23 @@ describe('Update existing list items', () => {
 
   test('simpreact', () => {
     const App = ({ items }: { items: string[] }) => {
-      return SimpReact.createElement('ul', null, ...items.map(text => SimpReact.createElement('li', null, text)));
+      return createElement('ul', null, ...items.map(text => createElement('li', null, text)));
     };
 
-    const root = SimpReact.createRoot(container);
+    const root = createRoot(container);
 
     measure(
       {
         beforeIteration() {
           root.render(
-            SimpReact.createElement(App, {
+            createElement(App, {
               items: ['first', 'second', 'third'],
-            })
+            }) as any
           );
         },
       },
       () => {
-        root.render(SimpReact.createElement(App, { items: ['one', 'two', 'three'] }));
+        root.render(createElement(App, { items: ['one', 'two', 'three'] }) as any);
       }
     );
   });

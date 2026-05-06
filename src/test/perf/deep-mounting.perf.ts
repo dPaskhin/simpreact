@@ -5,16 +5,16 @@ import * as Preact from 'preact';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { describe, measure, test } from 'toofast';
-import * as SimpReact from '../../../lib/compat/index.js';
+import { createElement, createRoot } from '../../../lib/compat/index.js';
 
 describe('Deep tree mounting', () => {
   test('simpreact', () => {
     // Recursive helper to create a nested tree
     const createDeepTree = (depth: number): any => {
       if (depth === 0) {
-        return SimpReact.createElement('span', null, 'leaf');
+        return createElement('span', null, 'leaf');
       }
-      return SimpReact.createElement('div', null, createDeepTree(depth - 1));
+      return createElement('div', null, createDeepTree(depth - 1));
     };
 
     const App = () => createDeepTree(50); // depth of 50
@@ -28,7 +28,7 @@ describe('Deep tree mounting', () => {
         },
       },
       () => {
-        SimpReact.createRoot(container).render(SimpReact.createElement(App));
+        createRoot(container).render(createElement(App));
       }
     );
   });

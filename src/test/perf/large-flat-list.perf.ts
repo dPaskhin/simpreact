@@ -5,15 +5,15 @@ import * as Preact from 'preact';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { describe, measure, test } from 'toofast';
-import * as SimpReact from '../../../lib/compat/index.js';
+import { createElement, createRoot } from '../../../lib/compat/index.js';
 
 describe('Large flat list mounting', () => {
   test('simpreact', () => {
     const App = ({ count }: { count: number }) => {
-      return SimpReact.createElement(
+      return createElement(
         'ul',
         null,
-        ...Array.from({ length: count }, (_, i) => SimpReact.createElement('li', { key: i }, `Item ${i}`))
+        ...Array.from({ length: count }, (_, i) => createElement('li', { key: i }, `Item ${i}`))
       );
     };
 
@@ -26,7 +26,7 @@ describe('Large flat list mounting', () => {
         },
       },
       () => {
-        SimpReact.createRoot(container).render(SimpReact.createElement(App));
+        createRoot(container).render(createElement(App) as any);
       }
     );
   });

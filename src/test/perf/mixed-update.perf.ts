@@ -5,7 +5,7 @@ import * as Preact from 'preact';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { beforeEach, describe, measure, test } from 'toofast';
-import * as SimpReact from '../../../lib/compat/index.js';
+import { createElement, createRoot } from '../../../lib/compat/index.js';
 
 describe('Mixed updating', () => {
   let container: HTMLElement;
@@ -16,38 +16,34 @@ describe('Mixed updating', () => {
 
   test('simpreact', () => {
     const App = ({ items }: { items: { id: number; text: string }[] }) => {
-      return SimpReact.createElement(
-        'ul',
-        null,
-        ...items.map(item => SimpReact.createElement('li', { key: item.id }, item.text))
-      );
+      return createElement('ul', null, ...items.map(item => createElement('li', { key: item.id }, item.text)));
     };
 
-    const root = SimpReact.createRoot(container);
+    const root = createRoot(container);
 
     measure(
       {
         beforeIteration() {
           root.render(
-            SimpReact.createElement(App, {
+            createElement(App, {
               items: [
                 { id: 1, text: 'first' },
                 { id: 2, text: 'second' },
                 { id: 3, text: 'third' },
               ],
-            })
+            }) as any
           );
         },
       },
       () => {
         root.render(
-          SimpReact.createElement(App, {
+          createElement(App, {
             items: [
               { id: 1, text: 'first' },
               { id: 2, text: 'two' },
               { id: 4, text: 'fourth' },
             ],
-          })
+          }) as any
         );
       }
     );

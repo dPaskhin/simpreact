@@ -1,12 +1,5 @@
-import {
-  createUseCatch,
-  createUseEffect,
-  createUseRef,
-  createUseRerender,
-  createUseState,
-  type DependencyList,
-} from '@simpreact/hooks';
-import * as SimpReactShared from '@simpreact/shared';
+import { createUseCatch, createUseEffect, createUseRef, createUseRerender, createUseState } from '@simpreact/hooks';
+import { type DependencyList, shallowEqual } from '@simpreact/shared';
 import { renderRuntime } from './renderRuntime.js';
 
 export const useRerender = createUseRerender(renderRuntime);
@@ -89,7 +82,7 @@ export function useMemo<T>(factory: () => T, deps: DependencyList): T {
     value: undefined!,
   });
 
-  if (!SimpReactShared.shallowEqual(ref.current.deps, deps)) {
+  if (!shallowEqual(ref.current.deps, deps)) {
     ref.current.value = factory();
     ref.current.deps = deps;
   }

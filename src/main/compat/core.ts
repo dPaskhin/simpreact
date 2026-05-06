@@ -1,26 +1,30 @@
-import * as SimpReactInternal from '@simpreact/internal';
+import type { Ref, SimpElement, SimpNode } from '@simpreact/core';
+import {
+  createElement as _createElement,
+  createPortal as _createPortal,
+  Fragment as _Fragment,
+  memo as _memo,
+} from '@simpreact/core';
+import { SIMP_ELEMENT_FLAG_FRAGMENT, SIMP_ELEMENT_FLAG_PORTAL } from '@simpreact/internal';
 import { useCatch, useState } from './hooks.js';
 
 export const Children = {
-  map(
-    children: SimpReactInternal.SimpNode,
-    fn: (child: SimpReactInternal.SimpNode, index: number) => SimpReactInternal.SimpNode
-  ): SimpReactInternal.SimpNode[] {
+  map(children: SimpNode, fn: (child: SimpNode, index: number) => SimpNode): SimpNode[] {
     return Children.toArray(children).map(fn);
   },
 
-  forEach(children: SimpReactInternal.SimpNode, fn: (child: SimpReactInternal.SimpNode, index: number) => void): void {
+  forEach(children: SimpNode, fn: (child: SimpNode, index: number) => void): void {
     Children.toArray(children).forEach(fn);
   },
 
-  count(children: SimpReactInternal.SimpNode): number {
+  count(children: SimpNode): number {
     return Children.toArray(children).length;
   },
 
-  toArray(children: SimpReactInternal.SimpNode): SimpReactInternal.SimpNode[] {
-    const result: SimpReactInternal.SimpNode[] = [];
+  toArray(children: SimpNode): SimpNode[] {
+    const result: SimpNode[] = [];
 
-    function traverse(node: SimpReactInternal.SimpNode) {
+    function traverse(node: SimpNode) {
       if (node == null || typeof node === 'boolean') {
         return;
       }
@@ -39,42 +43,35 @@ export const Children = {
     return result;
   },
 
-  only(children: SimpReactInternal.SimpNode): SimpReactInternal.SimpElement {
+  only(children: SimpNode): SimpElement {
     const array = Children.toArray(children);
     if (array.length !== 1 || !isValidElement(array[0])) {
       throw new Error('Children.only expected a single SimpElement child.');
     }
-    return array[0] as SimpReactInternal.SimpElement;
+    return array[0] as SimpElement;
   },
 };
 
-export function cloneElement(
-  element: SimpReactInternal.SimpElement,
-  props?: any,
-  ...children: SimpReactInternal.SimpNode[]
-): SimpReactInternal.SimpElement {
+export function cloneElement(element: SimpElement, props?: any, ...children: SimpNode[]): SimpElement {
   if (!isValidElement(element)) {
     throw new Error(`cloneElement: expected a SimpElement, got ${element}`);
   }
-  if ((element.flag & SimpReactInternal.SIMP_ELEMENT_FLAG_PORTAL) !== 0) {
+  if (((element as any).flag & SIMP_ELEMENT_FLAG_PORTAL) !== 0) {
     throw new Error('cloneElement: the argument must be a SimpElement, but you passed a portal instead.');
   }
 
-  return SimpReactInternal.createElement(
-    (element.flag & SimpReactInternal.SIMP_ELEMENT_FLAG_FRAGMENT) !== 0 ? SimpReactInternal.Fragment : element.type!,
+  return createElement(
+    ((element as any).flag & SIMP_ELEMENT_FLAG_FRAGMENT) !== 0 ? Fragment : element.type!,
     Object.assign({}, element.props, props),
-    arguments.length > 2 ? children : props.children || element.children
-  );
+    arguments.length > 2 ? children : props.children || (element as any).children
+  ) as any;
 }
 
-export function isValidElement(element: unknown): element is SimpReactInternal.SimpElement {
+export function isValidElement(element: unknown): element is SimpElement {
   return typeof element === 'object' && element !== null && 'flag' in element;
 }
 
-export function Suspense(props: {
-  fallback: SimpReactInternal.SimpNode;
-  children: SimpReactInternal.SimpNode;
-}): SimpReactInternal.SimpNode {
+export function Suspense(props: { fallback: SimpNode; children: SimpNode }): SimpNode {
   const [isSuspended, setIsSuspended] = useState(false);
 
   useCatch(error => {
@@ -93,20 +90,20 @@ export function Suspense(props: {
   return isSuspended ? props.fallback : props.children;
 }
 
-export function StrictMode(props: { children: SimpReactInternal.SimpNode }): SimpReactInternal.SimpNode {
+export function StrictMode(props: { children: SimpNode }): SimpNode {
   return props.children;
 }
 
-export function forwardRef<P, T>(Component: (props: P, ref: SimpReactInternal.Ref<T>) => any) {
+export function forwardRef<P, T>(Component: (props: P, ref: Ref<T>) => any) {
   return function Forwarded(props: P) {
-    return Component(props, (props as { ref: SimpReactInternal.Ref<T> })?.ref || null);
+    return Component(props, (props as { ref: Ref<T> })?.ref || null);
   };
 }
 
-export const Fragment = SimpReactInternal.Fragment;
-export const createElement = SimpReactInternal.createElement;
-export const createPortal = SimpReactInternal.createPortal;
-export const memo = SimpReactInternal.memo;
+export const Fragment = _Fragment;
+export const createElement = _createElement;
+export const createPortal = _createPortal;
+export const memo = _memo;
 export const flushSync = (value: any) => value;
 
 export class Component {

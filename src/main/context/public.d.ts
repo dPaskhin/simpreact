@@ -1,4 +1,4 @@
-import type { FunctionalComponent, SimpNode } from '@simpreact/core';
+import type { FC, SimpNode, SimpRenderRuntime } from '@simpreact/core';
 
 export interface ProviderProps<T> {
   value: T;
@@ -16,16 +16,16 @@ export type SimpContext<T> = {
 
 export type ContextType<C extends SimpContext<any>> = C extends SimpContext<infer T> ? T : never;
 
-export type Provider<T> = FunctionalComponent<ProviderProps<T>>;
-export type Consumer<T> = FunctionalComponent<ConsumerProps<T>>;
+export type Provider<T> = FC<ProviderProps<T>>;
+export type Consumer<T> = FC<ConsumerProps<T>>;
 
 export interface CreateContext {
   <T>(defaultValue: T): SimpContext<T>;
 }
 
-declare function createCreateContext(renderRuntime: SimpRenderRuntime): CreateContext;
+export declare function createCreateContext(renderRuntime: SimpRenderRuntime): CreateContext;
 
 export interface UseContext {
   <T>(context: SimpContext<T>): T;
 }
-declare function createUseContext(renderRuntime: SimpRenderRuntime): UseContext;
+export declare function createUseContext(renderRuntime: SimpRenderRuntime): UseContext;
