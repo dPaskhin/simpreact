@@ -83,23 +83,18 @@ export class SyntheticEvent {
   isPropagationStopped = false;
   _isDefaultPrevented = false;
 
-  button?: number;
-  buttons?: number;
-  pointerId?: number;
-
-  altKey?: boolean;
-  ctrlKey?: boolean;
-  shiftKey?: boolean;
-  metaKey?: boolean;
-
   constructor(event: Event) {
     this.nativeEvent = event;
-    this.button = (event as PointerEvent).button;
-    this.buttons = (event as PointerEvent).buttons;
-    this.pointerId = (event as PointerEvent).pointerId;
-    this.altKey = (event as PointerEvent).altKey;
-    this.ctrlKey = (event as PointerEvent).ctrlKey;
-    this.metaKey = (event as PointerEvent).metaKey;
+
+    return new Proxy(this, {
+      get(target, prop, receiver) {
+        if (prop in target) {
+          return Reflect.get(target, prop, receiver);
+        }
+        const val = (event as any)[prop];
+        return typeof val === 'function' ? (val as Function).bind(event) : val;
+      },
+    }) as SyntheticEvent;
   }
 
   get target() {

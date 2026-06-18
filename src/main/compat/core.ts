@@ -106,7 +106,7 @@ export const Fragment = _Fragment;
 export const createElement = _createElement;
 export const createPortal = _createPortal;
 export const memo = _memo;
-export const flushSync = (value: any) => value;
+export const flushSync = <T>(callback: () => T): T => callback();
 
 type LazyState<T extends FC<any>> =
   | { status: 'pending'; promise: Promise<void> }
