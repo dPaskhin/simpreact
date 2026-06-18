@@ -5,7 +5,13 @@ import { emptyObject } from '@simpreact/shared';
 export const renderRuntime: SimpRenderRuntime = {
   hostAdapter: domAdapter,
   renderer(component, element) {
-    return component(element.props || emptyObject);
+    const props = element.props || emptyObject;
+    const proto = (component as any).prototype;
+    if (proto?.isReactComponent || proto?.render) {
+      const inst = new (component as any)(props);
+      return inst.render();
+    }
+    return component(props);
   },
   elementToHostMap: new Map(),
   renderStack: [],

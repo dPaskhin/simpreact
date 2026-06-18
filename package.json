@@ -12,10 +12,13 @@
       "types": "./core/index.d.ts"
     },
     "./compat": {
-      "import": "./compat/index.js"
+      "import": "./compat/index.js",
+      "types": "./compat/index.d.ts",
+      "default": "./compat/index.js"
     },
     "./compat/*": {
-      "import": "./compat/index.js"
+      "import": "./compat/index.js",
+      "default": "./compat/index.js"
     },
     "./component": {
       "import": "./component/index.js",
@@ -31,11 +34,13 @@
     },
     "./jsx-runtime": {
       "import": "./jsx-runtime/index.js",
-      "types": "./jsx-runtime/index.d.ts"
+      "types": "./jsx-runtime/index.d.ts",
+      "default": "./jsx-runtime/index.js"
     },
     "./jsx-dev-runtime": {
       "import": "./jsx-runtime/index.js",
-      "types": "./jsx-runtime/index.d.ts"
+      "types": "./jsx-runtime/index.d.ts",
+      "default": "./jsx-runtime/index.js"
     },
     "./hooks": {
       "import": "./hooks/index.js",

@@ -1,4 +1,4 @@
-import type { Ref, SimpElement, SimpNode } from '@simpreact/core';
+import type { FC, Ref, SimpElement, SimpNode } from '@simpreact/core';
 import {
   createElement as _createElement,
   createPortal as _createPortal,
@@ -100,11 +100,43 @@ export function forwardRef<P, T>(Component: (props: P, ref: Ref<T>) => any) {
   };
 }
 
+export const version = '18.3.1';
+
 export const Fragment = _Fragment;
 export const createElement = _createElement;
 export const createPortal = _createPortal;
 export const memo = _memo;
 export const flushSync = (value: any) => value;
+
+type LazyState<T extends FC<any>> =
+  | { status: 'pending'; promise: Promise<void> }
+  | { status: 'resolved'; component: T }
+  | { status: 'rejected'; reason: unknown };
+
+export function lazy<T extends FC<any>>(factory: () => Promise<{ default: T }>): FC<any> {
+  let state: LazyState<T> | null = null;
+
+  return function LazyComponent(props: any): SimpNode {
+    if (state === null) {
+      const promise = factory().then(
+        mod => {
+          state = { status: 'resolved', component: mod.default };
+        },
+        reason => {
+          state = { status: 'rejected', reason };
+        }
+      );
+      state = { status: 'pending', promise };
+    }
+    if (state.status === 'pending') {
+      throw state.promise;
+    }
+    if (state.status === 'rejected') {
+      throw state.reason;
+    }
+    return createElement(state.component as any, props) as unknown as SimpNode;
+  };
+}
 
 export class Component {
   constructor() {
@@ -113,6 +145,7 @@ export class Component {
 }
 
 export default {
+  version,
   Children,
   cloneElement,
   isValidElement,
@@ -124,5 +157,6 @@ export default {
   createPortal,
   memo,
   flushSync,
+  lazy,
   Component,
 };

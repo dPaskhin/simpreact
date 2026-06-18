@@ -94,15 +94,35 @@ export function useCallback<T>(cb: T, deps: DependencyList): T {
   return useMemo(() => cb, deps);
 }
 
+export function useImperativeHandle<T>(
+  ref: { current: T | null } | ((value: T | null) => void) | null | undefined,
+  init: () => T,
+  deps?: DependencyList
+): void {
+  useLayoutEffect(() => {
+    if (typeof ref === 'function') {
+      ref(init());
+    } else if (ref != null) {
+      (ref as { current: T }).current = init();
+    }
+  }, deps);
+}
+
+export function useDebugValue(_value: unknown, _format?: (value: unknown) => unknown): void {}
+
 export default {
   useSyncExternalStore,
   useReducer,
   useId,
   useMemo,
   useCallback,
+  useImperativeHandle,
+  useDebugValue,
   useState,
   useEffect,
   useLayoutEffect,
   useInsertionEffect,
   useRef,
+  useRerender,
+  useCatch,
 };
