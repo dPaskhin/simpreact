@@ -31,6 +31,7 @@ type HookState = EffectState | RerenderHookState | RefHookState | StateHookState
 
 interface HooksSpecificStore {
   hooksIndex: number;
+  expectedHooksCount: Nullable<number>;
   hookStates: Nullable<HookState[]>;
   effectsHookStates: Nullable<EffectState[]>;
   catchHandlers: Nullable<Array<(error: any) => void>>;
@@ -41,13 +42,17 @@ const hooksSpecificStoreByElementStore = new WeakMap<SimpElementStore, HooksSpec
 function getHooksSpecificStore(store: SimpElementStore): HooksSpecificStore {
   let hooksSpecificStore = hooksSpecificStoreByElementStore.get(store);
   if (!hooksSpecificStore) {
-    hooksSpecificStore = { hooksIndex: 0, hookStates: null, effectsHookStates: null, catchHandlers: null };
+    hooksSpecificStore = {
+      hooksIndex: 0,
+      expectedHooksCount: null,
+      hookStates: null,
+      effectsHookStates: null,
+      catchHandlers: null,
+    };
     hooksSpecificStoreByElementStore.set(store, hooksSpecificStore);
   }
   return hooksSpecificStore;
 }
-
-(window as any).__SIMP_HOOKS_SPECIFIC_STORE_BY_ELEMENT_STORE__ = hooksSpecificStoreByElementStore;
 
 registerLifecyclePlugin(bus => {
   bus.subscribe(event => {
@@ -55,7 +60,7 @@ registerLifecyclePlugin(bus => {
       return;
     }
 
-    let store = getHooksSpecificStore(event.element.store!);
+    const store = getHooksSpecificStore(event.element.store!);
 
     switch (event.type) {
       case 'beforeRender': {
@@ -65,7 +70,12 @@ registerLifecyclePlugin(bus => {
         break;
       }
       case 'afterRender': {
-        store.hooksIndex = 0;
+        if (store.expectedHooksCount !== null && store.hooksIndex !== store.expectedHooksCount) {
+          throw new Error(
+            `Hooks called in a different order than the previous render. Expected ${store.expectedHooksCount}, got ${store.hooksIndex}.`
+          );
+        }
+        store.expectedHooksCount = store.hooksIndex;
         break;
       }
       case 'mounted': {
@@ -126,8 +136,8 @@ registerLifecyclePlugin(bus => {
             continue;
           }
 
-          store = getHooksSpecificStore(element.store!);
-          catchers = store.catchHandlers;
+          const ancestorStore = getHooksSpecificStore(element.store!);
+          catchers = ancestorStore.catchHandlers;
 
           if (!catchers) {
             element = element.parent;
@@ -145,6 +155,7 @@ registerLifecyclePlugin(bus => {
             curError = error;
           }
         }
+        break;
       }
     }
   });
@@ -251,7 +262,12 @@ export function createUseCatch(renderRuntime: SimpRenderRuntime): (cb: (error: a
     }
 
     store.catchHandlers!.push(cb);
+    store.hooksIndex++;
   };
+}
+
+export function areDepsEqual(nextDeps: DependencyList | undefined, prevDeps: DependencyList | undefined): boolean {
+  return shallowEqual(nextDeps, prevDeps);
 }
 
 function getOrCreateHookStates(store: HooksSpecificStore) {
@@ -276,6 +292,7 @@ export default {
   createUseState,
   createUseEffect,
   createUseCatch,
+  areDepsEqual,
 };
 
 export type * from './public.js';
