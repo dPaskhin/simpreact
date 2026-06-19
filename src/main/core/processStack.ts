@@ -199,6 +199,7 @@ export function processStack(renderRuntime: SimpRenderRuntime): void {
           frame.node.reference,
           frame.meta.prevElement.reference
         );
+        break;
       }
     }
   }

@@ -1,4 +1,5 @@
 import type { Many, Maybe, Nullable } from '@simpreact/shared';
+import { noop } from '@simpreact/shared';
 import {
   createTextElement,
   type FC,
@@ -7,7 +8,7 @@ import {
   type SimpElement,
 } from './createElement.js';
 import { _pushHostOperationPlaceElement } from './hostOperations.js';
-import { type LifecycleEvent, lifecycleEventBus } from './lifecycleEventBus.js';
+import { getLifecycleEventBus, type LifecycleEvent } from './lifecycleEventBus.js';
 import { _pushMountChildrenFrame } from './mountingChildren.js';
 import { MOUNT_ENTER, MOUNT_EXIT, type MountFrame, type MountFrameMeta, processStack } from './processStack.js';
 import { applyRef } from './ref.js';
@@ -122,7 +123,7 @@ function _mountFunctionalElement(frame: MountFrame): void {
   const { parentReference, subtreeRightBoundary, context, hostNamespace, renderRuntime } = frame.meta;
 
   if (frame.kind === MOUNT_EXIT) {
-    lifecycleEventBus.publish({ type: 'mounted', element, renderRuntime });
+    getLifecycleEventBus(renderRuntime).publish({ type: 'mounted', element, renderRuntime });
     return;
   }
 
@@ -144,7 +145,7 @@ function _mountFunctionalElement(frame: MountFrame): void {
   // FC element always has Maybe<SimpElement> children due to a normalization process.
   let children;
 
-  let triedToRerenderUnsubscribe: () => void;
+  let triedToRerenderUnsubscribe: () => void = noop;
 
   try {
     renderRuntime.renderPhase = MOUNTING_PHASE;
@@ -152,7 +153,7 @@ function _mountFunctionalElement(frame: MountFrame): void {
 
     let triedToRerender = false;
     let rerenderCounter = 0;
-    triedToRerenderUnsubscribe = lifecycleEventBus.subscribe(event => {
+    triedToRerenderUnsubscribe = getLifecycleEventBus(renderRuntime).subscribe(event => {
       if (event.type === 'triedToRerender' && event.element === element) {
         triedToRerender = true;
       }
@@ -163,7 +164,7 @@ function _mountFunctionalElement(frame: MountFrame): void {
       if (++rerenderCounter >= 25) {
         throw new Error('Too many re-renders.');
       }
-      lifecycleEventBus.publish({
+      getLifecycleEventBus(renderRuntime).publish({
         type: 'beforeRender',
         element,
         renderRuntime,
@@ -171,7 +172,7 @@ function _mountFunctionalElement(frame: MountFrame): void {
 
       children = renderRuntime.renderer(element.type as FC, element, renderRuntime);
 
-      lifecycleEventBus.publish({
+      getLifecycleEventBus(renderRuntime).publish({
         type: 'afterRender',
         element,
         renderRuntime,
@@ -189,7 +190,7 @@ function _mountFunctionalElement(frame: MountFrame): void {
       renderRuntime,
     };
 
-    lifecycleEventBus.publish(event);
+    getLifecycleEventBus(renderRuntime).publish(event);
 
     if (!event.handled) {
       throw new Error('Error occurred during rendering a component', { cause: event.error });
@@ -197,7 +198,7 @@ function _mountFunctionalElement(frame: MountFrame): void {
 
     return;
   } finally {
-    triedToRerenderUnsubscribe!();
+    triedToRerenderUnsubscribe();
     renderRuntime.renderPhase = null;
     renderRuntime.currentRenderingFCElement = null;
   }

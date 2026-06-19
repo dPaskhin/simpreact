@@ -1,6 +1,6 @@
 import {
   type FC,
-  lifecycleEventBus,
+  registerLifecyclePlugin,
   rerender,
   SIMP_ELEMENT_FLAG_FC,
   type SimpElement,
@@ -55,133 +55,135 @@ function getComponentSpecificStore(store: SimpElementStore, renderRuntime: SimpR
   return hooksSpecificStore;
 }
 
-lifecycleEventBus.subscribe(event => {
-  if (event.type === 'errored') {
-    if (event.handled) {
-      return;
-    }
-
-    let element: Nullable<SimpElement> = event.element;
-    let curError = event.error;
-    let catchers: Nullable<Array<(error: any) => void>>;
-
-    while (element) {
-      if (!isComponentElement(element)) {
-        element = element.parent;
-        continue;
-      }
-
-      const store = getComponentSpecificStore(element.store!, event.renderRuntime);
-      catchers = store.context.catchers;
-
-      if (!catchers) {
-        element = element.parent;
-        continue;
-      }
-
-      try {
-        for (let i = 0; i < catchers.length; i++) {
-          catchers[i]!(curError);
-        }
-        event.handled = true;
-        break;
-      } catch (error) {
-        element = element.parent;
-        curError = error;
-      }
-    }
-
-    return;
-  }
-
-  if (!isComponentElement(event.element)) {
-    return;
-  }
-
-  const store = getComponentSpecificStore(event.element.store!, event.renderRuntime);
-
-  switch (event.type) {
-    case 'beforeRender': {
-      store.context.effects = [];
-      store.context.catchers = [];
-      store.pendingEffectStates = null;
-      return;
-    }
-    case 'afterRender': {
-      if (!store.context.effects) {
+registerLifecyclePlugin(bus => {
+  bus.subscribe(event => {
+    if (event.type === 'errored') {
+      if (event.handled) {
         return;
       }
 
-      for (let i = 0; i < store.context.effects.length; i++) {
-        const renderEffectState = store.context.effects[i]!;
-        let state = (store.effectStates ||= [])[i];
+      let element: Nullable<SimpElement> = event.element;
+      let curError = event.error;
+      let catchers: Nullable<Array<(error: any) => void>>;
 
-        if (!state) {
-          state = store.effectStates[i] = {
-            effect: renderEffectState.effect,
-            deps: null,
-            cleanup: null,
-          };
+      while (element) {
+        if (!isComponentElement(element)) {
+          element = element.parent;
+          continue;
         }
 
-        if (!shallowEqual(renderEffectState.deps, state.deps)) {
-          state.effect = renderEffectState.effect;
-          state.deps = renderEffectState.deps || null;
-          (store.pendingEffectStates ||= []).push(state);
+        const store = getComponentSpecificStore(element.store!, event.renderRuntime);
+        catchers = store.context.catchers;
+
+        if (!catchers) {
+          element = element.parent;
+          continue;
+        }
+
+        try {
+          for (let i = 0; i < catchers.length; i++) {
+            catchers[i]!(curError);
+          }
+          event.handled = true;
+          break;
+        } catch (error) {
+          element = element.parent;
+          curError = error;
         }
       }
 
       return;
     }
-    case 'mounted': {
-      if (!store.pendingEffectStates) {
-        return;
-      }
 
-      const effects = store.pendingEffectStates;
-      store.pendingEffectStates = null;
-
-      for (const state of effects) {
-        if (typeof state.cleanup === 'function') {
-          state.cleanup();
-        }
-        state.cleanup = state.effect() || null;
-      }
-
+    if (!isComponentElement(event.element)) {
       return;
     }
-    case 'updated': {
-      if (!store.pendingEffectStates) {
+
+    const store = getComponentSpecificStore(event.element.store!, event.renderRuntime);
+
+    switch (event.type) {
+      case 'beforeRender': {
+        store.context.effects = [];
+        store.context.catchers = [];
+        store.pendingEffectStates = null;
         return;
       }
-
-      const effects = store.pendingEffectStates;
-      store.pendingEffectStates = null;
-
-      for (const state of effects) {
-        if (typeof state.cleanup === 'function') {
-          state.cleanup();
+      case 'afterRender': {
+        if (!store.context.effects) {
+          return;
         }
-        state.cleanup = state.effect() || null;
-      }
 
-      return;
-    }
-    case 'unmounted': {
-      if (!store.effectStates) {
+        for (let i = 0; i < store.context.effects.length; i++) {
+          const renderEffectState = store.context.effects[i]!;
+          let state = (store.effectStates ||= [])[i];
+
+          if (!state) {
+            state = store.effectStates[i] = {
+              effect: renderEffectState.effect,
+              deps: null,
+              cleanup: null,
+            };
+          }
+
+          if (!shallowEqual(renderEffectState.deps, state.deps)) {
+            state.effect = renderEffectState.effect;
+            state.deps = renderEffectState.deps || null;
+            (store.pendingEffectStates ||= []).push(state);
+          }
+        }
+
         return;
       }
+      case 'mounted': {
+        if (!store.pendingEffectStates) {
+          return;
+        }
 
-      const effects = store.effectStates;
-      store.effectStates = null;
+        const effects = store.pendingEffectStates;
+        store.pendingEffectStates = null;
 
-      for (const state of effects) {
-        if (state && 'cleanup' in state && typeof state.cleanup === 'function') {
-          state.cleanup();
+        for (const state of effects) {
+          if (typeof state.cleanup === 'function') {
+            state.cleanup();
+          }
+          state.cleanup = state.effect() || null;
+        }
+
+        return;
+      }
+      case 'updated': {
+        if (!store.pendingEffectStates) {
+          return;
+        }
+
+        const effects = store.pendingEffectStates;
+        store.pendingEffectStates = null;
+
+        for (const state of effects) {
+          if (typeof state.cleanup === 'function') {
+            state.cleanup();
+          }
+          state.cleanup = state.effect() || null;
+        }
+
+        return;
+      }
+      case 'unmounted': {
+        if (!store.effectStates) {
+          return;
+        }
+
+        const effects = store.effectStates;
+        store.effectStates = null;
+
+        for (const state of effects) {
+          if (state && 'cleanup' in state && typeof state.cleanup === 'function') {
+            state.cleanup();
+          }
         }
       }
     }
-  }
+  });
 });
 
 export function componentRenderer(component: FC, element: SimpElement, renderRuntime: SimpRenderRuntime): SimpNode {

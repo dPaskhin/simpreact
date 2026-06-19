@@ -1,6 +1,6 @@
 import { noop } from '@simpreact/shared';
 import type { SimpElement } from './createElement.js';
-import { lifecycleEventBus } from './lifecycleEventBus.js';
+import { getLifecycleEventBus } from './lifecycleEventBus.js';
 import { processStack, UNMOUNT_ENTER, UNMOUNT_EXIT, type UnmountFrame, type UnmountFrameMeta } from './processStack.js';
 import { unmountRef } from './ref.js';
 import type { SimpRenderRuntime } from './runtime.js';
@@ -54,7 +54,11 @@ function _unmountFunctionalElement(frame: UnmountFrame): void {
 
   if (frame.kind === UNMOUNT_EXIT) {
     current.unmounted = true;
-    lifecycleEventBus.publish({ type: 'unmounted', element: current, renderRuntime: frame.meta.renderRuntime });
+    getLifecycleEventBus(frame.meta.renderRuntime).publish({
+      type: 'unmounted',
+      element: current,
+      renderRuntime: frame.meta.renderRuntime,
+    });
     current.store = null;
     return;
   }

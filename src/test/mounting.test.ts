@@ -2,7 +2,7 @@ import { createCreateContext } from '@simpreact/context';
 import {
   createElement,
   createTextElement,
-  lifecycleEventBus,
+  getLifecycleEventBus,
   mount,
   type SimpElement,
   type SimpRenderRuntime,
@@ -123,7 +123,7 @@ describe('mounting', () => {
 
       const listener = vi.fn();
 
-      lifecycleEventBus.subscribe(listener);
+      getLifecycleEventBus(renderRuntime).subscribe(listener);
 
       mount(element, parentRef, rightSibling, contextMap, null, renderRuntime);
 

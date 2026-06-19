@@ -670,7 +670,7 @@ describe('patchKeyedChildren', () => {
       const { frame } = makeFrame(prev, next);
       _patchKeyedChildren(frame);
 
-      expect(mountedKeys()).toContain('.new');
+      expect(mountedKeys()).toContain('new');
       expect(clearElementHostReferenceSpy).not.toHaveBeenCalled();
       expect(patchSpy).toHaveBeenCalledTimes(N);
     });
@@ -682,7 +682,7 @@ describe('patchKeyedChildren', () => {
       const { frame } = makeFrame(prev, next);
       _patchKeyedChildren(frame);
 
-      expect(removedKeys()).toContain('.k10');
+      expect(removedKeys()).toContain('k10');
       expect(mountSpy).not.toHaveBeenCalled();
       expect(patchSpy).toHaveBeenCalledTimes(N - 1);
     });

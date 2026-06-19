@@ -1,5 +1,5 @@
 import type { SimpElement, SimpElementStore } from './createElement.js';
-import { lifecycleEventBus } from './lifecycleEventBus.js';
+import { getLifecycleEventBus, registerLifecyclePlugin } from './lifecycleEventBus.js';
 import { patch } from './patching.js';
 import type { SimpRenderRuntime } from './runtime.js';
 import { findParentReferenceFromElement } from './utils.js';
@@ -27,13 +27,15 @@ function getRerenderSpecificData(renderRuntime: SimpRenderRuntime): RerenderSpec
   return data;
 }
 
-lifecycleEventBus.subscribe(event => {
-  const data = getRerenderSpecificData(event.renderRuntime);
+registerLifecyclePlugin(bus => {
+  bus.subscribe(event => {
+    const data = getRerenderSpecificData(event.renderRuntime);
 
-  if (event.type === 'afterRender' || event.type === 'errored' || event.type === 'unmounted') {
-    data.asyncQueue.delete(event.element.store!);
-    data.syncQueue.delete(event.element.store!);
-  }
+    if (event.type === 'afterRender' || event.type === 'errored' || event.type === 'unmounted') {
+      data.asyncQueue.delete(event.element.store!);
+      data.syncQueue.delete(event.element.store!);
+    }
+  });
 });
 
 function scheduleAsyncFlush(renderRuntime: SimpRenderRuntime) {
@@ -68,7 +70,7 @@ export function rerender(store: SimpElementStore, renderRuntime: SimpRenderRunti
     return;
   }
 
-  lifecycleEventBus.publish({ type: 'triedToRerender', element, renderRuntime });
+  getLifecycleEventBus(renderRuntime).publish({ type: 'triedToRerender', element, renderRuntime });
 
   if (data.syncLockDepth > 0) {
     data.syncQueue.add(store);

@@ -57,7 +57,7 @@ export declare function memo<P = {}>(
 export declare function withSyncRerender(runtime: SimpRenderRuntime, callback: () => void): void;
 
 export interface SimpRuntimeFCRenderer {
-  (component: FC, element: SimpElement): SimpNode;
+  (component: FC, element: SimpElement, renderRuntime: SimpRenderRuntime): SimpNode;
 }
 
 export interface SimpRenderRuntime {

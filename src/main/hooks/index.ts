@@ -1,7 +1,7 @@
 import {
   rerender as _rerender,
-  lifecycleEventBus,
   type RefObject,
+  registerLifecyclePlugin,
   SIMP_ELEMENT_FLAG_FC,
   type SimpElement,
   type SimpElementStore,
@@ -49,103 +49,105 @@ function getHooksSpecificStore(store: SimpElementStore): HooksSpecificStore {
 
 (window as any).__SIMP_HOOKS_SPECIFIC_STORE_BY_ELEMENT_STORE__ = hooksSpecificStoreByElementStore;
 
-lifecycleEventBus.subscribe(event => {
-  if ((event.element.flag & SIMP_ELEMENT_FLAG_FC) === 0) {
-    return;
-  }
-
-  let store = getHooksSpecificStore(event.element.store!);
-
-  switch (event.type) {
-    case 'beforeRender': {
-      store.hooksIndex = 0;
-      store.catchHandlers = null;
-      store.effectsHookStates = null;
-      break;
+registerLifecyclePlugin(bus => {
+  bus.subscribe(event => {
+    if ((event.element.flag & SIMP_ELEMENT_FLAG_FC) === 0) {
+      return;
     }
-    case 'afterRender': {
-      store.hooksIndex = 0;
-      break;
-    }
-    case 'mounted': {
-      if (!store.effectsHookStates) {
+
+    let store = getHooksSpecificStore(event.element.store!);
+
+    switch (event.type) {
+      case 'beforeRender': {
+        store.hooksIndex = 0;
+        store.catchHandlers = null;
+        store.effectsHookStates = null;
         break;
       }
-      const effects = store.effectsHookStates;
-      store.effectsHookStates = null;
-
-      for (const state of effects) {
-        state.cleanup = state.effect() || null;
-      }
-      break;
-    }
-    case 'updated': {
-      if (!store.effectsHookStates) {
+      case 'afterRender': {
+        store.hooksIndex = 0;
         break;
       }
-      const effects = store.effectsHookStates;
-      store.effectsHookStates = null;
-
-      for (const state of effects) {
-        if (typeof state.cleanup === 'function') {
-          state.cleanup();
-        }
-        state.cleanup = state.effect() || null;
-      }
-      break;
-    }
-    case 'unmounted': {
-      if (!store.hookStates) {
-        break;
-      }
-      const hookStates = store.hookStates;
-      store.hookStates = null;
-
-      for (const state of hookStates) {
-        if (state && 'cleanup' in state && typeof state.cleanup === 'function') {
-          state.cleanup();
-        }
-      }
-      break;
-    }
-    case 'errored': {
-      store.hooksIndex = 0;
-
-      if (event.handled) {
-        break;
-      }
-
-      let element: Nullable<SimpElement> = event.element;
-      let curError = event.error;
-      let catchers: Nullable<Array<(error: any) => void>> = null;
-
-      while (element) {
-        if ((element.flag & SIMP_ELEMENT_FLAG_FC) === 0) {
-          element = element.parent;
-          continue;
-        }
-
-        store = getHooksSpecificStore(element.store!);
-        catchers = store.catchHandlers;
-
-        if (!catchers) {
-          element = element.parent;
-          continue;
-        }
-
-        try {
-          for (let i = 0; i < catchers.length; i++) {
-            catchers[i]!(curError);
-          }
-          event.handled = true;
+      case 'mounted': {
+        if (!store.effectsHookStates) {
           break;
-        } catch (error) {
-          element = element.parent;
-          curError = error;
+        }
+        const effects = store.effectsHookStates;
+        store.effectsHookStates = null;
+
+        for (const state of effects) {
+          state.cleanup = state.effect() || null;
+        }
+        break;
+      }
+      case 'updated': {
+        if (!store.effectsHookStates) {
+          break;
+        }
+        const effects = store.effectsHookStates;
+        store.effectsHookStates = null;
+
+        for (const state of effects) {
+          if (typeof state.cleanup === 'function') {
+            state.cleanup();
+          }
+          state.cleanup = state.effect() || null;
+        }
+        break;
+      }
+      case 'unmounted': {
+        if (!store.hookStates) {
+          break;
+        }
+        const hookStates = store.hookStates;
+        store.hookStates = null;
+
+        for (const state of hookStates) {
+          if (state && 'cleanup' in state && typeof state.cleanup === 'function') {
+            state.cleanup();
+          }
+        }
+        break;
+      }
+      case 'errored': {
+        store.hooksIndex = 0;
+
+        if (event.handled) {
+          break;
+        }
+
+        let element: Nullable<SimpElement> = event.element;
+        let curError = event.error;
+        let catchers: Nullable<Array<(error: any) => void>> = null;
+
+        while (element) {
+          if ((element.flag & SIMP_ELEMENT_FLAG_FC) === 0) {
+            element = element.parent;
+            continue;
+          }
+
+          store = getHooksSpecificStore(element.store!);
+          catchers = store.catchHandlers;
+
+          if (!catchers) {
+            element = element.parent;
+            continue;
+          }
+
+          try {
+            for (let i = 0; i < catchers.length; i++) {
+              catchers[i]!(curError);
+            }
+            event.handled = true;
+            break;
+          } catch (error) {
+            element = element.parent;
+            curError = error;
+          }
         }
       }
     }
-  }
+  });
 });
 
 export interface UseRef {

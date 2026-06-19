@@ -12,7 +12,7 @@ export function _pushUnmountChildrenFrame(parent: SimpElement, meta: UnmountFram
 
 export function _unmountChildren(frame: UnmountChildrenFrame): void {
   switch (frame.node.childFlag) {
-    case SIMP_ELEMENT_CHILD_FLAG_LIST:
+    case SIMP_ELEMENT_CHILD_FLAG_LIST: {
       const children = frame.node.children as SimpElement[];
 
       for (let i = children.length - 1; i >= 0; i -= 1) {
@@ -20,6 +20,7 @@ export function _unmountChildren(frame: UnmountChildrenFrame): void {
       }
 
       break;
+    }
     case SIMP_ELEMENT_CHILD_FLAG_ELEMENT:
       _pushUnmountEnterFrame(frame.node.children as SimpElement, frame.meta);
       break;

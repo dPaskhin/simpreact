@@ -2,7 +2,7 @@ import {
   createElement,
   createPortal,
   Fragment,
-  lifecycleEventBus,
+  getLifecycleEventBus,
   mount,
   type SimpElement,
   type SimpRenderRuntime,
@@ -66,7 +66,7 @@ describe('unmounting', () => {
     const Parent = () => createElement(Child);
     const element = createElement(Parent);
     const events: SimpElement[] = [];
-    const unsubscribe = lifecycleEventBus.subscribe(event => {
+    const unsubscribe = getLifecycleEventBus(renderRuntime).subscribe(event => {
       if (event.type === 'unmounted') {
         events.push(event.element);
       }
@@ -94,7 +94,7 @@ describe('unmounting', () => {
     const Component = () => createElement('span');
     const element = createElement(Component);
     const listener = vi.fn();
-    const unsubscribe = lifecycleEventBus.subscribe(event => {
+    const unsubscribe = getLifecycleEventBus(renderRuntime).subscribe(event => {
       if (event.type === 'unmounted') {
         listener(event.element);
       }

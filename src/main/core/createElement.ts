@@ -152,6 +152,9 @@ export function createElement(type: string | FC, props?: any): SimpElement {
       };
     }
     default: {
+      if (type !== Fragment) {
+        throw new Error(`Invalid element type: ${String(type)}`);
+      }
       return normalizeChildren(
         {
           flag: SIMP_ELEMENT_FLAG_FRAGMENT,
@@ -254,7 +257,9 @@ function normalizeNode(
   const element = child as SimpElement;
 
   if (element.key != null) {
-    currentKey = `${(currentKey ?? '').slice(0, -2)}${element.key}`;
+    const prefix = currentKey ?? '';
+    const lastDot = prefix.lastIndexOf('.');
+    currentKey = lastDot <= 0 ? String(element.key) : `${prefix.slice(0, lastDot)}${element.key}`;
   }
 
   element.key = currentKey;

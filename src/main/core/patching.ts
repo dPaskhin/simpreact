@@ -1,4 +1,5 @@
 import type { Many, Maybe, Nullable } from '@simpreact/shared';
+import { noop } from '@simpreact/shared';
 import {
   type FC,
   normalizeRoot,
@@ -9,7 +10,7 @@ import {
   type SimpElement,
 } from './createElement.js';
 import { _pushHostOperationReplaceElement } from './hostOperations.js';
-import { type LifecycleEvent, lifecycleEventBus } from './lifecycleEventBus.js';
+import { getLifecycleEventBus, type LifecycleEvent } from './lifecycleEventBus.js';
 import { isMemo } from './memo.js';
 import { _pushMountEnterFrame } from './mounting.js';
 import { _pushPatchChildrenFrame } from './patchingChildren.js';
@@ -157,7 +158,7 @@ function _patchFunctionalComponent(frame: PatchFrame): void {
   const { prevElement, context, renderRuntime, hostNamespace, subtreeRightBoundary, parentReference } = frame.meta;
 
   if (frame.kind === PATCH_EXIT) {
-    lifecycleEventBus.publish({ type: 'updated', element: nextElement, renderRuntime });
+    getLifecycleEventBus(renderRuntime).publish({ type: 'updated', element: nextElement, renderRuntime });
     return;
   }
 
@@ -196,7 +197,7 @@ function _patchFunctionalComponent(frame: PatchFrame): void {
   const prevElementSnapshot = prevElement === nextElement ? { ...prevElement } : prevElement;
 
   let nextChildren;
-  let triedToRerenderUnsubscribe;
+  let triedToRerenderUnsubscribe: () => void = noop;
 
   try {
     renderRuntime.renderPhase = UPDATING_PHASE;
@@ -204,7 +205,7 @@ function _patchFunctionalComponent(frame: PatchFrame): void {
 
     let triedToRerender = false;
     let rerenderCounter = 0;
-    triedToRerenderUnsubscribe = lifecycleEventBus.subscribe(event => {
+    triedToRerenderUnsubscribe = getLifecycleEventBus(renderRuntime).subscribe(event => {
       if (event.type === 'triedToRerender' && event.element === nextElement) {
         triedToRerender = true;
       }
@@ -215,7 +216,7 @@ function _patchFunctionalComponent(frame: PatchFrame): void {
       if (++rerenderCounter >= 25) {
         throw new Error('Too many re-renders.');
       }
-      lifecycleEventBus.publish({
+      getLifecycleEventBus(renderRuntime).publish({
         type: 'beforeRender',
         element: nextElement,
         renderRuntime,
@@ -223,7 +224,7 @@ function _patchFunctionalComponent(frame: PatchFrame): void {
 
       nextChildren = renderRuntime.renderer(nextElement.type as FC, nextElement, renderRuntime);
 
-      lifecycleEventBus.publish({
+      getLifecycleEventBus(renderRuntime).publish({
         type: 'afterRender',
         element: nextElement,
         renderRuntime,
@@ -263,7 +264,7 @@ function _patchFunctionalComponent(frame: PatchFrame): void {
       renderRuntime,
     };
 
-    lifecycleEventBus.publish(event);
+    getLifecycleEventBus(renderRuntime).publish(event);
 
     if (!event.handled) {
       throw new Error('Error occurred during rendering a component', { cause: event.error });
@@ -271,7 +272,7 @@ function _patchFunctionalComponent(frame: PatchFrame): void {
 
     return;
   } finally {
-    triedToRerenderUnsubscribe!();
+    triedToRerenderUnsubscribe();
     renderRuntime.renderPhase = null;
     renderRuntime.currentRenderingFCElement = null;
   }

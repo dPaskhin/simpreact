@@ -1,6 +1,6 @@
 import {
-  lifecycleEventBus,
   MOUNTING_PHASE,
+  registerLifecyclePlugin,
   rerender,
   type SimpElementStore,
   type SimpNode,
@@ -28,13 +28,15 @@ export interface CreateContext {
   (defaultValue: unknown): SimpContext;
 }
 
-lifecycleEventBus.subscribe(event => {
-  if (event.type === 'unmounted' && event.element.context) {
-    const contextMap = event.element.context as Map<SimpContext, SimpContextEntry>;
-    for (const entry of contextMap.values()) {
-      entry.subs.delete(event.element.store!);
+registerLifecyclePlugin(bus => {
+  bus.subscribe(event => {
+    if (event.type === 'unmounted' && event.element.context) {
+      const contextMap = event.element.context as Map<SimpContext, SimpContextEntry>;
+      for (const entry of contextMap.values()) {
+        entry.subs.delete(event.element.store!);
+      }
     }
-  }
+  });
 });
 
 export function createCreateContext(renderRuntime: SimpRenderRuntime): CreateContext {

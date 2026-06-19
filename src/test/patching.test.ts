@@ -2,7 +2,7 @@ import { createCreateContext } from '@simpreact/context';
 import {
   createElement,
   Fragment,
-  lifecycleEventBus,
+  getLifecycleEventBus,
   mount,
   patch,
   type SimpElement,
@@ -200,7 +200,7 @@ describe('patching', () => {
 
       const listener = vi.fn();
 
-      lifecycleEventBus.subscribe(listener);
+      getLifecycleEventBus(renderRuntime).subscribe(listener);
 
       patch(prev, next, parent, null, null, null, renderRuntime);
 

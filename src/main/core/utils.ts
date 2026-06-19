@@ -41,8 +41,6 @@ export function findParentReferenceFromElement(element: SimpElement): unknown | 
   return null;
 }
 
-const placeStack: SimpElement[] = [];
-
 export function placeElementBeforeAnchor(
   element: SimpElement,
   anchor: unknown,
@@ -50,7 +48,7 @@ export function placeElementBeforeAnchor(
   renderRuntime: SimpRenderRuntime
 ): void {
   const { hostAdapter } = renderRuntime;
-  placeStack.push(element);
+  const placeStack: SimpElement[] = [element];
   let nextAnchor: unknown | null = anchor;
 
   while (placeStack.length !== 0) {
