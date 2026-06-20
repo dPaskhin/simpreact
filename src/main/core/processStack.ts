@@ -117,8 +117,180 @@ export type SimpRenderFrame =
 
 export type SimpRenderStack = SimpRenderFrame[];
 
+export interface FramePool {
+  mount: MountFrame[];
+  mountChildren: MountChildrenFrame[];
+  patch: PatchFrame[];
+  unmount: UnmountFrame[];
+  unmountChildren: UnmountChildrenFrame[];
+  place: PlaceElementFrame[];
+  replace: ReplaceElementFrame[];
+}
+
+const framePoolByRuntime = new WeakMap<SimpRenderRuntime, FramePool>();
+
+function getFramePool(renderRuntime: SimpRenderRuntime): FramePool {
+  let pool = framePoolByRuntime.get(renderRuntime);
+  if (!pool) {
+    pool = { mount: [], mountChildren: [], patch: [], unmount: [], unmountChildren: [], place: [], replace: [] };
+    framePoolByRuntime.set(renderRuntime, pool);
+  }
+  return pool;
+}
+
+export function acquireMountFrame(
+  renderRuntime: SimpRenderRuntime,
+  element: SimpElement,
+  kind: typeof MOUNT_ENTER | typeof MOUNT_EXIT,
+  parentReference: unknown,
+  subtreeRightBoundary: Nullable<SimpElement>,
+  context: unknown,
+  hostNamespace: Maybe<string>,
+  placeHolderElement: Nullable<SimpElement>
+): MountFrame {
+  const frame = getFramePool(renderRuntime).mount.pop();
+  if (frame !== undefined) {
+    frame.node = element;
+    frame.kind = kind;
+    frame.meta.parentReference = parentReference;
+    frame.meta.subtreeRightBoundary = subtreeRightBoundary;
+    frame.meta.context = context;
+    frame.meta.hostNamespace = hostNamespace;
+    frame.meta.renderRuntime = renderRuntime;
+    frame.meta.placeHolderElement = placeHolderElement;
+    return frame;
+  }
+  return {
+    node: element,
+    kind,
+    meta: { parentReference, subtreeRightBoundary, context, hostNamespace, renderRuntime, placeHolderElement },
+  };
+}
+
+export function acquireMountChildrenFrame(
+  renderRuntime: SimpRenderRuntime,
+  parent: SimpElement,
+  children: Nullable<Many<SimpElement>>,
+  parentReference: unknown,
+  subtreeRightBoundary: Nullable<SimpElement>,
+  context: unknown,
+  hostNamespace: Maybe<string>
+): MountChildrenFrame {
+  const frame = getFramePool(renderRuntime).mountChildren.pop();
+  if (frame !== undefined) {
+    frame.node = parent;
+    frame.meta.children = children;
+    frame.meta.parentReference = parentReference;
+    frame.meta.subtreeRightBoundary = subtreeRightBoundary;
+    frame.meta.context = context;
+    frame.meta.hostNamespace = hostNamespace;
+    frame.meta.renderRuntime = renderRuntime;
+    return frame;
+  }
+  return {
+    node: parent,
+    kind: MOUNT_CHILDREN_ENTER,
+    meta: { children, parentReference, subtreeRightBoundary, context, hostNamespace, renderRuntime },
+  };
+}
+
+export function acquirePatchFrame(
+  renderRuntime: SimpRenderRuntime,
+  element: SimpElement,
+  kind: typeof PATCH_ENTER | typeof PATCH_EXIT,
+  prevElement: SimpElement,
+  parentReference: unknown,
+  subtreeRightBoundary: Nullable<SimpElement>,
+  context: unknown,
+  hostNamespace: Maybe<string>
+): PatchFrame {
+  const frame = getFramePool(renderRuntime).patch.pop();
+  if (frame !== undefined) {
+    frame.node = element;
+    frame.kind = kind;
+    frame.meta.prevElement = prevElement;
+    frame.meta.parentReference = parentReference;
+    frame.meta.subtreeRightBoundary = subtreeRightBoundary;
+    frame.meta.context = context;
+    frame.meta.hostNamespace = hostNamespace;
+    frame.meta.renderRuntime = renderRuntime;
+    return frame;
+  }
+  return {
+    node: element,
+    kind,
+    meta: { prevElement, parentReference, subtreeRightBoundary, context, hostNamespace, renderRuntime },
+  };
+}
+
+export function acquireUnmountFrame(
+  renderRuntime: SimpRenderRuntime,
+  element: SimpElement,
+  kind: typeof UNMOUNT_ENTER | typeof UNMOUNT_EXIT
+): UnmountFrame {
+  const frame = getFramePool(renderRuntime).unmount.pop();
+  if (frame !== undefined) {
+    frame.node = element;
+    frame.kind = kind;
+    frame.meta.renderRuntime = renderRuntime;
+    return frame;
+  }
+  return { node: element, kind, meta: { renderRuntime } };
+}
+
+export function acquireUnmountChildrenFrame(
+  renderRuntime: SimpRenderRuntime,
+  parent: SimpElement
+): UnmountChildrenFrame {
+  const frame = getFramePool(renderRuntime).unmountChildren.pop();
+  if (frame !== undefined) {
+    frame.node = parent;
+    frame.meta.renderRuntime = renderRuntime;
+    return frame;
+  }
+  return { node: parent, kind: UNMOUNT_CHILDREN_ENTER, meta: { renderRuntime } };
+}
+
+export function acquirePlaceFrame(
+  renderRuntime: SimpRenderRuntime,
+  element: SimpElement,
+  parentReference: unknown,
+  subtreeRightBoundary: Nullable<SimpElement>
+): PlaceElementFrame {
+  const frame = getFramePool(renderRuntime).place.pop();
+  if (frame !== undefined) {
+    frame.node = element;
+    frame.meta.parentReference = parentReference;
+    frame.meta.subtreeRightBoundary = subtreeRightBoundary;
+    frame.meta.renderRuntime = renderRuntime;
+    return frame;
+  }
+  return {
+    node: element,
+    kind: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR,
+    meta: { parentReference, subtreeRightBoundary, renderRuntime },
+  };
+}
+
+export function acquireReplaceFrame(
+  renderRuntime: SimpRenderRuntime,
+  element: SimpElement,
+  parentReference: unknown,
+  prevElement: SimpElement
+): ReplaceElementFrame {
+  const frame = getFramePool(renderRuntime).replace.pop();
+  if (frame !== undefined) {
+    frame.node = element;
+    frame.meta.parentReference = parentReference;
+    frame.meta.prevElement = prevElement;
+    return frame;
+  }
+  return { node: element, kind: HOST_OPS_REPLACE_CHILD, meta: { parentReference, prevElement } };
+}
+
 export function processStack(renderRuntime: SimpRenderRuntime): void {
   const stack = renderRuntime.renderStack;
+  const pool = getFramePool(renderRuntime);
 
   while (stack.length > 0) {
     const frame = stack.pop()!;
@@ -126,39 +298,57 @@ export function processStack(renderRuntime: SimpRenderRuntime): void {
     switch (frame.kind) {
       case MOUNT_ENTER: {
         _mountEnter(frame);
+        frame.node = null!;
+        pool.mount.push(frame);
         break;
       }
       case MOUNT_EXIT: {
         _mountExit(frame);
+        frame.node = null!;
+        pool.mount.push(frame);
         break;
       }
       case MOUNT_CHILDREN_ENTER: {
         _mountChildren(frame);
+        frame.node = null!;
+        pool.mountChildren.push(frame);
         break;
       }
       case PATCH_ENTER: {
         _patchEnter(frame);
+        frame.node = null!;
+        pool.patch.push(frame);
         break;
       }
       case PATCH_EXIT: {
         _patchExit(frame);
+        frame.node = null!;
+        pool.patch.push(frame);
         break;
       }
       case UNMOUNT_ENTER: {
         _unmountEnter(frame);
+        frame.node = null!;
+        pool.unmount.push(frame);
         break;
       }
       case UNMOUNT_EXIT: {
         _unmountExit(frame);
+        frame.node = null!;
+        pool.unmount.push(frame);
         break;
       }
       case UNMOUNT_CHILDREN_ENTER: {
         _unmountChildren(frame);
+        frame.node = null!;
+        pool.unmountChildren.push(frame);
         break;
       }
       case HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR: {
         const anchor = resolveAnchorReference(frame.meta.subtreeRightBoundary);
         placeElementBeforeAnchor(frame.node, anchor, frame.meta.parentReference, renderRuntime);
+        frame.node = null!;
+        pool.place.push(frame);
         break;
       }
       case HOST_OPS_REPLACE_CHILD: {
@@ -167,6 +357,8 @@ export function processStack(renderRuntime: SimpRenderRuntime): void {
           frame.node.reference,
           frame.meta.prevElement.reference
         );
+        frame.node = null!;
+        pool.replace.push(frame);
         break;
       }
     }

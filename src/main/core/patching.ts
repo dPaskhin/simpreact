@@ -12,7 +12,7 @@ import { getLifecycleEventBus, type LifecycleEvent } from './lifecycleEventBus.j
 import { isMemo } from './memo.js';
 import { _pushMountEnterFrame } from './mounting.js';
 import { _patchChildren } from './patchingChildren.js';
-import { PATCH_ENTER, PATCH_EXIT, type PatchFrame, type PatchFrameMeta, processStack } from './processStack.js';
+import { acquirePatchFrame, PATCH_ENTER, PATCH_EXIT, type PatchFrame, processStack } from './processStack.js';
 import { applyRef } from './ref.js';
 import { type SimpRenderRuntime, UPDATING_PHASE } from './runtime.js';
 import { _pushUnmountEnterFrame } from './unmounting.js';
@@ -34,32 +34,63 @@ export function patch(
     throw new Error('Cannot patch while rendering.');
   }
 
-  _pushPatchEnterFrame(nextElement, {
+  _pushPatchEnterFrame(
+    nextElement,
+    renderRuntime,
     prevElement,
     parentReference,
-    renderRuntime,
     subtreeRightBoundary,
     context,
-    hostNamespace,
-  });
+    hostNamespace
+  );
 
   processStack(renderRuntime);
 }
 
-export function _pushPatchEnterFrame(element: SimpElement, meta: PatchFrameMeta): void {
-  meta.renderRuntime.renderStack.push({
-    node: element,
-    kind: PATCH_ENTER,
-    meta,
-  });
+export function _pushPatchEnterFrame(
+  element: SimpElement,
+  renderRuntime: SimpRenderRuntime,
+  prevElement: SimpElement,
+  parentReference: unknown,
+  subtreeRightBoundary: Nullable<SimpElement>,
+  context: unknown,
+  hostNamespace: string | null | undefined
+): void {
+  renderRuntime.renderStack.push(
+    acquirePatchFrame(
+      renderRuntime,
+      element,
+      PATCH_ENTER,
+      prevElement,
+      parentReference,
+      subtreeRightBoundary,
+      context,
+      hostNamespace
+    )
+  );
 }
 
-export function _pushPatchExitFrame(element: SimpElement, meta: PatchFrameMeta): void {
-  meta.renderRuntime.renderStack.push({
-    node: element,
-    kind: PATCH_EXIT,
-    meta,
-  });
+function _pushPatchExitFrame(
+  element: SimpElement,
+  renderRuntime: SimpRenderRuntime,
+  prevElement: SimpElement,
+  parentReference: unknown,
+  subtreeRightBoundary: Nullable<SimpElement>,
+  context: unknown,
+  hostNamespace: string | null | undefined
+): void {
+  renderRuntime.renderStack.push(
+    acquirePatchFrame(
+      renderRuntime,
+      element,
+      PATCH_EXIT,
+      prevElement,
+      parentReference,
+      subtreeRightBoundary,
+      context,
+      hostNamespace
+    )
+  );
 }
 
 export function _patchEnter(frame: PatchFrame): void {
@@ -82,33 +113,24 @@ function _replaceWithNewElement(frame: PatchFrame): void {
   const nextElement = frame.node;
   const { prevElement, parentReference, context, hostNamespace, renderRuntime } = frame.meta;
 
-  _pushUnmountEnterFrame(prevElement, frame.meta);
+  _pushUnmountEnterFrame(prevElement, renderRuntime);
 
   nextElement.parent = prevElement.parent;
   if ((nextElement.flag & SIMP_ELEMENT_FLAG_HOST) !== 0 && (prevElement.flag & SIMP_ELEMENT_FLAG_HOST) !== 0) {
-    _pushHostOperationReplaceElement(nextElement, renderRuntime, {
-      prevElement,
-      parentReference,
-    });
+    _pushHostOperationReplaceElement(nextElement, renderRuntime, parentReference, prevElement);
 
-    _pushMountEnterFrame(nextElement, {
-      context,
-      hostNamespace,
-      renderRuntime,
-      parentReference: null!,
-      subtreeRightBoundary: null,
-      placeHolderElement: null,
-    });
+    _pushMountEnterFrame(nextElement, renderRuntime, null!, null, context, hostNamespace, null);
   } else {
     _clearElementHostReference(prevElement, parentReference, renderRuntime);
-    _pushMountEnterFrame(nextElement, {
-      subtreeRightBoundary: frame.meta.subtreeRightBoundary,
+    _pushMountEnterFrame(
+      nextElement,
       renderRuntime,
-      hostNamespace,
-      context,
       parentReference,
-      placeHolderElement: null,
-    });
+      frame.meta.subtreeRightBoundary,
+      context,
+      hostNamespace,
+      null
+    );
   }
 }
 
@@ -120,14 +142,15 @@ function _patchHostEnter(frame: PatchFrame): void {
   nextElement.reference = prevElement.reference;
   renderRuntime.hostAdapter.attachElementToReference(nextElement, nextElement.reference, renderRuntime);
 
-  _pushPatchExitFrame(nextElement, {
-    prevElement,
+  _pushPatchExitFrame(
+    nextElement,
     renderRuntime,
-    hostNamespace,
+    prevElement,
+    parentReference,
     subtreeRightBoundary,
     context,
-    parentReference,
-  });
+    hostNamespace
+  );
 
   _patchChildren(nextElement, {
     prevParentElement: prevElement,
@@ -161,14 +184,15 @@ function _patchFCEnter(frame: PatchFrame): void {
   const jsxElement = frame.node;
 
   if (prevElement.unmounted) {
-    _pushMountEnterFrame(jsxElement, {
-      subtreeRightBoundary,
+    _pushMountEnterFrame(
+      jsxElement,
       renderRuntime,
-      hostNamespace,
-      context,
       parentReference,
-      placeHolderElement: null,
-    });
+      subtreeRightBoundary,
+      context,
+      hostNamespace,
+      null
+    );
     return;
   }
 
@@ -238,7 +262,7 @@ function _patchFCEnter(frame: PatchFrame): void {
   } catch (error) {
     _detachElementFromParent(prevElement);
     _clearElementHostReference(prevElement, parentReference, renderRuntime);
-    _pushUnmountEnterFrame(prevElement, frame.meta);
+    _pushUnmountEnterFrame(prevElement, renderRuntime);
 
     const event: LifecycleEvent = {
       type: 'errored',
@@ -261,14 +285,15 @@ function _patchFCEnter(frame: PatchFrame): void {
     renderRuntime.currentRenderingFCElement = null;
   }
 
-  _pushPatchExitFrame(prevElement, {
+  _pushPatchExitFrame(
     prevElement,
     renderRuntime,
-    hostNamespace,
+    prevElement,
+    parentReference,
     subtreeRightBoundary,
     context,
-    parentReference,
-  });
+    hostNamespace
+  );
 
   _patchChildren(prevElement, {
     subtreeRightBoundary,
@@ -328,14 +353,15 @@ function _patchPortalEnter(frame: PatchFrame): void {
   nextElement.reference = prevElement.reference;
 
   if (prevContainer !== nextContainer && nextChildren != null) {
-    _pushPatchExitFrame(nextElement, {
-      prevElement,
+    _pushPatchExitFrame(
+      nextElement,
       renderRuntime,
-      hostNamespace,
+      prevElement,
+      parentReference,
       subtreeRightBoundary,
       context,
-      parentReference,
-    });
+      hostNamespace
+    );
   }
 
   _patchChildren(nextElement, {

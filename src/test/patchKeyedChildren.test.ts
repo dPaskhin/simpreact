@@ -92,25 +92,27 @@ describe('patchKeyedChildren', () => {
       },
     };
 
-    vi.mocked(_pushPatchEnterFrame).mockImplementation((element, meta) => {
-      element.reference = meta.prevElement.reference;
-      calls.push(
-        `patch(${meta.prevElement.key} -> ${element.key} before right sibling ${meta.subtreeRightBoundary?.key || 'null'})`
-      );
-    });
+    vi.mocked(_pushPatchEnterFrame).mockImplementation(
+      (element, _rt, prevElement, _parentRef, subtreeRightBoundary) => {
+        element.reference = prevElement.reference;
+        calls.push(
+          `patch(${prevElement.key} -> ${element.key} before right sibling ${subtreeRightBoundary?.key || 'null'})`
+        );
+      }
+    );
 
     vi.mocked(_clearElementHostReference).mockImplementation(prev => {
       calls.push(`remove(${prev!.key})`);
     });
 
-    vi.mocked(_pushMountEnterFrame).mockImplementation((element, meta) => {
+    vi.mocked(_pushMountEnterFrame).mockImplementation((element, _rt, _parentRef, subtreeRightBoundary) => {
       element.reference = { id: `ref:${element.key}` };
-      calls.push(`mount(${element.key} before right sibling ${meta.subtreeRightBoundary?.key || 'null'})`);
+      calls.push(`mount(${element.key} before right sibling ${subtreeRightBoundary?.key || 'null'})`);
     });
 
-    vi.mocked(_pushHostOperationPlaceElement).mockImplementation((element, meta) => {
+    vi.mocked(_pushHostOperationPlaceElement).mockImplementation((element, _rt, _parentRef, subtreeRightBoundary) => {
       calls.push(
-        `placeElementBeforeAnchor(${element.key} before right sibling ${meta.subtreeRightBoundary?.key || 'null'})`
+        `placeElementBeforeAnchor(${element.key} before right sibling ${subtreeRightBoundary?.key || 'null'})`
       );
     });
 

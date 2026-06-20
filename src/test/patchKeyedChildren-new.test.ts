@@ -85,6 +85,8 @@ let mountSpy: MockInstance;
 let patchSpy: MockInstance;
 let clearElementHostReferenceSpy: MockInstance;
 
+// Positional args: _pushMountEnterFrame(element, renderRuntime, parentRef, subtreeRightBoundary, context, hostNamespace, placeHolderElement)
+// Positional args: _pushPatchEnterFrame(element, renderRuntime, prevElement, parentRef, subtreeRightBoundary, context, hostNamespace)
 const patchedKeys = () => patchSpy.mock.calls.map((c: any) => c[0].key);
 const mountedKeys = () => mountSpy.mock.calls.map((c: any) => c[0].key);
 const removedKeys = () => clearElementHostReferenceSpy.mock.calls.map((c: any) => c[0].key);
@@ -223,9 +225,10 @@ describe('patchKeyedChildren', () => {
       const { frame } = makeFrame([], next);
       _patchKeyedChildren(frame.node, frame.meta);
 
+      // Positional: _pushMountEnterFrame(element, renderRuntime, parentRef, subtreeRightBoundary, ...)
       const calls = mountSpy.mock.calls.map((c: any) => ({
         key: c[0].key,
-        subtreeRightBoundary: c[1].subtreeRightBoundary,
+        subtreeRightBoundary: c[3], // index 3 = subtreeRightBoundary
       }));
 
       const byKey = Object.fromEntries(calls.map((c: any) => [c.key, c.subtreeRightBoundary]));
@@ -360,8 +363,9 @@ describe('patchKeyedChildren', () => {
       const { frame } = makeFrame([prevA, prevB], [nextA, nextB]);
       _patchKeyedChildren(frame.node, frame.meta);
 
+      // Positional: _pushPatchEnterFrame(element, renderRuntime, prevElement, ...)
       const calls = patchSpy.mock.calls as any[];
-      const prevsByKey = Object.fromEntries(calls.map(c => [c[0].key, c[1].prevElement]));
+      const prevsByKey = Object.fromEntries(calls.map(c => [c[0].key, c[2]])); // index 2 = prevElement
       expect(prevsByKey['a']).toBe(prevA);
       expect(prevsByKey['b']).toBe(prevB);
     });
@@ -384,10 +388,11 @@ describe('patchKeyedChildren', () => {
       const { frame } = makeFrame([el('a')], [el('a')]);
       _patchKeyedChildren(frame.node, frame.meta);
 
-      const meta = (patchSpy.mock.calls[0] as any)[1];
-      expect(meta.parentReference).toBe(frame.meta.parentReference);
-      expect(meta.context).toBe(frame.meta.context);
-      expect(meta.hostNamespace).toBe(frame.meta.hostNamespace);
+      // Positional: _pushPatchEnterFrame(element, renderRuntime, prevElement, parentReference, subtreeRightBoundary, context, hostNamespace)
+      const call = patchSpy.mock.calls[0] as any;
+      expect(call[3]).toBe(frame.meta.parentReference); // index 3 = parentReference
+      expect(call[5]).toBe(frame.meta.context); // index 5 = context
+      expect(call[6]).toBe(frame.meta.hostNamespace); // index 6 = hostNamespace
     });
   });
 
@@ -416,7 +421,8 @@ describe('patchKeyedChildren', () => {
       const mountCall = (mountSpy.mock.calls as any[]).find((c: any) => c[0].key === 'e');
       expect(mountCall).toBeDefined();
 
-      const subtreeRightBoundary = mountCall[1].subtreeRightBoundary;
+      // Positional index 3 = subtreeRightBoundary
+      const subtreeRightBoundary = mountCall[3];
       expect(subtreeRightBoundary).not.toBeNull();
       expect(subtreeRightBoundary?.key).toBe('tail');
     });
@@ -628,9 +634,10 @@ describe('patchKeyedChildren', () => {
       const { frame } = makeFrame([el('a'), el('b'), el('c')], [el('x'), el('y'), el('z')]);
       _patchKeyedChildren(frame.node, frame.meta);
 
+      // Positional: _pushMountEnterFrame(element, renderRuntime, parentRef, subtreeRightBoundary, ...)
       const calls = (mountSpy.mock.calls as any[]).map((c: any) => ({
         key: c[0].key as string,
-        subtreeRightBoundary: c[1].subtreeRightBoundary as any,
+        subtreeRightBoundary: c[3] as any, // index 3 = subtreeRightBoundary
       }));
       const byKey = Object.fromEntries(calls.map(c => [c.key, c.subtreeRightBoundary]));
 
@@ -692,12 +699,13 @@ describe('patchKeyedChildren', () => {
       expect(placedPhases).toContain(HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR);
     });
 
-    it('passes placeHolderElement as null on all frames', () => {
+    it('passes placeHolderElement as null on all mount frames', () => {
       const { frame } = makeFrame([el('a')], [el('a'), el('b')]);
       _patchKeyedChildren(frame.node, frame.meta);
 
-      for (const call of [...patchSpy.mock.calls, ...mountSpy.mock.calls] as any[]) {
-        expect(call[1].placeHolderElement).toBeNull();
+      // Positional: _pushMountEnterFrame(element, renderRuntime, parentRef, subtreeRightBoundary, context, hostNamespace, placeHolderElement)
+      for (const call of mountSpy.mock.calls as any[]) {
+        expect(call[6]).toBeNull(); // index 6 = placeHolderElement
       }
     });
   });

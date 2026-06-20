@@ -84,12 +84,12 @@ export function _patchChildren(parentElement: SimpElement, meta: PatchChildrenAr
           break;
         }
         case SIMP_ELEMENT_CHILD_FLAG_TEXT: {
-          _pushUnmountChildrenFrame(prevParentElement, meta);
+          _pushUnmountChildrenFrame(prevParentElement, renderRuntime);
           renderRuntime.hostAdapter.setTextContent(parentReference, parentElement.props?.children);
           break;
         }
         default: {
-          _pushUnmountChildrenFrame(prevParentElement, meta);
+          _pushUnmountChildrenFrame(prevParentElement, renderRuntime);
           renderRuntime.hostAdapter.clearNode(parentReference);
         }
       }
@@ -120,24 +120,25 @@ export function _patchChildren(parentElement: SimpElement, meta: PatchChildrenAr
         case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
           (nextChildren as SimpElement).parent = parentElement;
 
-          _pushPatchEnterFrame(nextChildren as SimpElement, {
-            prevElement: prevChildren as SimpElement,
-            parentReference,
+          _pushPatchEnterFrame(
+            nextChildren as SimpElement,
             renderRuntime,
-            subtreeRightBoundary: subtreeRightBoundary,
+            prevChildren as SimpElement,
+            parentReference,
+            subtreeRightBoundary,
             context,
-            hostNamespace,
-          });
+            hostNamespace
+          );
           break;
         }
         case SIMP_ELEMENT_CHILD_FLAG_TEXT: {
-          _pushUnmountChildrenFrame(prevParentElement, meta);
+          _pushUnmountChildrenFrame(prevParentElement, renderRuntime);
           renderRuntime.hostAdapter.setTextContent(parentReference, parentElement.props?.children);
           break;
         }
         default: {
           _clearElementHostReference(prevChildren as SimpElement, parentReference, renderRuntime);
-          _pushUnmountEnterFrame(prevChildren as SimpElement, meta);
+          _pushUnmountEnterFrame(prevChildren as SimpElement, renderRuntime);
         }
       }
       break;
@@ -146,27 +147,29 @@ export function _patchChildren(parentElement: SimpElement, meta: PatchChildrenAr
       switch (nextParentChildFlag) {
         case SIMP_ELEMENT_CHILD_FLAG_LIST: {
           renderRuntime.hostAdapter.clearNode(parentReference);
-          _pushMountChildrenFrame(parentElement, {
-            children: parentElement.children as SimpElement[],
-            context,
-            hostNamespace,
+          _pushMountChildrenFrame(
+            parentElement,
             renderRuntime,
-            subtreeRightBoundary,
+            parentElement.children as SimpElement[],
             parentReference,
-          });
+            subtreeRightBoundary,
+            context,
+            hostNamespace
+          );
           break;
         }
         case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
           renderRuntime.hostAdapter.clearNode(parentReference);
           (nextChildren as SimpElement).parent = parentElement;
-          _pushMountEnterFrame(nextChildren as SimpElement, {
+          _pushMountEnterFrame(
+            nextChildren as SimpElement,
+            renderRuntime,
             parentReference,
-            subtreeRightBoundary: subtreeRightBoundary,
+            subtreeRightBoundary,
             context,
             hostNamespace,
-            renderRuntime,
-            placeHolderElement: null,
-          });
+            null
+          );
           break;
         }
         case SIMP_ELEMENT_CHILD_FLAG_TEXT: {
@@ -182,27 +185,29 @@ export function _patchChildren(parentElement: SimpElement, meta: PatchChildrenAr
     default: {
       switch (nextParentChildFlag) {
         case SIMP_ELEMENT_CHILD_FLAG_LIST: {
-          _pushMountChildrenFrame(parentElement, {
+          _pushMountChildrenFrame(
+            parentElement,
+            renderRuntime,
+            parentElement.children as SimpElement[],
             parentReference,
             subtreeRightBoundary,
             context,
-            hostNamespace,
-            renderRuntime,
-            children: parentElement.children as SimpElement[],
-          });
+            hostNamespace
+          );
           break;
         }
         case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
           (nextChildren as SimpElement).parent = parentElement;
 
-          _pushMountEnterFrame(nextChildren as SimpElement, {
+          _pushMountEnterFrame(
+            nextChildren as SimpElement,
+            renderRuntime,
             parentReference,
+            subtreeRightBoundary,
             context,
             hostNamespace,
-            renderRuntime,
-            placeHolderElement: null,
-            subtreeRightBoundary: subtreeRightBoundary,
-          });
+            null
+          );
           break;
         }
         case SIMP_ELEMENT_CHILD_FLAG_TEXT: {
@@ -221,14 +226,6 @@ export function _patchKeyedChildren(parentElement: SimpElement, meta: PatchChild
 
   const nextLen = Array.isArray(nextChildren) ? nextChildren.length : 1;
   const prevLen = Array.isArray(prevChildren) ? prevChildren.length : 1;
-
-  const base = {
-    parentReference,
-    renderRuntime,
-    context,
-    hostNamespace,
-    placeHolderElement: null,
-  } as const;
 
   const getRightSibling = (child: SimpElement): SimpElement | null => {
     return child.index + 1 < nextLen ? getChild(nextChildren, child.index + 1) : subtreeRightBoundary;
@@ -262,11 +259,15 @@ export function _patchKeyedChildren(parentElement: SimpElement, meta: PatchChild
       const nextChild = getChild(nextChildren, i);
       const prevChild = getChild(prevChildren, nextChild.index);
 
-      _pushPatchEnterFrame(nextChild, {
-        ...base,
-        prevElement: prevChild,
-        subtreeRightBoundary: getRightSibling(nextChild),
-      });
+      _pushPatchEnterFrame(
+        nextChild,
+        renderRuntime,
+        prevChild,
+        parentReference,
+        getRightSibling(nextChild),
+        context,
+        hostNamespace
+      );
     }
   };
 
@@ -277,11 +278,15 @@ export function _patchKeyedChildren(parentElement: SimpElement, meta: PatchChild
       const nextChild = getChild(nextChildren, i);
       const prevChild = getChild(prevChildren, nextChild.index - delta);
 
-      _pushPatchEnterFrame(nextChild, {
-        ...base,
-        prevElement: prevChild,
-        subtreeRightBoundary: getRightSibling(nextChild),
-      });
+      _pushPatchEnterFrame(
+        nextChild,
+        renderRuntime,
+        prevChild,
+        parentReference,
+        getRightSibling(nextChild),
+        context,
+        hostNamespace
+      );
     }
   };
 
@@ -292,7 +297,7 @@ export function _patchKeyedChildren(parentElement: SimpElement, meta: PatchChild
       const child = getChild(prevChildren, i);
 
       _clearElementHostReference(child, parentReference, renderRuntime);
-      _pushUnmountEnterFrame(child, meta);
+      _pushUnmountEnterFrame(child, renderRuntime);
     }
 
     pushSuffixPatches();
@@ -305,10 +310,15 @@ export function _patchKeyedChildren(parentElement: SimpElement, meta: PatchChild
     for (let i = nextStart; i <= nextEnd; i++) {
       const nextChild = getChild(nextChildren, i);
 
-      _pushMountEnterFrame(nextChild, {
-        ...base,
-        subtreeRightBoundary: getRightSibling(nextChild),
-      });
+      _pushMountEnterFrame(
+        nextChild,
+        renderRuntime,
+        parentReference,
+        getRightSibling(nextChild),
+        context,
+        hostNamespace,
+        null
+      );
     }
 
     pushSuffixPatches();
@@ -366,7 +376,7 @@ export function _patchKeyedChildren(parentElement: SimpElement, meta: PatchChild
       const child = getChild(prevChildren, i);
 
       _clearElementHostReference(child, parentReference, renderRuntime);
-      _pushUnmountEnterFrame(child, meta);
+      _pushUnmountEnterFrame(child, renderRuntime);
     }
   }
 
@@ -379,10 +389,15 @@ export function _patchKeyedChildren(parentElement: SimpElement, meta: PatchChild
     const oldIndex = newIndexToOldIndex[newIndex];
 
     if (oldIndex === 0) {
-      _pushMountEnterFrame(nextChild, {
-        ...base,
-        subtreeRightBoundary: getRightSibling(nextChild),
-      });
+      _pushMountEnterFrame(
+        nextChild,
+        renderRuntime,
+        parentReference,
+        getRightSibling(nextChild),
+        context,
+        hostNamespace,
+        null
+      );
       continue;
     }
 
@@ -392,18 +407,10 @@ export function _patchKeyedChildren(parentElement: SimpElement, meta: PatchChild
     if (isStable) {
       stableCursor++;
     } else if (moved) {
-      _pushHostOperationPlaceElement(nextChild, {
-        parentReference,
-        renderRuntime,
-        subtreeRightBoundary: getRightSibling(nextChild),
-      });
+      _pushHostOperationPlaceElement(nextChild, renderRuntime, parentReference, getRightSibling(nextChild));
     }
 
-    _pushPatchEnterFrame(nextChild, {
-      ...base,
-      prevElement: prevChild,
-      subtreeRightBoundary: null,
-    });
+    _pushPatchEnterFrame(nextChild, renderRuntime, prevChild, parentReference, null, context, hostNamespace);
   }
 
   pushSuffixPatches();

@@ -1,7 +1,7 @@
 import { noop } from '@simpreact/shared';
 import type { SimpElement } from './createElement.js';
 import { getLifecycleEventBus } from './lifecycleEventBus.js';
-import { processStack, UNMOUNT_ENTER, UNMOUNT_EXIT, type UnmountFrame, type UnmountFrameMeta } from './processStack.js';
+import { acquireUnmountFrame, processStack, UNMOUNT_ENTER, UNMOUNT_EXIT, type UnmountFrame } from './processStack.js';
 import { unmountRef } from './ref.js';
 import type { SimpRenderRuntime } from './runtime.js';
 import { _pushUnmountChildrenFrame } from './unmountingChildren.js';
@@ -16,7 +16,7 @@ export function unmount(element: SimpElement, renderRuntime: SimpRenderRuntime):
     throw new Error('Cannot unmount while rendering.');
   }
 
-  _pushUnmountEnterFrame(element, { renderRuntime });
+  _pushUnmountEnterFrame(element, renderRuntime);
 
   processStack(renderRuntime);
 }
@@ -29,20 +29,12 @@ export function _unmountExit(frame: UnmountFrame): void {
   unmountExitHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
 }
 
-export function _pushUnmountEnterFrame(element: SimpElement, meta: UnmountFrameMeta): void {
-  meta.renderRuntime.renderStack.push({
-    node: element,
-    kind: UNMOUNT_ENTER,
-    meta,
-  });
+export function _pushUnmountEnterFrame(element: SimpElement, renderRuntime: SimpRenderRuntime): void {
+  renderRuntime.renderStack.push(acquireUnmountFrame(renderRuntime, element, UNMOUNT_ENTER));
 }
 
-export function _pushUnmountExitFrame(element: SimpElement, meta: UnmountFrameMeta): void {
-  meta.renderRuntime.renderStack.push({
-    node: element,
-    kind: UNMOUNT_EXIT,
-    meta,
-  });
+export function _pushUnmountExitFrame(element: SimpElement, renderRuntime: SimpRenderRuntime): void {
+  renderRuntime.renderStack.push(acquireUnmountFrame(renderRuntime, element, UNMOUNT_EXIT));
 }
 
 function _unmountFCEnter(frame: UnmountFrame): void {
@@ -52,8 +44,8 @@ function _unmountFCEnter(frame: UnmountFrame): void {
     return;
   }
 
-  _pushUnmountExitFrame(current, frame.meta);
-  _pushUnmountChildrenFrame(current, frame.meta);
+  _pushUnmountExitFrame(current, frame.meta.renderRuntime);
+  _pushUnmountChildrenFrame(current, frame.meta.renderRuntime);
 }
 
 function _unmountFCExit(frame: UnmountFrame): void {
@@ -67,8 +59,8 @@ function _unmountFCExit(frame: UnmountFrame): void {
 }
 
 function _unmountHostEnter(frame: UnmountFrame): void {
-  _pushUnmountExitFrame(frame.node, frame.meta);
-  _pushUnmountChildrenFrame(frame.node, frame.meta);
+  _pushUnmountExitFrame(frame.node, frame.meta.renderRuntime);
+  _pushUnmountChildrenFrame(frame.node, frame.meta.renderRuntime);
 }
 
 function _unmountHostExit(frame: UnmountFrame): void {
@@ -80,9 +72,9 @@ function _unmountHostExit(frame: UnmountFrame): void {
 
 function _unmountPortalElement(frame: UnmountFrame): void {
   _clearElementHostReference(frame.node.children as SimpElement, frame.node.ref, frame.meta.renderRuntime);
-  _pushUnmountChildrenFrame(frame.node, frame.meta);
+  _pushUnmountChildrenFrame(frame.node, frame.meta.renderRuntime);
 }
 
 function _unmountFragmentElement(frame: UnmountFrame): void {
-  _pushUnmountChildrenFrame(frame.node, frame.meta);
+  _pushUnmountChildrenFrame(frame.node, frame.meta.renderRuntime);
 }

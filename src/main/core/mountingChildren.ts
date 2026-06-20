@@ -1,14 +1,30 @@
+import type { Many, Maybe, Nullable } from '@simpreact/shared';
 import { SIMP_ELEMENT_CHILD_FLAG_ELEMENT, SIMP_ELEMENT_CHILD_FLAG_LIST, type SimpElement } from './createElement.js';
 import { _pushMountEnterFrame } from './mounting.js';
-import { MOUNT_CHILDREN_ENTER, type MountChildrenFrame, type MountChildrenFrameMeta } from './processStack.js';
+import { acquireMountChildrenFrame, type MountChildrenFrame } from './processStack.js';
+import type { SimpRenderRuntime } from './runtime.js';
 import { isHostLike } from './utils.js';
 
-export function _pushMountChildrenFrame(parent: SimpElement, meta: MountChildrenFrameMeta): void {
-  meta.renderRuntime.renderStack.push({
-    node: parent,
-    kind: MOUNT_CHILDREN_ENTER,
-    meta,
-  });
+export function _pushMountChildrenFrame(
+  parent: SimpElement,
+  renderRuntime: SimpRenderRuntime,
+  children: Nullable<Many<SimpElement>>,
+  parentReference: unknown,
+  subtreeRightBoundary: Nullable<SimpElement>,
+  context: unknown,
+  hostNamespace: Maybe<string>
+): void {
+  renderRuntime.renderStack.push(
+    acquireMountChildrenFrame(
+      renderRuntime,
+      parent,
+      children,
+      parentReference,
+      subtreeRightBoundary,
+      context,
+      hostNamespace
+    )
+  );
 }
 
 export function _mountChildren(frame: MountChildrenFrame): void {
@@ -22,14 +38,15 @@ export function _mountChildren(frame: MountChildrenFrame): void {
       const children = frame.meta.children as SimpElement;
       children.parent = parentElement;
 
-      _pushMountEnterFrame(children, {
+      _pushMountEnterFrame(
+        children,
         renderRuntime,
-        hostNamespace,
+        parentReference,
         subtreeRightBoundary,
         context,
-        parentReference,
-        placeHolderElement: null,
-      });
+        hostNamespace,
+        null
+      );
 
       break;
     }
@@ -42,14 +59,7 @@ export function _mountChildren(frame: MountChildrenFrame): void {
 
         const rightSibling = children[child.index + 1] || subtreeRightBoundary;
 
-        _pushMountEnterFrame(child, {
-          renderRuntime,
-          parentReference,
-          context,
-          hostNamespace,
-          subtreeRightBoundary: rightSibling,
-          placeHolderElement: null,
-        });
+        _pushMountEnterFrame(child, renderRuntime, parentReference, rightSibling, context, hostNamespace, null);
       }
     }
   }
