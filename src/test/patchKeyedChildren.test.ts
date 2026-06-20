@@ -1,4 +1,4 @@
-import { PATCH_KEYED_CHILDREN, type PatchChildrenFrame, SIMP_ELEMENT_FLAG_HOST } from '@simpreact/internal';
+import { SIMP_ELEMENT_FLAG_HOST } from '@simpreact/internal';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { _pushHostOperationPlaceElement } from '../main/core/hostOperations.js';
 import { _pushMountEnterFrame } from '../main/core/mounting.js';
@@ -45,12 +45,9 @@ function makeFrame(
   next: SimpElement[],
   parent: HostReference,
   runtime: SimpRenderRuntime
-): PatchChildrenFrame {
+): { node: any; meta: any } {
   return {
-    node: {
-      children: next,
-    } as any,
-    kind: PATCH_KEYED_CHILDREN,
+    node: { children: next } as any,
     meta: {
       prevParentElement: { children: prev } as any,
       parentReference: parent,
@@ -64,6 +61,15 @@ function makeFrame(
       prevParentChildFlag: -1,
     },
   };
+}
+function callPatchKeyed(
+  prev: SimpElement[],
+  next: SimpElement[],
+  parent: HostReference,
+  runtime: SimpRenderRuntime
+): void {
+  const { node, meta } = makeFrame(prev, next, parent, runtime);
+  _patchKeyedChildren(node, meta);
 }
 
 describe('patchKeyedChildren', () => {
@@ -117,7 +123,7 @@ describe('patchKeyedChildren', () => {
     const prev = [el('a', 'ref:a', 0), el('b', 'ref:b', 1), el('c', 'ref:c', 2)];
     const next = [el('a', undefined, 0), el('b', undefined, 1), el('x', undefined, 2)];
 
-    _patchKeyedChildren(makeFrame(prev, next, parent, runtime));
+    callPatchKeyed(prev, next, parent, runtime);
 
     expect(calls).toEqual([
       'patch(a -> a before right sibling b)',
@@ -131,7 +137,7 @@ describe('patchKeyedChildren', () => {
     const prev = [el('a', 'ref:a', 0), el('b', 'ref:b', 1), el('c', 'ref:c', 2)];
     const next = [el('x', undefined, 0), el('b', undefined, 1), el('c', undefined, 2)];
 
-    _patchKeyedChildren(makeFrame(prev, next, parent, runtime));
+    callPatchKeyed(prev, next, parent, runtime);
 
     expect(calls).toEqual([
       'remove(a)',
@@ -145,7 +151,7 @@ describe('patchKeyedChildren', () => {
     const prev = [el('a', 'ref:a', 0), el('b', 'ref:b', 1)];
     const next = [el('a', undefined, 0)];
 
-    _patchKeyedChildren(makeFrame(prev, next, parent, runtime));
+    callPatchKeyed(prev, next, parent, runtime);
 
     expect(calls).toEqual(['patch(a -> a before right sibling null)', 'remove(b)']);
 
@@ -156,7 +162,7 @@ describe('patchKeyedChildren', () => {
   it('Step 4: when prev list is exhausted (no stable right sibling), mounts all next using rightSibling as anchor', () => {
     const next = [el('a', undefined, 0), el('b', undefined, 1)];
 
-    _patchKeyedChildren(makeFrame([], next, parent, runtime));
+    callPatchKeyed([], next, parent, runtime);
 
     expect(calls).toEqual(['mount(a before right sibling b)', 'mount(b before right sibling null)']);
 
@@ -170,7 +176,7 @@ describe('patchKeyedChildren', () => {
     const prev = [el('a', 'ref:a', 0), el('c', 'ref:c', 1)];
     const next = [el('a', undefined, 0), el('b', undefined, 1), el('c', undefined, 2)];
 
-    _patchKeyedChildren(makeFrame(prev, next, parent, runtime));
+    callPatchKeyed(prev, next, parent, runtime);
 
     expect(calls).toEqual([
       'patch(a -> a before right sibling b)',
@@ -186,7 +192,7 @@ describe('patchKeyedChildren', () => {
     const prev = [el('a', 'ref:a', 0), el('b', 'ref:b', 1), el('c', 'ref:c', 2)];
     const next = [el('b', undefined, 0), el('a', undefined, 1), el('c', undefined, 2)];
 
-    _patchKeyedChildren(makeFrame(prev, next, parent, runtime));
+    callPatchKeyed(prev, next, parent, runtime);
 
     expect(calls).toEqual([
       'placeElementBeforeAnchor(b before right sibling a)',
@@ -203,7 +209,7 @@ describe('patchKeyedChildren', () => {
     const prev = [el('a', 'ref:a', 0), el('b', 'ref:b', 1), el('c', 'ref:c', 2)];
     const next = [el('a', undefined, 0), el('c', undefined, 1)];
 
-    _patchKeyedChildren(makeFrame(prev, next, parent, runtime));
+    callPatchKeyed(prev, next, parent, runtime);
 
     expect(calls).toEqual([
       'patch(a -> a before right sibling c)',
@@ -217,7 +223,7 @@ describe('patchKeyedChildren', () => {
     const prev = [el('a', 'ref:a', 0), el('b', 'ref:b', 1), el('c', 'ref:c', 2), el('d', 'ref:d', 3)];
     const next = [el('d', undefined, 0), el('b', undefined, 1), el('e', undefined, 2), el('a', undefined, 3)];
 
-    _patchKeyedChildren(makeFrame(prev, next, parent, runtime));
+    callPatchKeyed(prev, next, parent, runtime);
 
     expect(calls).toEqual([
       'remove(c)',
@@ -231,7 +237,7 @@ describe('patchKeyedChildren', () => {
   });
 
   it('handles empty -> empty (no ops)', () => {
-    _patchKeyedChildren(makeFrame([], [], parent, runtime));
+    callPatchKeyed([], [], parent, runtime);
     expect(calls).toEqual([]);
     expect(vi.mocked(_pushPatchEnterFrame)).not.toHaveBeenCalled();
     expect(vi.mocked(_pushMountEnterFrame)).not.toHaveBeenCalled();

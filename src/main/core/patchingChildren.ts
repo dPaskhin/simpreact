@@ -1,4 +1,4 @@
-import type { Many } from '../shared/index.js';
+import type { Many, Maybe, Nullable } from '../shared/index.js';
 import {
   type Key,
   SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
@@ -10,34 +10,25 @@ import { _pushHostOperationPlaceElement } from './hostOperations.js';
 import { _pushMountEnterFrame } from './mounting.js';
 import { _pushMountChildrenFrame } from './mountingChildren.js';
 import { _pushPatchEnterFrame } from './patching.js';
-import {
-  PATCH_CHILDREN,
-  PATCH_KEYED_CHILDREN,
-  type PatchChildrenFrame,
-  type PatchChildrenFrameMeta,
-} from './processStack.js';
+import type { SimpRenderRuntime } from './runtime.js';
 import { _pushUnmountEnterFrame } from './unmounting.js';
 import { _pushUnmountChildrenFrame } from './unmountingChildren.js';
 import { _clearElementHostReference, getLongestIncreasingSubsequenceIndexes, isHostLike } from './utils.js';
 
-export function _pushPatchChildrenFrame(parent: SimpElement, meta: PatchChildrenFrameMeta): void {
-  meta.renderRuntime.renderStack.push({
-    node: parent,
-    kind: PATCH_CHILDREN,
-    meta,
-  });
+export interface PatchChildrenArgs {
+  parentReference: unknown;
+  subtreeRightBoundary: Nullable<SimpElement>;
+  context: unknown;
+  hostNamespace: Maybe<string>;
+  renderRuntime: SimpRenderRuntime;
+  nextChildren: Nullable<Many<SimpElement>>;
+  prevChildren: Nullable<Many<SimpElement>>;
+  prevParentChildFlag: number;
+  nextParentChildFlag: number;
+  prevParentElement: SimpElement;
 }
 
-export function _pushPatchKeyedChildrenFrame(element: SimpElement, meta: PatchChildrenFrameMeta): void {
-  meta.renderRuntime.renderStack.push({
-    node: element,
-    kind: PATCH_KEYED_CHILDREN,
-    meta,
-  });
-}
-
-export function _patchChildren(frame: PatchChildrenFrame): void {
-  const parentElement = frame.node;
+export function _patchChildren(parentElement: SimpElement, meta: PatchChildrenArgs): void {
   const {
     renderRuntime,
     parentReference,
@@ -48,9 +39,9 @@ export function _patchChildren(frame: PatchChildrenFrame): void {
     prevParentChildFlag,
     nextParentChildFlag,
     prevParentElement,
-  } = frame.meta;
+  } = meta;
 
-  const subtreeRightBoundary = isHostLike(parentElement.flag) ? null : frame.meta.subtreeRightBoundary;
+  const subtreeRightBoundary = isHostLike(parentElement.flag) ? null : meta.subtreeRightBoundary;
 
   switch (prevParentChildFlag) {
     case SIMP_ELEMENT_CHILD_FLAG_LIST: {
@@ -60,7 +51,7 @@ export function _patchChildren(frame: PatchChildrenFrame): void {
             (child as SimpElement).parent = parentElement;
           }
 
-          _pushPatchKeyedChildrenFrame(parentElement, {
+          _patchKeyedChildren(parentElement, {
             prevChildren,
             nextChildren,
             subtreeRightBoundary,
@@ -77,7 +68,7 @@ export function _patchChildren(frame: PatchChildrenFrame): void {
         }
         case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
           (nextChildren as SimpElement).parent = parentElement;
-          _pushPatchKeyedChildrenFrame(parentElement, {
+          _patchKeyedChildren(parentElement, {
             prevChildren,
             nextChildren,
             subtreeRightBoundary,
@@ -93,12 +84,12 @@ export function _patchChildren(frame: PatchChildrenFrame): void {
           break;
         }
         case SIMP_ELEMENT_CHILD_FLAG_TEXT: {
-          _pushUnmountChildrenFrame(prevParentElement, frame.meta);
+          _pushUnmountChildrenFrame(prevParentElement, meta);
           renderRuntime.hostAdapter.setTextContent(parentReference, parentElement.props?.children);
           break;
         }
         default: {
-          _pushUnmountChildrenFrame(prevParentElement, frame.meta);
+          _pushUnmountChildrenFrame(prevParentElement, meta);
           renderRuntime.hostAdapter.clearNode(parentReference);
         }
       }
@@ -111,7 +102,7 @@ export function _patchChildren(frame: PatchChildrenFrame): void {
             child.parent = parentElement;
           }
 
-          _pushPatchKeyedChildrenFrame(parentElement, {
+          _patchKeyedChildren(parentElement, {
             prevChildren,
             nextChildren,
             subtreeRightBoundary,
@@ -140,13 +131,13 @@ export function _patchChildren(frame: PatchChildrenFrame): void {
           break;
         }
         case SIMP_ELEMENT_CHILD_FLAG_TEXT: {
-          _pushUnmountChildrenFrame(prevParentElement, frame.meta);
+          _pushUnmountChildrenFrame(prevParentElement, meta);
           renderRuntime.hostAdapter.setTextContent(parentReference, parentElement.props?.children);
           break;
         }
         default: {
           _clearElementHostReference(prevChildren as SimpElement, parentReference, renderRuntime);
-          _pushUnmountEnterFrame(prevChildren as SimpElement, frame.meta);
+          _pushUnmountEnterFrame(prevChildren as SimpElement, meta);
         }
       }
       break;
@@ -179,10 +170,10 @@ export function _patchChildren(frame: PatchChildrenFrame): void {
           break;
         }
         case SIMP_ELEMENT_CHILD_FLAG_TEXT: {
-          const prevChildren = prevParentElement.props?.children;
-          const nextChildren = parentElement.props?.children;
-          if (prevChildren !== nextChildren) {
-            renderRuntime.hostAdapter.setTextContent(parentReference, nextChildren as string, true);
+          const prevText = prevParentElement.props?.children;
+          const nextText = parentElement.props?.children;
+          if (prevText !== nextText) {
+            renderRuntime.hostAdapter.setTextContent(parentReference, nextText as string, true);
           }
         }
       }
@@ -222,11 +213,11 @@ export function _patchChildren(frame: PatchChildrenFrame): void {
   }
 }
 
-export function _patchKeyedChildren(frame: PatchChildrenFrame): void {
-  const { parentReference, subtreeRightBoundary, context, hostNamespace, renderRuntime } = frame.meta;
+export function _patchKeyedChildren(parentElement: SimpElement, meta: PatchChildrenArgs): void {
+  const { parentReference, subtreeRightBoundary, context, hostNamespace, renderRuntime } = meta;
 
-  const nextChildren = frame.meta.nextChildren as Many<SimpElement>;
-  const prevChildren = frame.meta.prevChildren as Many<SimpElement>;
+  const nextChildren = meta.nextChildren as Many<SimpElement>;
+  const prevChildren = meta.prevChildren as Many<SimpElement>;
 
   const nextLen = Array.isArray(nextChildren) ? nextChildren.length : 1;
   const prevLen = Array.isArray(prevChildren) ? prevChildren.length : 1;
@@ -301,7 +292,7 @@ export function _patchKeyedChildren(frame: PatchChildrenFrame): void {
       const child = getChild(prevChildren, i);
 
       _clearElementHostReference(child, parentReference, renderRuntime);
-      _pushUnmountEnterFrame(child, frame.meta);
+      _pushUnmountEnterFrame(child, meta);
     }
 
     pushSuffixPatches();
@@ -375,7 +366,7 @@ export function _patchKeyedChildren(frame: PatchChildrenFrame): void {
       const child = getChild(prevChildren, i);
 
       _clearElementHostReference(child, parentReference, renderRuntime);
-      _pushUnmountEnterFrame(child, frame.meta);
+      _pushUnmountEnterFrame(child, meta);
     }
   }
 

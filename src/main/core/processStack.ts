@@ -1,11 +1,10 @@
 import type { Many, Maybe, Nullable } from '@simpreact/shared';
 import type { SimpElement } from './createElement.js';
-import { _mount } from './mounting.js';
+import { _mountEnter, _mountExit } from './mounting.js';
 import { _mountChildren } from './mountingChildren.js';
-import { _patch } from './patching.js';
-import { _patchChildren, _patchKeyedChildren } from './patchingChildren.js';
+import { _patchEnter, _patchExit } from './patching.js';
 import type { SimpRenderRuntime } from './runtime.js';
-import { _unmount } from './unmounting.js';
+import { _unmountEnter, _unmountExit } from './unmounting.js';
 import { _unmountChildren } from './unmountingChildren.js';
 import { placeElementBeforeAnchor, resolveAnchorReference } from './utils.js';
 
@@ -15,9 +14,6 @@ export const MOUNT_CHILDREN_ENTER = 12;
 
 export const PATCH_ENTER = 20;
 export const PATCH_EXIT = 21;
-
-export const PATCH_CHILDREN = 22;
-export const PATCH_KEYED_CHILDREN = 24;
 
 export const UNMOUNT_ENTER = 30;
 export const UNMOUNT_EXIT = 31;
@@ -53,19 +49,6 @@ export interface PatchFrameMeta {
   prevElement: SimpElement;
 }
 
-export interface PatchChildrenFrameMeta {
-  parentReference: unknown;
-  subtreeRightBoundary: Nullable<SimpElement>;
-  context: unknown;
-  hostNamespace: Maybe<string>;
-  renderRuntime: SimpRenderRuntime;
-  nextChildren: Nullable<Many<SimpElement>>;
-  prevChildren: Nullable<Many<SimpElement>>;
-  prevParentChildFlag: number;
-  nextParentChildFlag: number;
-  prevParentElement: SimpElement;
-}
-
 export interface UnmountFrameMeta {
   renderRuntime: SimpRenderRuntime;
 }
@@ -99,12 +82,6 @@ export interface PatchFrame {
   meta: PatchFrameMeta;
 }
 
-export interface PatchChildrenFrame {
-  node: SimpElement;
-  kind: typeof PATCH_CHILDREN | typeof PATCH_KEYED_CHILDREN;
-  meta: PatchChildrenFrameMeta;
-}
-
 export interface UnmountFrame {
   node: SimpElement;
   kind: typeof UNMOUNT_ENTER | typeof UNMOUNT_EXIT;
@@ -133,7 +110,6 @@ export type SimpRenderFrame =
   | MountFrame
   | MountChildrenFrame
   | PatchFrame
-  | PatchChildrenFrame
   | UnmountFrame
   | UnmountChildrenFrame
   | PlaceElementFrame
@@ -149,39 +125,31 @@ export function processStack(renderRuntime: SimpRenderRuntime): void {
 
     switch (frame.kind) {
       case MOUNT_ENTER: {
-        _mount(frame);
+        _mountEnter(frame);
+        break;
+      }
+      case MOUNT_EXIT: {
+        _mountExit(frame);
         break;
       }
       case MOUNT_CHILDREN_ENTER: {
         _mountChildren(frame);
         break;
       }
-      case MOUNT_EXIT: {
-        _mount(frame);
-        break;
-      }
       case PATCH_ENTER: {
-        _patch(frame);
+        _patchEnter(frame);
         break;
       }
       case PATCH_EXIT: {
-        _patch(frame);
-        break;
-      }
-      case PATCH_CHILDREN: {
-        _patchChildren(frame);
-        break;
-      }
-      case PATCH_KEYED_CHILDREN: {
-        _patchKeyedChildren(frame);
+        _patchExit(frame);
         break;
       }
       case UNMOUNT_ENTER: {
-        _unmount(frame);
+        _unmountEnter(frame);
         break;
       }
       case UNMOUNT_EXIT: {
-        _unmount(frame);
+        _unmountExit(frame);
         break;
       }
       case UNMOUNT_CHILDREN_ENTER: {

@@ -1,10 +1,8 @@
-import type { Many, Maybe, Nullable } from '@simpreact/shared';
+import type { Many, Nullable } from '@simpreact/shared';
 import { noop } from '@simpreact/shared';
 import {
   type FC,
   normalizeRoot,
-  SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
-  SIMP_ELEMENT_CHILD_FLAG_EMPTY,
   SIMP_ELEMENT_CHILD_FLAG_LIST,
   SIMP_ELEMENT_FLAG_HOST,
   type SimpElement,
@@ -13,14 +11,15 @@ import { _pushHostOperationReplaceElement } from './hostOperations.js';
 import { getLifecycleEventBus, type LifecycleEvent } from './lifecycleEventBus.js';
 import { isMemo } from './memo.js';
 import { _pushMountEnterFrame } from './mounting.js';
-import { _pushPatchChildrenFrame } from './patchingChildren.js';
+import { _patchChildren } from './patchingChildren.js';
 import { PATCH_ENTER, PATCH_EXIT, type PatchFrame, type PatchFrameMeta, processStack } from './processStack.js';
 import { applyRef } from './ref.js';
 import { type SimpRenderRuntime, UPDATING_PHASE } from './runtime.js';
 import { _pushUnmountEnterFrame } from './unmounting.js';
-import { _clearElementHostReference, bitScanForwardIndex } from './utils.js';
+import { _clearElementHostReference, _detachElementFromParent, bitScanForwardIndex } from './utils.js';
 
-const patchHandlers = [_patchHostElement, _patchFunctionalComponent, _patchTextElement, _patchPortal, _patchFragment];
+const patchEnterHandlers = [_patchHostEnter, _patchFCEnter, _patchTextElement, _patchPortalEnter, _patchFragment];
+const patchExitHandlers = [_patchHostExit, _patchFCExit, noop, _patchPortalExit, noop];
 
 export function patch(
   prevElement: SimpElement,
@@ -28,7 +27,7 @@ export function patch(
   parentReference: unknown,
   subtreeRightBoundary: Nullable<SimpElement>,
   context: unknown,
-  hostNamespace: Maybe<string>,
+  hostNamespace: string | null | undefined,
   renderRuntime: SimpRenderRuntime
 ): void {
   if (renderRuntime.renderStack.length !== 0) {
@@ -63,17 +62,20 @@ export function _pushPatchExitFrame(element: SimpElement, meta: PatchFrameMeta):
   });
 }
 
-export function _patch(frame: PatchFrame): void {
-  const nextElement = frame.node;
+export function _patchEnter(frame: PatchFrame): void {
   const { prevElement } = frame.meta;
 
   // Early return if the elements are different type or have different keys.
-  if (prevElement.type !== nextElement.type || prevElement.key !== nextElement.key) {
+  if (prevElement.type !== frame.node.type || prevElement.key !== frame.node.key) {
     _replaceWithNewElement(frame);
     return;
   }
 
-  patchHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
+  patchEnterHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
+}
+
+export function _patchExit(frame: PatchFrame): void {
+  patchExitHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
 }
 
 function _replaceWithNewElement(frame: PatchFrame): void {
@@ -110,21 +112,9 @@ function _replaceWithNewElement(frame: PatchFrame): void {
   }
 }
 
-function _patchHostElement(frame: PatchFrame): void {
+function _patchHostEnter(frame: PatchFrame): void {
   const nextElement = frame.node;
   const { prevElement, context, hostNamespace, renderRuntime, subtreeRightBoundary, parentReference } = frame.meta;
-
-  if (frame.kind === PATCH_EXIT) {
-    renderRuntime.hostAdapter.patchProps(nextElement.reference, prevElement, nextElement, renderRuntime, hostNamespace);
-
-    if (prevElement.className !== nextElement.className) {
-      renderRuntime.hostAdapter.setClassname(nextElement.reference, nextElement.className, hostNamespace);
-    }
-
-    applyRef(nextElement);
-
-    return;
-  }
 
   nextElement.ref = prevElement.ref;
   nextElement.reference = prevElement.reference;
@@ -139,7 +129,7 @@ function _patchHostElement(frame: PatchFrame): void {
     parentReference,
   });
 
-  _pushPatchChildrenFrame(nextElement, {
+  _patchChildren(nextElement, {
     prevParentElement: prevElement,
     nextChildren: nextElement.children as Nullable<Many<SimpElement>>,
     prevChildren: prevElement.children as Nullable<Many<SimpElement>>,
@@ -153,14 +143,21 @@ function _patchHostElement(frame: PatchFrame): void {
   });
 }
 
-function _patchFunctionalComponent(frame: PatchFrame): void {
-  const { prevElement, context, renderRuntime, hostNamespace, subtreeRightBoundary, parentReference } = frame.meta;
+function _patchHostExit(frame: PatchFrame): void {
+  const nextElement = frame.node;
+  const { prevElement, renderRuntime, hostNamespace } = frame.meta;
 
-  if (frame.kind === PATCH_EXIT) {
-    getLifecycleEventBus(renderRuntime).publish({ type: 'updated', element: frame.node, renderRuntime });
-    return;
+  renderRuntime.hostAdapter.patchProps(nextElement.reference, prevElement, nextElement, renderRuntime, hostNamespace);
+
+  if (prevElement.className !== nextElement.className) {
+    renderRuntime.hostAdapter.setClassname(nextElement.reference, nextElement.className, hostNamespace);
   }
 
+  applyRef(nextElement);
+}
+
+function _patchFCEnter(frame: PatchFrame): void {
+  const { prevElement, context, renderRuntime, hostNamespace, subtreeRightBoundary, parentReference } = frame.meta;
   const jsxElement = frame.node;
 
   if (prevElement.unmounted) {
@@ -239,25 +236,7 @@ function _patchFunctionalComponent(frame: PatchFrame): void {
     normalizeRoot(prevElement, nextChildren, false);
     nextChildren = prevElement.children;
   } catch (error) {
-    const parentChildren = prevElement.parent?.children;
-
-    if (prevElement.parent?.childFlag === SIMP_ELEMENT_CHILD_FLAG_LIST) {
-      const parentChildrenList = parentChildren as SimpElement[];
-      parentChildrenList.splice(prevElement.index, 1);
-
-      if (parentChildrenList.length === 1) {
-        prevElement.parent.children = parentChildrenList[0];
-        prevElement.parent.childFlag = SIMP_ELEMENT_CHILD_FLAG_ELEMENT;
-      } else {
-        for (let i = prevElement.index; i < parentChildrenList.length; i++) {
-          parentChildrenList[i]!.index = i;
-        }
-      }
-    } else if (prevElement.parent) {
-      prevElement.parent.childFlag = SIMP_ELEMENT_CHILD_FLAG_EMPTY;
-      prevElement.parent.children = null;
-    }
-
+    _detachElementFromParent(prevElement);
     _clearElementHostReference(prevElement, parentReference, renderRuntime);
     _pushUnmountEnterFrame(prevElement, frame.meta);
 
@@ -291,7 +270,7 @@ function _patchFunctionalComponent(frame: PatchFrame): void {
     parentReference,
   });
 
-  _pushPatchChildrenFrame(prevElement, {
+  _patchChildren(prevElement, {
     subtreeRightBoundary,
     prevParentChildFlag: prevElementSnapshot.childFlag,
     nextParentChildFlag: prevElement.childFlag,
@@ -302,6 +281,14 @@ function _patchFunctionalComponent(frame: PatchFrame): void {
     parentReference,
     context,
     prevParentElement: prevElementSnapshot,
+  });
+}
+
+function _patchFCExit(frame: PatchFrame): void {
+  getLifecycleEventBus(frame.meta.renderRuntime).publish({
+    type: 'updated',
+    element: frame.node,
+    renderRuntime: frame.meta.renderRuntime,
   });
 }
 
@@ -330,19 +317,13 @@ function _patchTextElement(frame: PatchFrame): void {
   }
 }
 
-function _patchPortal(frame: PatchFrame): void {
+function _patchPortalEnter(frame: PatchFrame): void {
   const nextElement = frame.node;
   const { prevElement, renderRuntime, context, subtreeRightBoundary, hostNamespace, parentReference } = frame.meta;
 
   const prevContainer = prevElement.ref;
   const nextContainer = nextElement.ref;
   const nextChildren = nextElement.children as SimpElement;
-
-  if (frame.kind === PATCH_EXIT) {
-    renderRuntime.hostAdapter.removeChild(prevContainer, nextChildren.reference);
-    renderRuntime.hostAdapter.insertOrAppend(nextContainer, nextChildren.reference, null);
-    return;
-  }
 
   nextElement.reference = prevElement.reference;
 
@@ -357,7 +338,7 @@ function _patchPortal(frame: PatchFrame): void {
     });
   }
 
-  _pushPatchChildrenFrame(nextElement, {
+  _patchChildren(nextElement, {
     prevParentElement: prevElement,
     context,
     parentReference: nextContainer,
@@ -371,11 +352,20 @@ function _patchPortal(frame: PatchFrame): void {
   });
 }
 
+function _patchPortalExit(frame: PatchFrame): void {
+  const nextElement = frame.node;
+  const { prevElement, renderRuntime } = frame.meta;
+  const nextChildren = nextElement.children as SimpElement;
+
+  renderRuntime.hostAdapter.removeChild(prevElement.ref, nextChildren.reference);
+  renderRuntime.hostAdapter.insertOrAppend(nextElement.ref, nextChildren.reference, null);
+}
+
 function _patchFragment(frame: PatchFrame): void {
   const nextElement = frame.node;
   const { prevElement, renderRuntime, context, parentReference, hostNamespace, subtreeRightBoundary } = frame.meta;
 
-  _pushPatchChildrenFrame(nextElement, {
+  _patchChildren(nextElement, {
     subtreeRightBoundary,
     context,
     parentReference,

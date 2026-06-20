@@ -1,14 +1,8 @@
-import {
-  createElement,
-  HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR,
-  MOUNT_ENTER,
-  PATCH_ENTER,
-  PATCH_KEYED_CHILDREN,
-  type PatchChildrenFrameMeta,
-} from '@simpreact/internal';
+import { createElement, HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR, MOUNT_ENTER, PATCH_ENTER } from '@simpreact/internal';
 import { beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
 import { _pushMountEnterFrame } from '../main/core/mounting.js';
 import { _pushPatchEnterFrame } from '../main/core/patching.js';
+import type { PatchChildrenArgs } from '../main/core/patchingChildren.js';
 import { _patchKeyedChildren } from '../main/core/patchingChildren.js';
 import { _clearElementHostReference } from '../main/core/utils.js';
 
@@ -66,7 +60,6 @@ function makeFrame(prevChildren: ReturnType<typeof createElement>[], nextChildre
 
   const frame = {
     node: nextElement,
-    kind: PATCH_KEYED_CHILDREN,
     meta: {
       prevParentChildFlag: prevElement.childFlag,
       nextParentChildFlag: nextElement.childFlag,
@@ -78,7 +71,7 @@ function makeFrame(prevChildren: ReturnType<typeof createElement>[], nextChildre
       hostNamespace,
       renderRuntime,
       context,
-    } as PatchChildrenFrameMeta,
+    } as PatchChildrenArgs,
   } as any;
 
   return { frame, renderRuntime };
@@ -114,7 +107,7 @@ describe('patchKeyedChildren', () => {
       const next = [el('a'), el('b'), el('c')];
       const { frame } = makeFrame(prev, next);
 
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       expect(clearElementHostReferenceSpy).not.toHaveBeenCalled();
       expect(mountSpy).not.toHaveBeenCalled();
@@ -124,7 +117,7 @@ describe('patchKeyedChildren', () => {
 
     it('handles a single-element identical list', () => {
       const { frame } = makeFrame([el('a')], [el('a')]);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
       expect(patchSpy).toHaveBeenCalledTimes(1);
       expect(clearElementHostReferenceSpy).not.toHaveBeenCalled();
       expect(mountSpy).not.toHaveBeenCalled();
@@ -138,7 +131,7 @@ describe('patchKeyedChildren', () => {
   describe('empty lists', () => {
     it('does nothing when both lists are empty', () => {
       const { frame } = makeFrame([], []);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
       expect(clearElementHostReferenceSpy).not.toHaveBeenCalled();
       expect(mountSpy).not.toHaveBeenCalled();
       expect(patchSpy).not.toHaveBeenCalled();
@@ -153,7 +146,7 @@ describe('patchKeyedChildren', () => {
     it('removes all prev nodes when next is empty', () => {
       const prev = [el('a'), el('b'), el('c')];
       const { frame } = makeFrame(prev, []);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       expect(clearElementHostReferenceSpy).toHaveBeenCalledTimes(3);
       expect(removedKeys()).toEqual(expect.arrayContaining(['a', 'b', 'c']));
@@ -167,7 +160,7 @@ describe('patchKeyedChildren', () => {
       const prev = [el('a'), el('b'), el('c'), el('d'), el('e')];
       const next = [el('a'), el('e')];
       const { frame } = makeFrame(prev, next);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       expect(removedKeys()).toEqual(expect.arrayContaining(['b', 'c', 'd']));
       expect(clearElementHostReferenceSpy).toHaveBeenCalledTimes(3);
@@ -179,7 +172,7 @@ describe('patchKeyedChildren', () => {
       const prev = [el('a'), el('b'), el('c')];
       const next = [el('a'), el('b')];
       const { frame } = makeFrame(prev, next);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       expect(removedKeys()).toEqual(['c']);
       expect(patchSpy).toHaveBeenCalledTimes(2);
@@ -194,7 +187,7 @@ describe('patchKeyedChildren', () => {
     it('mounts all next nodes when prev is empty', () => {
       const next = [el('a'), el('b'), el('c')];
       const { frame } = makeFrame([], next);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       expect(mountSpy).toHaveBeenCalledTimes(3);
       expect(mountedKeys()).toEqual(expect.arrayContaining(['a', 'b', 'c']));
@@ -207,7 +200,7 @@ describe('patchKeyedChildren', () => {
       const prev = [el('a'), el('e')];
       const next = [el('a'), el('b'), el('c'), el('d'), el('e')];
       const { frame } = makeFrame(prev, next);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       expect(mountedKeys()).toEqual(expect.arrayContaining(['b', 'c', 'd']));
       expect(mountSpy).toHaveBeenCalledTimes(3);
@@ -219,7 +212,7 @@ describe('patchKeyedChildren', () => {
       const prev = [el('a'), el('b')];
       const next = [el('a'), el('b'), el('c')];
       const { frame } = makeFrame(prev, next);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       expect(mountedKeys()).toEqual(['c']);
       expect(patchSpy).toHaveBeenCalledTimes(2);
@@ -228,7 +221,7 @@ describe('patchKeyedChildren', () => {
     it('mounts nodes with correct subtreeRightBoundary chain (insertion order)', () => {
       const next = [el('a'), el('b'), el('c')];
       const { frame } = makeFrame([], next);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       const calls = mountSpy.mock.calls.map((c: any) => ({
         key: c[0].key,
@@ -253,7 +246,7 @@ describe('patchKeyedChildren', () => {
       const prev = [el('a'), el('b'), el('c'), el('d')];
       const next = [el('a'), el('c'), el('e'), el('d')];
       const { frame } = makeFrame(prev, next);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       expect(removedKeys()).toEqual(['b']);
       expect(mountedKeys()).toEqual(['e']);
@@ -264,7 +257,7 @@ describe('patchKeyedChildren', () => {
       const prev = [el('a'), el('b')];
       const next = [el('a'), el('z'), el('b')];
       const { frame } = makeFrame(prev, next);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       expect(mountedKeys()).toContain('z');
       expect(clearElementHostReferenceSpy).not.toHaveBeenCalled();
@@ -274,7 +267,7 @@ describe('patchKeyedChildren', () => {
       const prev = [el('a'), el('b'), el('c')];
       const next = [el('a'), el('c')];
       const { frame } = makeFrame(prev, next);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       expect(removedKeys()).toContain('b');
       expect(mountSpy).not.toHaveBeenCalled();
@@ -285,7 +278,7 @@ describe('patchKeyedChildren', () => {
       const prev = [el('a'), el('b'), el('c')];
       const next = [el('c'), el('a'), el('b')];
       const { frame, renderRuntime } = makeFrame(prev, next);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       const placedPhases = renderRuntime.renderStack.map((f: any) => f.kind);
       expect(placedPhases).toContain(HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR);
@@ -296,7 +289,7 @@ describe('patchKeyedChildren', () => {
       const prev = [el('a'), el('b'), el('c')];
       const next = [el('a'), el('b'), el('c'), el('d')];
       const { frame, renderRuntime } = makeFrame(prev, next);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       const placedPhases = renderRuntime.renderStack.map((f: any) => f.kind);
       expect(placedPhases).not.toContain(HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR);
@@ -306,7 +299,7 @@ describe('patchKeyedChildren', () => {
       const prev = [el('a'), el('b'), el('c')];
       const next = [el('x'), el('y'), el('z')];
       const { frame } = makeFrame(prev, next);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       expect(removedKeys()).toEqual(expect.arrayContaining(['a', 'b', 'c']));
       expect(mountedKeys()).toEqual(expect.arrayContaining(['x', 'y', 'z']));
@@ -317,7 +310,7 @@ describe('patchKeyedChildren', () => {
       const prev = [el('a'), el('b')];
       const next = [el('b'), el('a')];
       const { frame, renderRuntime } = makeFrame(prev, next);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       expect(clearElementHostReferenceSpy).not.toHaveBeenCalled();
       expect(mountSpy).not.toHaveBeenCalled();
@@ -336,7 +329,7 @@ describe('patchKeyedChildren', () => {
       const prev = [el('x'), el('a'), el('b')];
       const next = [el('a'), el('b')];
       const { frame } = makeFrame(prev, next);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       expect(removedKeys()).toEqual(['x']);
       expect(patchedKeys()).toEqual(expect.arrayContaining(['a', 'b']));
@@ -346,7 +339,7 @@ describe('patchKeyedChildren', () => {
       const prev = [el('a'), el('b'), el('c')];
       const next = [el('a'), el('b')];
       const { frame } = makeFrame(prev, next);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       expect(removedKeys()).toEqual(['c']);
       expect(patchedKeys()).toEqual(expect.arrayContaining(['a', 'b']));
@@ -365,7 +358,7 @@ describe('patchKeyedChildren', () => {
       const nextA = el('a');
       const nextB = el('b');
       const { frame } = makeFrame([prevA, prevB], [nextA, nextB]);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       const calls = patchSpy.mock.calls as any[];
       const prevsByKey = Object.fromEntries(calls.map(c => [c[0].key, c[1].prevElement]));
@@ -375,21 +368,21 @@ describe('patchKeyedChildren', () => {
 
     it('passes PATCH_ENTER as the kind on every patch frame', () => {
       const { frame } = makeFrame([el('a'), el('b')], [el('a'), el('b')]);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       expect(patchSpy.mock.calls.length).toBe(2);
     });
 
     it('passes MOUNT_ENTER as the kind on every mount frame', () => {
       const { frame } = makeFrame([], [el('a'), el('b')]);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       expect(mountSpy.mock.calls.length).toBe(2);
     });
 
     it('propagates parentReference, context, and hostNamespace unchanged', () => {
       const { frame } = makeFrame([el('a')], [el('a')]);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       const meta = (patchSpy.mock.calls[0] as any)[1];
       expect(meta.parentReference).toBe(frame.meta.parentReference);
@@ -418,7 +411,7 @@ describe('patchKeyedChildren', () => {
       const next = [el('e'), tail];
 
       const { frame } = makeFrame(prev, next);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       const mountCall = (mountSpy.mock.calls as any[]).find((c: any) => c[0].key === 'e');
       expect(mountCall).toBeDefined();
@@ -479,7 +472,6 @@ describe('patchKeyedChildren', () => {
 
       const frame = {
         node: nextElement,
-        kind: PATCH_KEYED_CHILDREN,
         meta: {
           prevParentChildFlag: prevElement.childFlag,
           nextParentChildFlag: nextElement.childFlag,
@@ -491,10 +483,10 @@ describe('patchKeyedChildren', () => {
           parentReference: { type: 'parent' } as any,
           renderRuntime,
           hostNamespace: 'html',
-        } as PatchChildrenFrameMeta,
+        } as PatchChildrenArgs,
       } as any;
 
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       // Restore spies to silent mocks so the rest of the suite is unaffected
       mountSpy.mockImplementation(() => {});
@@ -634,7 +626,7 @@ describe('patchKeyedChildren', () => {
       //   MOUNT(x): subtreeRightBoundary=y
       // Push order in spy: z→null, y→z, x→y
       const { frame } = makeFrame([el('a'), el('b'), el('c')], [el('x'), el('y'), el('z')]);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       const calls = (mountSpy.mock.calls as any[]).map((c: any) => ({
         key: c[0].key as string,
@@ -655,7 +647,7 @@ describe('patchKeyedChildren', () => {
   describe('edge cases', () => {
     it('handles a single-element list where that element is replaced', () => {
       const { frame } = makeFrame([el('a')], [el('b')]);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       expect(removedKeys()).toEqual(['a']);
       expect(mountedKeys()).toEqual(['b']);
@@ -668,7 +660,7 @@ describe('patchKeyedChildren', () => {
       const inserted = el('new');
       const next = [...prev.slice(0, 10), inserted, ...prev.slice(10)];
       const { frame } = makeFrame(prev, next);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       expect(mountedKeys()).toContain('new');
       expect(clearElementHostReferenceSpy).not.toHaveBeenCalled();
@@ -680,7 +672,7 @@ describe('patchKeyedChildren', () => {
       const prev = Array.from({ length: N }, (_, i) => el(`k${i}`));
       const next = [...prev.slice(0, 10), ...prev.slice(11)]; // remove k10
       const { frame } = makeFrame(prev, next);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       expect(removedKeys()).toContain('k10');
       expect(mountSpy).not.toHaveBeenCalled();
@@ -691,7 +683,7 @@ describe('patchKeyedChildren', () => {
       const prev = [el('a'), el('b'), el('c'), el('d')];
       const next = [el('d'), el('c'), el('b'), el('a')];
       const { frame, renderRuntime } = makeFrame(prev, next);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       expect(clearElementHostReferenceSpy).not.toHaveBeenCalled();
       expect(mountSpy).not.toHaveBeenCalled();
@@ -702,7 +694,7 @@ describe('patchKeyedChildren', () => {
 
     it('passes placeHolderElement as null on all frames', () => {
       const { frame } = makeFrame([el('a')], [el('a'), el('b')]);
-      _patchKeyedChildren(frame);
+      _patchKeyedChildren(frame.node, frame.meta);
 
       for (const call of [...patchSpy.mock.calls, ...mountSpy.mock.calls] as any[]) {
         expect(call[1].placeHolderElement).toBeNull();

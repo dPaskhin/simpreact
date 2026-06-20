@@ -1,6 +1,7 @@
 import type { Maybe, Nullable } from '@simpreact/shared';
 import {
   SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
+  SIMP_ELEMENT_CHILD_FLAG_EMPTY,
   SIMP_ELEMENT_CHILD_FLAG_LIST,
   SIMP_ELEMENT_FLAG_FC,
   SIMP_ELEMENT_FLAG_FRAGMENT,
@@ -197,6 +198,28 @@ export function getLongestIncreasingSubsequenceIndexes(sequence: Int32Array): In
   }
 
   return indexes;
+}
+
+export function _detachElementFromParent(element: SimpElement): void {
+  const parent = element.parent;
+  if (!parent) return;
+
+  if (parent.childFlag === SIMP_ELEMENT_CHILD_FLAG_LIST) {
+    const list = parent.children as SimpElement[];
+    list.splice(element.index, 1);
+
+    if (list.length === 1) {
+      parent.children = list[0];
+      parent.childFlag = SIMP_ELEMENT_CHILD_FLAG_ELEMENT;
+    } else {
+      for (let i = element.index; i < list.length; i++) {
+        list[i]!.index = i;
+      }
+    }
+  } else {
+    parent.childFlag = SIMP_ELEMENT_CHILD_FLAG_EMPTY;
+    parent.children = null;
+  }
 }
 
 export function _clearElementHostReference(
