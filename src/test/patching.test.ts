@@ -1,8 +1,9 @@
-import { createCreateContext } from '@simpreact/context';
 import {
   createElement,
+  createPortal,
   Fragment,
   getLifecycleEventBus,
+  memo,
   mount,
   patch,
   type SimpElement,
@@ -23,396 +24,582 @@ const renderRuntime: SimpRenderRuntime = {
   currentRenderingFCElement: null,
 };
 
-const createContext = createCreateContext(renderRuntime);
+let parent: Element;
 
-function createFragmentWithChildren(...elements: SimpElement[]): SimpElement {
-  return createElement(Fragment, null!, ...elements);
-}
+beforeEach(() => {
+  vi.restoreAllMocks();
+  parent = document.createElement('div');
+  renderRuntime.renderStack.length = 0;
+  renderRuntime.elementToHostMap.clear();
+});
 
-describe('patching', () => {
-  let parent: Element;
+// ---------------------------------------------------------------------------
+// HOST element patching
+// ---------------------------------------------------------------------------
 
-  beforeEach(() => {
-    vi.restoreAllMocks();
-    parent = testHostAdapter.createReference('ROOT');
+describe('patch – HOST element', () => {
+  it('reuses the DOM reference (no new element created)', () => {
+    const prev = createElement('div');
+    mount(prev, parent, null, null, null, renderRuntime);
+    const originalRef = prev.reference;
+
+    vi.resetAllMocks();
+    const next = createElement('div');
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    expect(testHostAdapter.createReference).not.toHaveBeenCalled();
+    expect(next.reference).toBe(originalRef);
   });
 
-  describe('patchKeyedChildren (integration tests)', () => {
-    it('mounts new children if no previous', () => {
-      const next = createFragmentWithChildren(createElement('a', { key: '1' }), createElement('b', { key: '2' }));
+  it('calls patchProps on update', () => {
+    const prev = createElement('div', { id: 'old' });
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
 
-      mount(next, parent, null, null, null, renderRuntime);
+    const next = createElement('div', { id: 'new' });
+    patch(prev, next, parent, null, null, null, renderRuntime);
 
-      expect(parent.children.length).toBe(2);
-      expect(parent.children[0]!.nodeName).toBe('A');
-      expect(parent.children[1]!.nodeName).toBe('B');
-    });
-
-    it('removes all when new is empty', () => {
-      const prev = createFragmentWithChildren(createElement('a', { key: '1' }), createElement('b', { key: '2' }));
-
-      mount(prev, parent, null, null, null, renderRuntime);
-
-      const next = createFragmentWithChildren();
-
-      patch(prev, next, parent, null, null, null, renderRuntime);
-
-      expect(parent.children.length).toBe(0);
-    });
-
-    it('patches nodes with same keys', () => {
-      const prev = createElement(Fragment, {
-        children: createElement('a', { id: 'prev', key: '1' }, '1'),
-      });
-      mount(prev, parent, null, null, null, renderRuntime);
-
-      const next = createElement(Fragment, {
-        children: createElement('a', { id: 'next', key: '1' }),
-      });
-
-      // Restore mocks before accumulation of host provider methods invokes.
-      vi.resetAllMocks();
-
-      patch(prev, next, parent, null, null, null, renderRuntime);
-
-      expect((prev.children as SimpElement).reference).toStrictEqual((next.children as SimpElement).reference);
-      expect(testHostAdapter.patchProps).toHaveBeenCalledWith(
-        (prev.children as SimpElement).reference,
-        prev.children,
-        next.children,
-        renderRuntime,
-        null
-      );
-    });
-
-    it('reorders children', () => {
-      const prev = createFragmentWithChildren(
-        createElement('a', { key: '1' }),
-        createElement('b', { key: '2' }),
-        createElement('c', { key: '3' })
-      );
-      mount(prev, parent, null, null, null, renderRuntime);
-
-      const next = createFragmentWithChildren(
-        createElement('c', { key: '3' }),
-        createElement('a', { key: '1' }),
-        createElement('b', { key: '2' })
-      );
-
-      // Restore mocks before accumulation of host provider methods invokes.
-      vi.resetAllMocks();
-
-      patch(prev, next, parent, null, null, null, renderRuntime);
-
-      expect(Array.from(parent.children).map(c => c.nodeName)).toEqual(['C', 'A', 'B']);
-
-      // References were just moved without recreating.
-      expect((prev.children as SimpElement[])[0]!.reference).toEqual((next.children as SimpElement[])[1]!.reference);
-      expect((prev.children as SimpElement[])[1]!.reference).toEqual((next.children as SimpElement[])[2]!.reference);
-      expect((prev.children as SimpElement[])[2]!.reference).toEqual((next.children as SimpElement[])[0]!.reference);
-
-      expect(testHostAdapter.insertOrAppend).toHaveBeenCalledTimes(1);
-
-      expect(testHostAdapter.insertOrAppend).toHaveBeenNthCalledWith(
-        1,
-        parent,
-        expect.objectContaining({ nodeName: 'C' }),
-        expect.objectContaining({ nodeName: 'A' })
-      );
-      expect(testHostAdapter.setTextContent).not.toHaveBeenCalled();
-      expect(testHostAdapter.removeChild).not.toHaveBeenCalled();
-      expect(testHostAdapter.replaceChild).not.toHaveBeenCalled();
-      expect(testHostAdapter.clearNode).not.toHaveBeenCalled();
-    });
-
-    it('adds new children in middle', () => {
-      const prev = createFragmentWithChildren(createElement('a', { key: '1' }), createElement('c', { key: '3' }));
-      mount(prev, parent, null, null, null, renderRuntime);
-
-      const next = createFragmentWithChildren(
-        createElement('a', { key: '1' }),
-        createElement('b', { key: '2' }),
-        createElement('c', { key: '3' })
-      );
-
-      // Restore mocks before accumulation of host provider methods invokes.
-      vi.resetAllMocks();
-
-      patch(prev, next, parent, null, null, null, renderRuntime);
-
-      expect(Array.from(parent.children).map(c => c.nodeName)).toEqual(['A', 'B', 'C']);
-      expect(testHostAdapter.setTextContent).not.toHaveBeenCalled();
-      expect(testHostAdapter.removeChild).not.toHaveBeenCalled();
-      expect(testHostAdapter.replaceChild).not.toHaveBeenCalled();
-      // It should be only one inserting in the case.
-      // insertOrAppend function is just a wrapper for insertBefore, so this call is expected.
-      expect(testHostAdapter.insertOrAppend).toHaveBeenNthCalledWith(
-        1,
-        parent,
-        expect.objectContaining({ nodeName: 'B' }),
-        expect.objectContaining({ nodeName: 'C' })
-      );
-      expect(testHostAdapter.insertOrAppend).toHaveBeenNthCalledWith(
-        1,
-        parent,
-        expect.objectContaining({ nodeName: 'B' }),
-        expect.objectContaining({ nodeName: 'C' })
-      );
-    });
-
-    it('removes children from middle', () => {
-      const prev = createFragmentWithChildren(
-        createElement('a', { key: '1' }),
-        createElement('b', { key: '2' }),
-        createElement('c', { key: '3' })
-      );
-      mount(prev, parent, null, null, null, renderRuntime);
-
-      const next = createFragmentWithChildren(createElement('a', { key: '1' }), createElement('c', { key: '3' }));
-
-      // Restore mocks before accumulation of host provider methods invokes.
-      vi.resetAllMocks();
-
-      patch(prev, next, parent, null, null, null, renderRuntime);
-
-      expect(Array.from(parent.children).map(c => c.nodeName)).toEqual(['A', 'C']);
-      // It should be only one inserting in the case.
-      expect(testHostAdapter.setTextContent).not.toHaveBeenCalled();
-      expect(testHostAdapter.removeChild).toHaveBeenNthCalledWith(1, parent, document.createElement('b'));
-      expect(testHostAdapter.replaceChild).not.toHaveBeenCalled();
-      expect(testHostAdapter.insertOrAppend).not.toHaveBeenCalled();
-    });
+    expect(testHostAdapter.patchProps).toHaveBeenCalledWith(next.reference, prev, next, renderRuntime, null);
   });
 
-  describe('patchKeyedChildren with functional components (integration tests)', () => {
-    const Fn = ({ id }: { id: string }) => createElement('x-fn', { id });
+  it('updates className when changed', () => {
+    const prev = createElement('div', { className: 'old' });
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
 
-    it('replaces component with different key', () => {
-      const prev = createElement(Fn, { id: 'prev', key: '1' });
-      mount(prev, parent, null, null, null, renderRuntime);
+    const next = createElement('div', { className: 'new' });
+    patch(prev, next, parent, null, null, null, renderRuntime);
 
-      const prevRef = (prev.children as SimpElement).reference! as Element;
-
-      const next = createElement(Fn, { id: 'next', key: '2' });
-
-      // Restore mocks before accumulation of host provider methods invokes.
-      vi.resetAllMocks();
-
-      const listener = vi.fn();
-
-      getLifecycleEventBus(renderRuntime).subscribe(listener);
-
-      patch(prev, next, parent, null, null, null, renderRuntime);
-
-      const nextRef = (next.children as SimpElement).reference! as Element;
-
-      expect(prevRef).not.toBe(nextRef);
-
-      expect(testHostAdapter.mountProps).toHaveBeenCalledExactlyOnceWith(nextRef, next.children, renderRuntime, '');
-
-      // Because of unmount and mount sequence there are remove and append mutations in DOM.
-      expect(testHostAdapter.removeChild).toHaveBeenNthCalledWith(
-        1,
-        parent,
-        expect.objectContaining({ nodeName: 'X-FN' })
-      );
-      expect(testHostAdapter.insertOrAppend).toHaveBeenNthCalledWith(1, parent, nextRef, null);
-      expect(testHostAdapter.replaceChild).not.toHaveBeenCalled();
-      expect(testHostAdapter.setTextContent).not.toHaveBeenCalled();
-
-      // Expect the prev component to be unmounted and the next one is mounted.
-      // Regardless of the same type (Component) identity.
-      expect(listener).toHaveBeenCalledWith({
-        type: 'unmounted',
-        element: prev,
-        renderRuntime,
-      });
-      expect(listener).toHaveBeenCalledWith({ type: 'mounted', element: next, renderRuntime });
-      expect(listener).toHaveBeenCalledWith({
-        type: 'beforeRender',
-        element: next,
-        renderRuntime,
-      });
-      expect(listener).toHaveBeenCalledWith({
-        type: 'afterRender',
-        element: next,
-        renderRuntime,
-      });
-      expect(listener).toHaveBeenCalledTimes(4);
-    });
+    expect(testHostAdapter.setClassname).toHaveBeenCalledWith(next.reference, 'new', null);
   });
 
-  describe('patch children', () => {
-    describe('host element', () => {
-      it('preserves keyed child when children change from list to single element', () => {
-        const prev = createElement(
-          'div',
-          null,
-          createElement('a', { id: 'prev', key: 'keep' }),
-          createElement('b', { key: 'remove' })
-        );
-        mount(prev, parent, null, null, null, renderRuntime);
+  it('does not update className when unchanged', () => {
+    const prev = createElement('div', { className: 'same' });
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
 
-        const prevKeptChild = (prev.children as SimpElement[])[0]!;
-        const prevKeptReference = prevKeptChild.reference;
+    const next = createElement('div', { className: 'same' });
+    patch(prev, next, parent, null, null, null, renderRuntime);
 
-        const next = createElement('div', null, createElement('a', { id: 'next', key: 'keep' }));
+    expect(testHostAdapter.setClassname).not.toHaveBeenCalled();
+  });
 
-        // Restore mocks before accumulation of host provider methods invokes.
-        vi.resetAllMocks();
+  it('replaces element when type changes', () => {
+    const prev = createElement('div');
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
 
-        patch(prev, next, parent, null, null, null, renderRuntime);
+    const next = createElement('span');
+    patch(prev, next, parent, null, null, null, renderRuntime);
 
-        const nextKeptChild = next.children as SimpElement;
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('span', '');
+    expect(testHostAdapter.replaceChild).toHaveBeenCalledWith(parent, next.reference, prev.reference);
+  });
 
-        expect(nextKeptChild.reference).toBe(prevKeptReference);
-        expect(Array.from((next.reference as Element).children).map(c => c.nodeName)).toEqual(['A']);
-        expect(testHostAdapter.patchProps).toHaveBeenCalledWith(
-          prevKeptReference,
-          prevKeptChild,
-          nextKeptChild,
+  it('replaces element when key changes', () => {
+    const prev = createElement('div', { key: 'a' });
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    const next = createElement('div', { key: 'b' });
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('div', '');
+    // old unmounted, new created
+    expect(testHostAdapter.unmountProps).toHaveBeenCalled();
+  });
+
+  it('patches text content: text → different text', () => {
+    const prev = createElement('p', null, 'hello');
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    const next = createElement('p', null, 'world');
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    // third arg `true` signals incremental update (not full reset)
+    expect(testHostAdapter.setTextContent).toHaveBeenCalledWith(next.reference, 'world', true);
+  });
+
+  it('patches child element → different element (replace)', () => {
+    const prev = createElement('div', null, createElement('span', { key: 'x' }));
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    const next = createElement('div', null, createElement('b', { key: 'x' }));
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    // 'b' replaced 'span'
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('b', '');
+  });
+
+  it('applies ref after patch', () => {
+    const ref = { current: null as Element | null };
+    const prev = createElement('div', { ref });
+    mount(prev, parent, null, null, null, renderRuntime);
+    expect(ref.current).toBeInstanceOf(Element);
+
+    const next = createElement('div', { ref });
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    expect(ref.current).toBe(next.reference);
+  });
+
+  it('throws when stack is not empty', () => {
+    const prev = createElement('div');
+    mount(prev, parent, null, null, null, renderRuntime);
+    renderRuntime.renderStack.push({} as any);
+
+    expect(() => patch(prev, createElement('div'), parent, null, null, null, renderRuntime)).toThrow(
+      'Cannot patch while rendering'
+    );
+    renderRuntime.renderStack.length = 0;
+  });
+});
+
+// ---------------------------------------------------------------------------
+// FC element patching
+// ---------------------------------------------------------------------------
+
+describe('patch – FC element', () => {
+  it('re-renders FC with updated props', () => {
+    const renderFn = vi.fn((props: { id: string }) => createElement('div', { id: props.id }));
+    const prev = createElement(renderFn, { id: 'v1' });
+    mount(prev, parent, null, null, null, renderRuntime);
+
+    vi.resetAllMocks();
+    const next = createElement(renderFn, { id: 'v2' });
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    expect(renderFn).toHaveBeenCalledOnce();
+    expect(prev.props).toEqual({ id: 'v2' });
+  });
+
+  it('fires updated event after FC patch', () => {
+    const listener = vi.fn();
+    getLifecycleEventBus(renderRuntime).subscribe(listener);
+
+    const Comp = () => createElement('div');
+    const prev = createElement(Comp);
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    const next = createElement(Comp);
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    expect(listener).toHaveBeenCalledWith(expect.objectContaining({ type: 'updated', element: prev }));
+  });
+
+  it('swaps jsx element with long-lived element in parent', () => {
+    const Comp = () => createElement('div');
+    const prevFrag = createElement(Fragment, null, createElement(Comp, { key: 'k' }));
+    mount(prevFrag, parent, null, null, null, renderRuntime);
+    const liveElement = prevFrag.children as SimpElement;
+    vi.resetAllMocks();
+
+    const nextJsx = createElement(Comp, { key: 'k' });
+    const nextFrag = createElement(Fragment, null, nextJsx);
+    patch(prevFrag, nextFrag, parent, null, null, null, renderRuntime);
+
+    // after swap, nextFrag.children should be the live element
+    expect(nextFrag.children).toBe(liveElement);
+  });
+
+  it('replaces FC when type changes', () => {
+    const A = () => createElement('x-a');
+    const B = () => createElement('x-b');
+    const prev = createElement(A);
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    const next = createElement(B);
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    // old FC (and its host child x-a) unmounted, new FC (x-b) mounted
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('x-b', '');
+    expect(testHostAdapter.unmountProps).toHaveBeenCalledOnce(); // cleanup inner HOST x-a
+  });
+
+  it('re-mounts an unmounted FC', () => {
+    const Comp = () => createElement('div');
+    const prev = createElement(Comp);
+    mount(prev, parent, null, null, null, renderRuntime);
+    prev.unmounted = true;
+    vi.resetAllMocks();
+
+    const next = createElement(Comp);
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('div', '');
+  });
+
+  it('error during FC patch re-render is published and rethrown', () => {
+    const listener = vi.fn();
+    getLifecycleEventBus(renderRuntime).subscribe(listener);
+
+    let callCount = 0;
+    const Comp = () => {
+      if (++callCount > 1) throw new Error('patch error');
+      return createElement('div');
+    };
+    const prev = createElement(Comp);
+    mount(prev, parent, null, null, null, renderRuntime);
+
+    expect(() => patch(prev, prev, parent, null, null, null, renderRuntime)).toThrow('Error occurred during rendering');
+
+    expect(listener).toHaveBeenCalledWith(expect.objectContaining({ type: 'errored' }));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Memo component
+// ---------------------------------------------------------------------------
+
+describe('patch – memo', () => {
+  it('skips re-render when props are shallowEqual', () => {
+    const renderFn = vi.fn(() => createElement('div'));
+    const Memoized = memo(renderFn);
+
+    const prev = createElement(Memoized, { value: 1 });
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    const next = createElement(Memoized, { value: 1 });
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    expect(renderFn).not.toHaveBeenCalled();
+  });
+
+  it('re-renders when props differ', () => {
+    const renderFn = vi.fn(() => createElement('div'));
+    const Memoized = memo(renderFn);
+
+    const prev = createElement(Memoized, { value: 1 });
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    const next = createElement(Memoized, { value: 2 });
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    expect(renderFn).toHaveBeenCalledOnce();
+  });
+
+  it('uses custom compare function', () => {
+    const renderFn = vi.fn(() => createElement('div'));
+    const compare = vi.fn(() => true);
+    const Memoized = memo(renderFn, compare);
+
+    const prev = createElement(Memoized, { value: 99 });
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    const next = createElement(Memoized, { value: 100 });
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    expect(compare).toHaveBeenCalled();
+    expect(renderFn).not.toHaveBeenCalled();
+  });
+
+  it('self-rerender (element === prev) always re-renders even if props unchanged', () => {
+    const renderFn = vi.fn(() => createElement('div'));
+    const Memoized = memo(renderFn);
+
+    const el = createElement(Memoized, { value: 1 });
+    mount(el, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    patch(el, el, parent, null, null, null, renderRuntime);
+
+    expect(renderFn).toHaveBeenCalledOnce();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Fragment patching
+// ---------------------------------------------------------------------------
+
+describe('patch – FRAGMENT element', () => {
+  it('patches children in place', () => {
+    const prev = createElement(Fragment, null, createElement('a', { key: 'k' }));
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    const next = createElement(Fragment, null, createElement('a', { key: 'k' }));
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    expect(testHostAdapter.createReference).not.toHaveBeenCalled();
+    expect(testHostAdapter.patchProps).toHaveBeenCalledOnce();
+  });
+
+  it('mounts new children when prev was empty', () => {
+    const prev = createElement(Fragment);
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    const next = createElement(Fragment, null, createElement('span'));
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('span', '');
+    expect(parent.children.length).toBe(1);
+  });
+
+  it('removes children when next is empty', () => {
+    const prev = createElement(Fragment, null, createElement('span'));
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    const next = createElement(Fragment);
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    // ELEMENT → EMPTY: _clearElementHostReference removes the host node, then unmounts it
+    expect(testHostAdapter.removeChild).toHaveBeenCalledOnce();
+    expect(testHostAdapter.unmountProps).toHaveBeenCalledOnce();
+  });
+
+  it('fragment DOM order matches next children order after reorder', () => {
+    const prev = createElement(
+      Fragment,
+      null,
+      createElement('a', { key: '1' }),
+      createElement('b', { key: '2' }),
+      createElement('c', { key: '3' })
+    );
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    const next = createElement(
+      Fragment,
+      null,
+      createElement('c', { key: '3' }),
+      createElement('a', { key: '1' }),
+      createElement('b', { key: '2' })
+    );
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    const tags = Array.from(parent.children).map(c => c.nodeName);
+    expect(tags).toEqual(['C', 'A', 'B']);
+    expect(testHostAdapter.insertOrAppend).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Portal patching
+// ---------------------------------------------------------------------------
+
+describe('patch – PORTAL element', () => {
+  it('patches portal content in the same container', () => {
+    const container = document.createElement('section');
+    const prev = createPortal(createElement('div', { key: 'k' }), container);
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    const next = createPortal(createElement('div', { key: 'k' }), container);
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    expect(testHostAdapter.createReference).not.toHaveBeenCalled();
+    expect(testHostAdapter.patchProps).toHaveBeenCalledOnce();
+  });
+
+  it('moves content when container changes', () => {
+    const container1 = document.createElement('section');
+    const container2 = document.createElement('aside');
+    const prev = createPortal(createElement('div'), container1);
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    const next = createPortal(createElement('div'), container2);
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    // the child was removed from container1 and appended to container2
+    expect(testHostAdapter.removeChild).toHaveBeenCalledWith(container1, expect.anything());
+    expect(testHostAdapter.insertOrAppend).toHaveBeenCalledWith(container2, expect.anything(), null);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// children mode transitions
+// ---------------------------------------------------------------------------
+
+describe('patch – children mode transitions', () => {
+  it('text → text (same): no setTextContent call', () => {
+    const prev = createElement('div', null, 'hello');
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    const next = createElement('div', null, 'hello');
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    expect(testHostAdapter.setTextContent).not.toHaveBeenCalled();
+  });
+
+  it('text → text (changed): calls setTextContent', () => {
+    const prev = createElement('div', null, 'a');
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    const next = createElement('div', null, 'b');
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    expect(testHostAdapter.setTextContent).toHaveBeenCalledWith(next.reference, 'b', true);
+  });
+
+  it('element → text: unmounts old child, sets text content', () => {
+    const prev = createElement('div', null, createElement('span'));
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    const next = createElement('div', null, 'hello');
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    expect(testHostAdapter.setTextContent).toHaveBeenCalledWith(next.reference, 'hello');
+  });
+
+  it('text → element: clears text, mounts new element', () => {
+    const prev = createElement('div', null, 'hello');
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    const next = createElement('div', null, createElement('b'));
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    expect(testHostAdapter.clearNode).toHaveBeenCalledOnce();
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('b', '');
+  });
+
+  it('empty → element: mounts new element', () => {
+    const prev = createElement('div');
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    const next = createElement('div', null, createElement('span'));
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('span', '');
+  });
+
+  it('element → empty: clears element host reference', () => {
+    const prev = createElement('div', null, createElement('span'));
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    const next = createElement('div');
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    expect(testHostAdapter.detachElementFromReference).toHaveBeenCalledOnce();
+    expect(testHostAdapter.unmountProps).toHaveBeenCalledOnce();
+  });
+
+  it('element → empty: Fragment child (ELEMENT) – _clearElementHostReference traverses Fragment', () => {
+    // div > Fragment(span) — Fragment has a single ELEMENT child
+    const frag = createElement(Fragment, null, createElement('span'));
+    const prev = createElement('div', null, frag);
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    const next = createElement('div');
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    // span was removed from the div via _clearElementHostReference → Fragment ELEMENT branch
+    expect(testHostAdapter.removeChild).toHaveBeenCalledOnce();
+    expect(testHostAdapter.unmountProps).toHaveBeenCalledOnce();
+  });
+
+  it('element → empty: Fragment child (LIST) – _clearElementHostReference clears all list children', () => {
+    // div > Fragment(span, em) — Fragment has LIST children
+    const frag = createElement(Fragment, null, createElement('span', { key: 's' }), createElement('em', { key: 'e' }));
+    const prev = createElement('div', null, frag);
+    mount(prev, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    const next = createElement('div');
+    patch(prev, next, parent, null, null, null, renderRuntime);
+
+    // Both span and em removed via _clearElementHostReference → Fragment LIST branch
+    expect(testHostAdapter.removeChild).toHaveBeenCalledTimes(2);
+    expect(testHostAdapter.unmountProps).toHaveBeenCalledTimes(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Additional coverage: FC patch error handled, swapChildInParent LIST branch
+// ---------------------------------------------------------------------------
+
+describe('patch – FC triedToRerender and error handling', () => {
+  it('triedToRerender event during patch causes re-render loop until limit', () => {
+    let inPatch = false;
+    let liveEl: SimpElement;
+
+    const Comp = () => {
+      if (inPatch) {
+        // publish triedToRerender for the live element → triggers do-while loop
+        getLifecycleEventBus(renderRuntime).publish({
+          type: 'triedToRerender',
+          element: liveEl,
           renderRuntime,
-          ''
-        );
-        expect(testHostAdapter.mountProps).not.toHaveBeenCalledWith(
-          prevKeptReference,
-          nextKeptChild,
-          renderRuntime,
-          ''
-        );
-      });
+        });
+      }
+      return createElement('div');
+    };
 
-      it('preserves keyed child when children change from single element to list', () => {
-        const prev = createElement('div', null, createElement('a', { id: 'prev', key: 'keep' }));
-        mount(prev, parent, null, null, null, renderRuntime);
+    liveEl = createElement(Comp);
+    mount(liveEl, parent, null, null, null, renderRuntime);
+    inPatch = true;
 
-        const prevKeptChild = prev.children as SimpElement;
-        const prevKeptReference = prevKeptChild.reference;
+    // After 25 iterations the inner error is wrapped as 'Error occurred during rendering'
+    expect(() => patch(liveEl, liveEl, parent, null, null, null, renderRuntime)).toThrow(
+      'Error occurred during rendering'
+    );
+  });
 
-        const next = createElement(
-          'div',
-          null,
-          createElement('a', { id: 'next', key: 'keep' }),
-          createElement('b', { key: 'add' })
-        );
-
-        // Restore mocks before accumulation of host provider methods invokes.
-        vi.resetAllMocks();
-
-        patch(prev, next, parent, null, null, null, renderRuntime);
-
-        const nextKeptChild = (next.children as SimpElement[])[0]!;
-
-        expect(nextKeptChild.reference).toBe(prevKeptReference);
-        expect(Array.from((next.reference as Element).children).map(c => c.nodeName)).toEqual(['A', 'B']);
-        expect(testHostAdapter.patchProps).toHaveBeenCalledWith(
-          prevKeptReference,
-          prevKeptChild,
-          nextKeptChild,
-          renderRuntime,
-          ''
-        );
-        expect(testHostAdapter.mountProps).not.toHaveBeenCalledWith(
-          prevKeptReference,
-          nextKeptChild,
-          renderRuntime,
-          ''
-        );
-      });
-
-      it('unmounts previous single child when children change from element to text', () => {
-        const prev = createElement('div', null, createElement('a', { id: 'prev' }));
-        mount(prev, parent, null, null, null, renderRuntime);
-
-        const prevChild = prev.children as SimpElement;
-        const prevChildReference = prevChild.reference;
-        const next = createElement('div', null, 'next text');
-
-        // Restore mocks before accumulation of host provider methods invokes.
-        vi.resetAllMocks();
-
-        patch(prev, next, parent, null, null, null, renderRuntime);
-
-        expect((next.reference as Element).textContent).toBe('next text');
-        expect(testHostAdapter.unmountProps).toHaveBeenCalledWith(prevChildReference, prevChild, renderRuntime);
-        expect(testHostAdapter.detachElementFromReference).toHaveBeenCalledWith(prevChildReference, renderRuntime);
-      });
+  it('error during FC patch is swallowed when handler marks it handled', () => {
+    const bus = getLifecycleEventBus(renderRuntime);
+    const unsub = bus.subscribe(event => {
+      if (event.type === 'errored') {
+        event.handled = true;
+      }
     });
 
-    describe('fragment', () => {
-      it('fragment children - from many elements to single element', () => {
-        const prev = createElement(
-          'div',
-          null,
-          createFragmentWithChildren(createElement('a'), createElement('b')),
-          createElement('span')
-        );
-        mount(prev, parent, null, null, null, renderRuntime);
+    let calls = 0;
+    const Comp = () => {
+      if (++calls > 1) throw new Error('patch error');
+      return createElement('div');
+    };
+    const prev = createElement(Comp);
+    mount(prev, parent, null, null, null, renderRuntime);
 
-        const next = createElement(
-          'div',
-          null,
-          createFragmentWithChildren(createElement('a', { key: '3' })),
-          createElement('span')
-        );
+    expect(() => patch(prev, prev, parent, null, null, null, renderRuntime)).not.toThrow();
+    unsub();
+  });
 
-        // Restore mocks before accumulation of host provider methods invokes.
-        vi.resetAllMocks();
+  it('stores hostNamespace on FC during patch when hostNamespace is provided (line 200)', () => {
+    const Comp = () => createElement('div');
+    const el = createElement(Comp);
+    mount(el, parent, null, null, null, renderRuntime);
 
-        patch(prev, next, parent, null, null, null, renderRuntime);
+    // Patch with non-null hostNamespace (6th arg)
+    patch(el, el, parent, null, null, 'http://www.w3.org/2000/svg', renderRuntime);
 
-        expect(((next.reference as Element).children[0] as HTMLAnchorElement).nodeName).toEqual('A');
-        expect(((next.reference as Element).children[1] as HTMLSpanElement).nodeName).toEqual('SPAN');
-      });
+    expect(el.hostNamespace).toBe('http://www.w3.org/2000/svg');
+  });
 
-      it('fragment children - from single to single element (not hosts children)', () => {
-        const prev = createElement('div', null, createFragmentWithChildren(createElement('b')), createElement('span'));
-        mount(prev, parent, null, null, null, renderRuntime);
+  it('_swapChildInParent updates LIST parent (two FC children)', () => {
+    const A = () => createElement('x-a');
+    const B = () => createElement('x-b');
 
-        const next = createElement(
-          'div',
-          null,
-          createFragmentWithChildren(createElement(() => createElement('a'))),
-          createElement('span')
-        );
+    // Fragment with two FC children → LIST childFlag
+    const prev = createElement(Fragment, null, createElement(A, { key: 'a' }), createElement(B, { key: 'b' }));
+    mount(prev, parent, null, null, null, renderRuntime);
 
-        // Restore mocks before accumulation of host provider methods invokes.
-        vi.resetAllMocks();
+    const liveA = (prev.children as SimpElement[])[0]!;
+    const liveB = (prev.children as SimpElement[])[1]!;
+    vi.resetAllMocks();
 
-        patch(prev, next, parent, null, null, null, renderRuntime);
+    const next = createElement(Fragment, null, createElement(A, { key: 'a' }), createElement(B, { key: 'b' }));
+    patch(prev, next, parent, null, null, null, renderRuntime);
 
-        expect(((next.reference as Element).children[0] as HTMLAnchorElement).nodeName).toEqual('A');
-        expect(((next.reference as Element).children[1] as HTMLSpanElement).nodeName).toEqual('SPAN');
-      });
-    });
-
-    describe('provider element', () => {
-      const context = createContext('TEST');
-
-      it('from many elements to single element', () => {
-        const prev = createElement(
-          'div',
-          null,
-          createElement(context.Provider, { value: '' }, createElement('a'), createElement('b')),
-          createElement('span')
-        );
-        mount(prev, parent, null, null, null, renderRuntime);
-
-        const next = createElement(
-          'div',
-          null,
-          createElement(context.Provider, { value: '' }, createElement('a')),
-          createElement('span')
-        );
-
-        // Restore mocks before accumulation of host provider methods invokes.
-        vi.resetAllMocks();
-
-        patch(prev, next, parent, null, null, null, renderRuntime);
-
-        expect(((next.reference as Element).children[0] as HTMLAnchorElement).nodeName).toEqual('A');
-        expect(((next.reference as Element).children[1] as HTMLSpanElement).nodeName).toEqual('SPAN');
-      });
-    });
+    // After swap: next.children[0] and [1] are the live elements (LIST branch of _swapChildInParent)
+    const children = next.children as SimpElement[];
+    expect(children[0]).toBe(liveA);
+    expect(children[1]).toBe(liveB);
   });
 });

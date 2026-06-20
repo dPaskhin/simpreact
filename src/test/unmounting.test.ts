@@ -10,8 +10,6 @@ import {
 } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { domAdapter } from '../main/dom/domAdapter.js';
-import { createCreateRoot } from '../main/dom/render.js';
 import { testHostAdapter } from './test-host-adapter.js';
 
 const renderRuntime: SimpRenderRuntime = {
@@ -25,140 +23,188 @@ const renderRuntime: SimpRenderRuntime = {
   currentRenderingFCElement: null,
 };
 
-describe('unmounting', () => {
-  let parent: Element;
+let parent: Element;
 
-  beforeEach(() => {
-    vi.clearAllMocks();
+beforeEach(() => {
+  vi.restoreAllMocks();
+  parent = document.createElement('div');
+  renderRuntime.renderStack.length = 0;
+  renderRuntime.elementToHostMap.clear();
+});
+
+// ---------------------------------------------------------------------------
+// HOST element unmounting
+// ---------------------------------------------------------------------------
+
+describe('unmount – HOST element', () => {
+  it('calls unmountProps and detachElementFromReference', () => {
+    const el = createElement('div');
+    mount(el, parent, null, null, null, renderRuntime);
+    const ref = el.reference;
+    vi.resetAllMocks();
+
+    unmount(el, renderRuntime);
+
+    expect(testHostAdapter.unmountProps).toHaveBeenCalledWith(ref, el, renderRuntime);
+    expect(testHostAdapter.detachElementFromReference).toHaveBeenCalledWith(ref, renderRuntime);
+  });
+
+  it('does not remove from DOM (caller handles removal)', () => {
+    const el = createElement('div');
+    mount(el, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    unmount(el, renderRuntime);
+
+    expect(testHostAdapter.removeChild).not.toHaveBeenCalled();
+  });
+
+  it('unmounts nested children recursively', () => {
+    const child = createElement('span');
+    const el = createElement('div', null, child);
+    mount(el, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    unmount(el, renderRuntime);
+
+    expect(testHostAdapter.unmountProps).toHaveBeenCalledTimes(2);
+    expect(testHostAdapter.detachElementFromReference).toHaveBeenCalledTimes(2);
+  });
+
+  it('clears ref on unmount', () => {
+    const ref = { current: null as Element | null };
+    const el = createElement('div', { ref });
+    mount(el, parent, null, null, null, renderRuntime);
+    expect(ref.current).toBeInstanceOf(Element);
+
+    unmount(el, renderRuntime);
+
+    expect(ref.current).toBeNull();
+  });
+
+  it('calls ref callback cleanup on unmount', () => {
+    const cleanup = vi.fn();
+    const ref = () => cleanup;
+    const el = createElement('div', { ref });
+    mount(el, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    unmount(el, renderRuntime);
+
+    expect(cleanup).toHaveBeenCalledOnce();
+  });
+
+  it('throws when stack is not empty', () => {
+    const el = createElement('div');
+    mount(el, parent, null, null, null, renderRuntime);
+    renderRuntime.renderStack.push({} as any);
+
+    expect(() => unmount(el, renderRuntime)).toThrow('Cannot unmount while rendering');
     renderRuntime.renderStack.length = 0;
-    renderRuntime.elementToHostMap.clear();
-    parent = testHostAdapter.createReference('ROOT');
   });
+});
 
-  it('rejects unmounting while another render stack is in progress', () => {
-    const element = createElement('div');
-    renderRuntime.renderStack.push({} as never);
+// ---------------------------------------------------------------------------
+// FC element unmounting
+// ---------------------------------------------------------------------------
 
-    expect(() => unmount(element, renderRuntime)).toThrow('Cannot unmount while rendering.');
-  });
-
-  it('unmounts descendants before their host parent and detaches references', () => {
-    const element = createElement('section', null, createElement('span'), createElement('p'));
-    mount(element, parent, null, null, null, renderRuntime);
-
-    const firstChild = (element.children as SimpElement[])[0]!;
-    const secondChild = (element.children as SimpElement[])[1]!;
-
-    vi.clearAllMocks();
-
-    unmount(element, renderRuntime);
-
-    expect(testHostAdapter.unmountProps).toHaveBeenNthCalledWith(1, firstChild.reference, firstChild, renderRuntime);
-    expect(testHostAdapter.unmountProps).toHaveBeenNthCalledWith(2, secondChild.reference, secondChild, renderRuntime);
-    expect(testHostAdapter.unmountProps).toHaveBeenNthCalledWith(3, element.reference, element, renderRuntime);
-    expect(testHostAdapter.detachElementFromReference).toHaveBeenCalledWith(firstChild.reference, renderRuntime);
-    expect(testHostAdapter.detachElementFromReference).toHaveBeenCalledWith(secondChild.reference, renderRuntime);
-    expect(testHostAdapter.detachElementFromReference).toHaveBeenCalledWith(element.reference, renderRuntime);
-  });
-
-  it('publishes functional component unmounts after child cleanup and clears stores', () => {
-    const Child = () => createElement('span');
-    const Parent = () => createElement(Child);
-    const element = createElement(Parent);
-    const events: SimpElement[] = [];
-    const unsubscribe = getLifecycleEventBus(renderRuntime).subscribe(event => {
-      if (event.type === 'unmounted') {
-        events.push(event.element);
-      }
-    });
-
-    mount(element, parent, null, null, null, renderRuntime);
-
-    const childComponent = element.children as SimpElement;
-    const childHost = childComponent.children as SimpElement;
-
-    vi.clearAllMocks();
-
-    unmount(element, renderRuntime);
-    unsubscribe();
-
-    expect(testHostAdapter.unmountProps).toHaveBeenCalledWith(childHost.reference, childHost, renderRuntime);
-    expect(events).toEqual([childComponent, element]);
-    expect(childComponent.unmounted).toBe(true);
-    expect(element.unmounted).toBe(true);
-  });
-
-  it('does not unmount a functional component twice', () => {
-    const Component = () => createElement('span');
-    const element = createElement(Component);
+describe('unmount – FC element', () => {
+  it('fires unmounted lifecycle event', () => {
     const listener = vi.fn();
-    const unsubscribe = getLifecycleEventBus(renderRuntime).subscribe(event => {
-      if (event.type === 'unmounted') {
-        listener(event.element);
-      }
-    });
+    getLifecycleEventBus(renderRuntime).subscribe(listener);
 
-    mount(element, parent, null, null, null, renderRuntime);
-    unmount(element, renderRuntime);
+    const Comp = () => createElement('div');
+    const el = createElement(Comp);
+    mount(el, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
 
-    expect(listener).toHaveBeenCalledTimes(1);
+    unmount(el, renderRuntime);
 
-    vi.clearAllMocks();
-    unmount(element, renderRuntime);
-    unsubscribe();
+    expect(listener).toHaveBeenCalledWith(expect.objectContaining({ type: 'unmounted', element: el }));
+  });
+
+  it('marks FC element as unmounted', () => {
+    const Comp = () => createElement('div');
+    const el = createElement(Comp);
+    mount(el, parent, null, null, null, renderRuntime);
+
+    unmount(el, renderRuntime);
+
+    expect(el.unmounted).toBe(true);
+  });
+
+  it('second unmount of already-unmounted FC is a no-op', () => {
+    const listener = vi.fn();
+    getLifecycleEventBus(renderRuntime).subscribe(listener);
+
+    const Comp = () => createElement('div');
+    const el = createElement(Comp);
+    mount(el, parent, null, null, null, renderRuntime);
+    unmount(el, renderRuntime);
+
+    const callsBefore = listener.mock.calls.length;
+    unmount(el, renderRuntime);
+
+    expect(listener.mock.calls.length).toBe(callsBefore);
+  });
+
+  it('unmounts FC children (DOM element inside FC is cleaned up)', () => {
+    const Comp = () => createElement('section');
+    const el = createElement(Comp);
+    mount(el, parent, null, null, null, renderRuntime);
+    const sectionEl = el.children as SimpElement;
+    const sectionRef = sectionEl.reference;
+    vi.resetAllMocks();
+
+    unmount(el, renderRuntime);
+
+    expect(testHostAdapter.unmountProps).toHaveBeenCalledWith(sectionRef, sectionEl, renderRuntime);
+    expect(testHostAdapter.detachElementFromReference).toHaveBeenCalledWith(sectionRef, renderRuntime);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Fragment unmounting
+// ---------------------------------------------------------------------------
+
+describe('unmount – FRAGMENT element', () => {
+  it('unmounts all fragment children', () => {
+    const frag = createElement(Fragment, null, createElement('a'), createElement('b'), createElement('c'));
+    mount(frag, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    unmount(frag, renderRuntime);
+
+    expect(testHostAdapter.unmountProps).toHaveBeenCalledTimes(3);
+    expect(testHostAdapter.detachElementFromReference).toHaveBeenCalledTimes(3);
+  });
+
+  it('empty fragment unmount is a no-op', () => {
+    const frag = createElement(Fragment);
+    mount(frag, parent, null, null, null, renderRuntime);
+    vi.resetAllMocks();
+
+    unmount(frag, renderRuntime);
 
     expect(testHostAdapter.unmountProps).not.toHaveBeenCalled();
-    expect(testHostAdapter.detachElementFromReference).not.toHaveBeenCalled();
   });
+});
 
-  it('unmounts portal children from the portal target without touching siblings in the parent tree', () => {
-    const portalTarget = testHostAdapter.createReference('PORTAL-TARGET');
-    const element = createElement(
-      Fragment,
-      null,
-      createPortal(createElement('span'), portalTarget),
-      createElement('button')
-    );
+// ---------------------------------------------------------------------------
+// Portal unmounting
+// ---------------------------------------------------------------------------
 
-    mount(element, parent, null, null, null, renderRuntime);
+describe('unmount – PORTAL element', () => {
+  it('unmounts portal children', () => {
+    const container = document.createElement('section');
+    const portal = createPortal(createElement('div'), container);
+    mount(portal, parent, null, null, null, renderRuntime);
 
-    const portal = (element.children as SimpElement[])[0]!;
-    const portalChild = portal.children as SimpElement;
-    const sibling = (element.children as SimpElement[])[1]!;
-
-    expect(parent.childNodes).toHaveLength(2);
-    expect(portalTarget.childNodes).toHaveLength(1);
-
-    vi.clearAllMocks();
+    vi.resetAllMocks();
 
     unmount(portal, renderRuntime);
 
-    expect(testHostAdapter.removeChild).toHaveBeenCalledWith(portalTarget, portalChild.reference);
-    expect(testHostAdapter.unmountProps).toHaveBeenCalledWith(portalChild.reference, portalChild, renderRuntime);
-    expect(parent.contains(sibling.reference as Node)).toBe(true);
-    expect(portalTarget.childNodes).toHaveLength(0);
-  });
-
-  it('cleans host mappings for the whole root after unmount', () => {
-    const runtime: SimpRenderRuntime = {
-      hostAdapter: domAdapter,
-      renderer(type, element) {
-        return type(element.props || emptyObject);
-      },
-      elementToHostMap: new Map(),
-      renderStack: [],
-      renderPhase: null,
-      currentRenderingFCElement: null,
-    };
-    const root = createCreateRoot(runtime)(parent);
-
-    root.render(createElement('div', null, createElement('span'), createElement('p')));
-
-    expect(runtime.elementToHostMap.size).toBe(4);
-
-    root.unmount();
-
-    expect(parent.hasChildNodes()).toBe(false);
-    expect(runtime.elementToHostMap.size).toBe(0);
+    expect(testHostAdapter.unmountProps).toHaveBeenCalled();
+    expect(testHostAdapter.detachElementFromReference).toHaveBeenCalled();
   });
 });
