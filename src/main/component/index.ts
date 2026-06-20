@@ -4,7 +4,6 @@ import {
   rerender,
   SIMP_ELEMENT_FLAG_FC,
   type SimpElement,
-  type SimpElementStore,
   type SimpNode,
   type SimpRenderRuntime,
 } from '@simpreact/internal';
@@ -32,13 +31,13 @@ interface ComponentSpecificStore {
   effectStates: Nullable<EffectState[]>;
 }
 
-const componentSpecificStoreByElementStore = new WeakMap<SimpElementStore, ComponentSpecificStore>();
+const componentSpecificStoreByElement = new WeakMap<SimpElement, ComponentSpecificStore>();
 
-function getComponentSpecificStore(store: SimpElementStore, renderRuntime: SimpRenderRuntime): ComponentSpecificStore {
-  let hooksSpecificStore = componentSpecificStoreByElementStore.get(store);
+function getComponentSpecificStore(element: SimpElement, renderRuntime: SimpRenderRuntime): ComponentSpecificStore {
+  let hooksSpecificStore = componentSpecificStoreByElement.get(element);
   if (!hooksSpecificStore) {
     function _rerender() {
-      rerender(store, renderRuntime);
+      rerender(element, renderRuntime);
     }
     hooksSpecificStore = {
       context: {
@@ -50,7 +49,7 @@ function getComponentSpecificStore(store: SimpElementStore, renderRuntime: SimpR
       pendingEffectStates: null,
       effectStates: null,
     };
-    componentSpecificStoreByElementStore.set(store, hooksSpecificStore);
+    componentSpecificStoreByElement.set(element, hooksSpecificStore);
   }
   return hooksSpecificStore;
 }
@@ -72,7 +71,7 @@ registerLifecyclePlugin(bus => {
           continue;
         }
 
-        const store = getComponentSpecificStore(element.store!, event.renderRuntime);
+        const store = getComponentSpecificStore(element, event.renderRuntime);
         catchers = store.context.catchers;
 
         if (!catchers) {
@@ -99,7 +98,7 @@ registerLifecyclePlugin(bus => {
       return;
     }
 
-    const store = getComponentSpecificStore(event.element.store!, event.renderRuntime);
+    const store = getComponentSpecificStore(event.element, event.renderRuntime);
 
     switch (event.type) {
       case 'beforeRender': {
@@ -188,7 +187,7 @@ registerLifecyclePlugin(bus => {
 
 export function componentRenderer(component: FC, element: SimpElement, renderRuntime: SimpRenderRuntime): SimpNode {
   if (isComponentElement(element)) {
-    const store = getComponentSpecificStore(element.store!, renderRuntime);
+    const store = getComponentSpecificStore(element, renderRuntime);
     return (component as any)(element.props || emptyObject, store.context);
   } else {
     return component(element.props || emptyObject);

@@ -18,7 +18,7 @@ export function createPortal(children: SimpNode, container: any): SimpElement {
       children: null,
       className: null,
       reference: null,
-      store: null,
+      hostNamespace: null,
       context: null,
       ref: container,
       unmounted: null,

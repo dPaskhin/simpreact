@@ -135,11 +135,8 @@ function _mountFunctionalElement(frame: MountFrame): void {
     element.unmounted = false;
   }
 
-  element.store = { latestElement: null, hostNamespace: null, forceRerender: false };
-  element.store.latestElement = element;
-
   if (hostNamespace) {
-    element.store.hostNamespace = hostNamespace;
+    element.hostNamespace = hostNamespace;
   }
 
   // FC element always has Maybe<SimpElement> children due to a normalization process.

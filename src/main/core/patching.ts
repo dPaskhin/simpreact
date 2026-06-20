@@ -154,16 +154,17 @@ function _patchHostElement(frame: PatchFrame): void {
 }
 
 function _patchFunctionalComponent(frame: PatchFrame): void {
-  const nextElement = frame.node;
   const { prevElement, context, renderRuntime, hostNamespace, subtreeRightBoundary, parentReference } = frame.meta;
 
   if (frame.kind === PATCH_EXIT) {
-    getLifecycleEventBus(renderRuntime).publish({ type: 'updated', element: nextElement, renderRuntime });
+    getLifecycleEventBus(renderRuntime).publish({ type: 'updated', element: frame.node, renderRuntime });
     return;
   }
 
+  const jsxElement = frame.node;
+
   if (prevElement.unmounted) {
-    _pushMountEnterFrame(nextElement, {
+    _pushMountEnterFrame(jsxElement, {
       subtreeRightBoundary,
       renderRuntime,
       hostNamespace,
@@ -174,39 +175,43 @@ function _patchFunctionalComponent(frame: PatchFrame): void {
     return;
   }
 
-  nextElement.store = prevElement.store!;
-  nextElement.store.latestElement = nextElement;
-
   if (hostNamespace) {
-    nextElement.store.hostNamespace = hostNamespace;
+    prevElement.hostNamespace = hostNamespace;
   }
 
+  // Replace the short-lived JSX element in the parent's children with the long-lived prevElement.
+  if (jsxElement !== prevElement) {
+    _swapChildInParent(jsxElement, prevElement);
+  }
+
+  // Memo check: compare old props against new props.
+  // Self-rerenders (jsxElement === prevElement) always proceed — state may have changed.
+  const prevProps = prevElement.props;
   if (
-    isMemo(nextElement.type) &&
-    !nextElement.store.forceRerender &&
-    nextElement.type._compare(prevElement.props, nextElement.props)
+    jsxElement !== prevElement &&
+    isMemo(prevElement.type) &&
+    prevElement.type._compare(prevProps, jsxElement.props)
   ) {
-    nextElement.childFlag = prevElement.childFlag;
-    nextElement.children = prevElement.children;
-    nextElement.context = prevElement.context;
     return;
   }
 
-  nextElement.context = prevElement.context || context;
+  prevElement.props = jsxElement.props;
+  prevElement.context = prevElement.context || context;
 
-  const prevElementSnapshot = prevElement === nextElement ? { ...prevElement } : prevElement;
+  // Snapshot before render: captures old childFlag and old children for reconciliation.
+  const prevElementSnapshot = { ...prevElement };
 
   let nextChildren;
   let triedToRerenderUnsubscribe: () => void = noop;
 
   try {
     renderRuntime.renderPhase = UPDATING_PHASE;
-    renderRuntime.currentRenderingFCElement = nextElement;
+    renderRuntime.currentRenderingFCElement = prevElement;
 
     let triedToRerender = false;
     let rerenderCounter = 0;
     triedToRerenderUnsubscribe = getLifecycleEventBus(renderRuntime).subscribe(event => {
-      if (event.type === 'triedToRerender' && event.element === nextElement) {
+      if (event.type === 'triedToRerender' && event.element === prevElement) {
         triedToRerender = true;
       }
     });
@@ -218,21 +223,21 @@ function _patchFunctionalComponent(frame: PatchFrame): void {
       }
       getLifecycleEventBus(renderRuntime).publish({
         type: 'beforeRender',
-        element: nextElement,
+        element: prevElement,
         renderRuntime,
       });
 
-      nextChildren = renderRuntime.renderer(nextElement.type as FC, nextElement, renderRuntime);
+      nextChildren = renderRuntime.renderer(prevElement.type as FC, prevElement, renderRuntime);
 
       getLifecycleEventBus(renderRuntime).publish({
         type: 'afterRender',
-        element: nextElement,
+        element: prevElement,
         renderRuntime,
       });
     } while (triedToRerender);
 
-    normalizeRoot(nextElement, nextChildren, false);
-    nextChildren = nextElement.children;
+    normalizeRoot(prevElement, nextChildren, false);
+    nextChildren = prevElement.children;
   } catch (error) {
     const parentChildren = prevElement.parent?.children;
 
@@ -258,7 +263,7 @@ function _patchFunctionalComponent(frame: PatchFrame): void {
 
     const event: LifecycleEvent = {
       type: 'errored',
-      element: nextElement,
+      element: prevElement,
       error,
       handled: false,
       renderRuntime,
@@ -277,7 +282,7 @@ function _patchFunctionalComponent(frame: PatchFrame): void {
     renderRuntime.currentRenderingFCElement = null;
   }
 
-  _pushPatchExitFrame(nextElement, {
+  _pushPatchExitFrame(prevElement, {
     prevElement,
     renderRuntime,
     hostNamespace,
@@ -286,10 +291,10 @@ function _patchFunctionalComponent(frame: PatchFrame): void {
     parentReference,
   });
 
-  _pushPatchChildrenFrame(nextElement, {
+  _pushPatchChildrenFrame(prevElement, {
     subtreeRightBoundary,
     prevParentChildFlag: prevElementSnapshot.childFlag,
-    nextParentChildFlag: nextElement.childFlag,
+    nextParentChildFlag: prevElement.childFlag,
     prevChildren: prevElementSnapshot.children as Nullable<Many<SimpElement>>,
     nextChildren: nextChildren as Nullable<Many<SimpElement>>,
     renderRuntime,
@@ -298,6 +303,20 @@ function _patchFunctionalComponent(frame: PatchFrame): void {
     context,
     prevParentElement: prevElementSnapshot,
   });
+}
+
+function _swapChildInParent(jsxElement: SimpElement, liveElement: SimpElement): void {
+  const parent = jsxElement.parent;
+  if (!parent) return;
+
+  liveElement.parent = parent;
+  liveElement.index = jsxElement.index;
+
+  if (parent.childFlag === SIMP_ELEMENT_CHILD_FLAG_LIST) {
+    (parent.children as SimpElement[])[jsxElement.index] = liveElement;
+  } else {
+    parent.children = liveElement;
+  }
 }
 
 function _patchTextElement(frame: PatchFrame): void {

@@ -59,7 +59,6 @@ function _unmountFunctionalElement(frame: UnmountFrame): void {
       element: current,
       renderRuntime: frame.meta.renderRuntime,
     });
-    current.store = null;
     return;
   }
 

@@ -20,14 +20,6 @@ export const SIMP_ELEMENT_CHILD_FLAG_ELEMENT = 1 << 2;
 export const SIMP_ELEMENT_CHILD_FLAG_LIST = 1 << 3;
 export const SIMP_ELEMENT_CHILD_FLAG_TEXT = 1 << 4;
 
-// This object also serves as a persistent identity for elements, making it useful
-// for tracking them consistently across rerenders.
-export interface SimpElementStore {
-  latestElement: Nullable<SimpElement>;
-  hostNamespace: Nullable<string>;
-  forceRerender: boolean;
-}
-
 export interface SimpElement {
   flag: number;
 
@@ -47,7 +39,8 @@ export interface SimpElement {
 
   reference: unknown;
 
-  store: Nullable<SimpElementStore>;
+  /** Only meaningful on FC elements: the host namespace inherited from context. */
+  hostNamespace: Nullable<string>;
 
   context: any;
 
@@ -93,7 +86,7 @@ export function createElement(type: string | FC, props?: any): SimpElement {
             children: null,
             className: props?.className || null,
             reference: null!,
-            store: null,
+            hostNamespace: null,
             context: null,
             ref: props?.ref ? { value: props.ref } : null,
             unmounted: null,
@@ -122,7 +115,7 @@ export function createElement(type: string | FC, props?: any): SimpElement {
         children: null,
         className: props?.className || null,
         reference: null!,
-        store: null,
+        hostNamespace: null,
         context: null,
         ref: props?.ref ? { value: props.ref } : null,
         unmounted: null,
@@ -144,7 +137,7 @@ export function createElement(type: string | FC, props?: any): SimpElement {
         children: null,
         className: null,
         reference: null!,
-        store: null,
+        hostNamespace: null,
         context: null,
         ref: null,
         unmounted: null,
@@ -166,7 +159,7 @@ export function createElement(type: string | FC, props?: any): SimpElement {
           children: null,
           className: null,
           reference: null!,
-          store: null,
+          hostNamespace: null,
           context: null,
           ref: null,
           unmounted: null,
@@ -190,7 +183,7 @@ export function createTextElement(text: SimpText): SimpElement {
     children: text.toString(),
     className: null,
     reference: null!,
-    store: null,
+    hostNamespace: null,
     context: null,
     ref: null,
     unmounted: null,

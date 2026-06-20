@@ -2,7 +2,7 @@ import {
   MOUNTING_PHASE,
   registerLifecyclePlugin,
   rerender,
-  type SimpElementStore,
+  type SimpElement,
   type SimpNode,
   type SimpRenderRuntime,
 } from '@simpreact/internal';
@@ -12,7 +12,7 @@ import type { Nullable } from '@simpreact/shared';
 // which is a weak point since there may happen to appear new contexts types in other features.
 interface SimpContextEntry {
   value: unknown;
-  subs: Set<SimpElementStore>;
+  subs: Set<SimpElement>;
 }
 
 type Provider = (props: { value: unknown; children: SimpNode }) => SimpNode;
@@ -33,7 +33,7 @@ registerLifecyclePlugin(bus => {
     if (event.type === 'unmounted' && event.element.context) {
       const contextMap = event.element.context as Map<SimpContext, SimpContextEntry>;
       for (const entry of contextMap.values()) {
-        entry.subs.delete(event.element.store!);
+        entry.subs.delete(event.element);
       }
     }
   });
@@ -83,14 +83,13 @@ export function createCreateContext(renderRuntime: SimpRenderRuntime): CreateCon
       Consumer(props) {
         const currentElement = renderRuntime.currentRenderingFCElement!;
         const contextMap = currentElement.context as Nullable<Map<SimpContext, SimpContextEntry>>;
-        const store = currentElement.store!;
         const entry = contextMap?.get(context);
 
         if (!entry) {
           return props.children(defaultValue);
         }
 
-        entry.subs.add(store);
+        entry.subs.add(currentElement);
         return props.children(entry.value);
       },
     };
@@ -107,14 +106,13 @@ export function createUseContext(renderRuntime: SimpRenderRuntime): UseContext {
   return context => {
     const currentElement = renderRuntime.currentRenderingFCElement!;
     const contextMap = currentElement.context as Nullable<Map<SimpContext, SimpContextEntry>>;
-    const store = currentElement.store!;
     const entry = contextMap?.get(context);
 
     if (!entry) {
       return context.defaultValue;
     }
 
-    entry.subs.add(store);
+    entry.subs.add(currentElement);
     return entry.value;
   };
 }

@@ -1,12 +1,12 @@
-import type { SimpElement, SimpElementStore } from './createElement.js';
+import type { SimpElement } from './createElement.js';
 import { getLifecycleEventBus, registerLifecyclePlugin } from './lifecycleEventBus.js';
 import { patch } from './patching.js';
 import type { SimpRenderRuntime } from './runtime.js';
 import { findParentReferenceFromElement } from './utils.js';
 
 interface RerenderSpecificData {
-  syncQueue: Set<SimpElementStore>;
-  asyncQueue: Set<SimpElementStore>;
+  syncQueue: Set<SimpElement>;
+  asyncQueue: Set<SimpElement>;
   syncLockDepth: number;
   isAsyncFlushScheduled: boolean;
 }
@@ -32,8 +32,8 @@ registerLifecyclePlugin(bus => {
     const data = getRerenderSpecificData(event.renderRuntime);
 
     if (event.type === 'afterRender' || event.type === 'errored' || event.type === 'unmounted') {
-      data.asyncQueue.delete(event.element.store!);
-      data.syncQueue.delete(event.element.store!);
+      data.asyncQueue.delete(event.element);
+      data.syncQueue.delete(event.element);
     }
   });
 });
@@ -61,9 +61,8 @@ function scheduleAsyncFlush(renderRuntime: SimpRenderRuntime) {
   queueMicrotask(process);
 }
 
-export function rerender(store: SimpElementStore, renderRuntime: SimpRenderRuntime) {
+export function rerender(element: SimpElement, renderRuntime: SimpRenderRuntime) {
   const data = getRerenderSpecificData(renderRuntime);
-  const element = store.latestElement!;
 
   if (element.unmounted) {
     console.warn('The component is unmounted.');
@@ -73,11 +72,11 @@ export function rerender(store: SimpElementStore, renderRuntime: SimpRenderRunti
   getLifecycleEventBus(renderRuntime).publish({ type: 'triedToRerender', element, renderRuntime });
 
   if (data.syncLockDepth > 0) {
-    data.syncQueue.add(store);
+    data.syncQueue.add(element);
     return;
   }
 
-  data.asyncQueue.add(store);
+  data.asyncQueue.add(element);
   scheduleAsyncFlush(renderRuntime);
 }
 
@@ -97,27 +96,21 @@ export function withSyncRerender(renderRuntime: SimpRenderRuntime, callback: () 
   }
 }
 
-function flushQueue(queue: Set<SimpElementStore>, renderRuntime: SimpRenderRuntime): void {
-  for (const store of queue) {
-    queue.delete(store);
-    performRerender(store.latestElement!, renderRuntime);
+function flushQueue(queue: Set<SimpElement>, renderRuntime: SimpRenderRuntime): void {
+  for (const element of queue) {
+    queue.delete(element);
+    performRerender(element, renderRuntime);
   }
 }
 
 function performRerender(element: SimpElement, renderRuntime: SimpRenderRuntime) {
-  element.store!.forceRerender = true;
-
-  try {
-    patch(
-      element,
-      element,
-      findParentReferenceFromElement(element),
-      null,
-      element.context || null,
-      element.store!.hostNamespace,
-      renderRuntime
-    );
-  } finally {
-    element.store!.forceRerender = false;
-  }
+  patch(
+    element,
+    element,
+    findParentReferenceFromElement(element),
+    null,
+    element.context || null,
+    element.hostNamespace,
+    renderRuntime
+  );
 }

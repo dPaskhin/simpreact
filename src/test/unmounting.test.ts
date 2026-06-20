@@ -86,8 +86,6 @@ describe('unmounting', () => {
     expect(events).toEqual([childComponent, element]);
     expect(childComponent.unmounted).toBe(true);
     expect(element.unmounted).toBe(true);
-    expect(childComponent.store).toBeNull();
-    expect(element.store).toBeNull();
   });
 
   it('does not unmount a functional component twice', () => {
