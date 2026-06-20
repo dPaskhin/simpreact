@@ -14,7 +14,7 @@ import { pushMountEnterFrame } from './mounting.js';
 import { patchChildren } from './patchingChildren.js';
 import { acquirePatchFrame, PATCH_ENTER, PATCH_EXIT, type PatchFrame, processStack } from './processStack.js';
 import { applyRef } from './ref.js';
-import { type SimpRenderRuntime, UPDATING_PHASE } from './runtime.js';
+import type { SimpRenderRuntime } from './runtime.js';
 import { pushUnmountEnterFrame } from './unmounting.js';
 import { bitScanForwardIndex, clearElementHostReference, detachElementFromParent } from './utils.js';
 
@@ -218,9 +218,6 @@ function patchFCEnter(frame: PatchFrame): void {
   let triedToRerenderUnsubscribe: () => void = noop;
 
   try {
-    renderRuntime.renderPhase = UPDATING_PHASE;
-    renderRuntime.currentRenderingFCElement = prevElement;
-
     let triedToRerender = false;
     let rerenderCounter = 0;
     triedToRerenderUnsubscribe = getLifecycleEventBus(renderRuntime).subscribe(event => {
@@ -273,8 +270,6 @@ function patchFCEnter(frame: PatchFrame): void {
     return;
   } finally {
     triedToRerenderUnsubscribe();
-    renderRuntime.renderPhase = null;
-    renderRuntime.currentRenderingFCElement = null;
   }
 
   pushPatchExitFrame(

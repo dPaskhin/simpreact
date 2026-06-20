@@ -62,10 +62,12 @@ export interface SimpRenderRuntime {
   hostAdapter: HostAdapter;
   renderer: SimpRuntimeFCRenderer;
   renderStack: Array<any>;
-  elementToHostMap: Map<unknown, SimpElement>;
-  currentRenderingFCElement: Nullable<SimpElement>;
-  renderPhase: Nullable<0 | 1>;
 }
+
+export declare function createRenderRuntime(
+  hostAdapter: HostAdapter,
+  renderer: SimpRuntimeFCRenderer
+): SimpRenderRuntime;
 
 export type LifecycleEvent =
   | { type: 'beforeRender'; element: SimpElement; renderRuntime: SimpRenderRuntime }
@@ -117,5 +119,3 @@ export declare function unmount(element: SimpElement, renderRuntime: SimpRenderR
 
 export declare function rerender(element: SimpElement, renderRuntime: SimpRenderRuntime): void;
 export declare function withSyncRerender(renderRuntime: SimpRenderRuntime, callback: () => void): void;
-
-export declare const MOUNTING_PHASE: 0;

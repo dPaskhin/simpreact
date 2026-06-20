@@ -92,7 +92,9 @@ export interface SimpRenderRuntime {
   hostAdapter: HostAdapter;
   renderer: SimpRuntimeFCRenderer;
   renderStack: Array<{ node: SimpElement; kind: number; meta: any }>;
-  elementToHostMap: Map<unknown, SimpElement>;
-  currentRenderingFCElement: Nullable<SimpElement>;
-  renderPhase: Nullable<number>;
 }
+
+export declare function createRenderRuntime(
+  hostAdapter: HostAdapter,
+  renderer: SimpRuntimeFCRenderer
+): SimpRenderRuntime;

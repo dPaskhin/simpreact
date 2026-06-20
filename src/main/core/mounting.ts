@@ -12,7 +12,7 @@ import { getLifecycleEventBus, type LifecycleEvent } from './lifecycleEventBus.j
 import { pushMountChildrenFrame } from './mountingChildren.js';
 import { acquireMountFrame, MOUNT_ENTER, MOUNT_EXIT, type MountFrame, processStack } from './processStack.js';
 import { applyRef } from './ref.js';
-import { MOUNTING_PHASE, type SimpRenderRuntime } from './runtime.js';
+import type { SimpRenderRuntime } from './runtime.js';
 import { bitScanForwardIndex } from './utils.js';
 
 const mountEnterHandlers = [mountHostEnter, mountFCEnter, mountTextElement, mountPortalEnter, mountFragment];
@@ -165,9 +165,6 @@ function mountFCEnter(frame: MountFrame): void {
   let triedToRerenderUnsubscribe: () => void = noop;
 
   try {
-    renderRuntime.renderPhase = MOUNTING_PHASE;
-    renderRuntime.currentRenderingFCElement = element;
-
     let triedToRerender = false;
     let rerenderCounter = 0;
     triedToRerenderUnsubscribe = getLifecycleEventBus(renderRuntime).subscribe(event => {
@@ -216,8 +213,6 @@ function mountFCEnter(frame: MountFrame): void {
     return;
   } finally {
     triedToRerenderUnsubscribe();
-    renderRuntime.renderPhase = null;
-    renderRuntime.currentRenderingFCElement = null;
   }
 
   pushMountExitFrame(element, renderRuntime, parentReference, subtreeRightBoundary, context, hostNamespace, null);

@@ -4,22 +4,15 @@
  * prev-exhausted (mount), LIS-based middle, and all child-mode transitions.
  */
 
-import { createElement, mount, patch, type SimpElement, type SimpRenderRuntime } from '@simpreact/internal';
+import { createElement, createRenderRuntime, mount, patch, type SimpElement } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Fragment } from '../main/core/fragment.js';
 import { testHostAdapter } from './test-host-adapter.js';
 
-const renderRuntime: SimpRenderRuntime = {
-  hostAdapter: testHostAdapter,
-  renderer(type, element) {
-    return type(element.props || emptyObject);
-  },
-  elementToHostMap: new Map(),
-  renderStack: [],
-  renderPhase: null,
-  currentRenderingFCElement: null,
-};
+const renderRuntime = createRenderRuntime(testHostAdapter, (type, element) => {
+  return type(element.props || emptyObject);
+});
 
 let parent: Element;
 
@@ -27,7 +20,6 @@ beforeEach(() => {
   vi.restoreAllMocks();
   parent = document.createElement('div');
   renderRuntime.renderStack.length = 0;
-  renderRuntime.elementToHostMap.clear();
 });
 
 // Returns tags of children of a HOST element's DOM reference

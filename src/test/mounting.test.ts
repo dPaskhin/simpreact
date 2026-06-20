@@ -1,4 +1,4 @@
-import { createElement, mount, type SimpRenderRuntime } from '@simpreact/internal';
+import { createElement, createRenderRuntime, mount } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Fragment } from '../main/core/fragment.js';
@@ -6,16 +6,9 @@ import { getLifecycleEventBus } from '../main/core/lifecycleEventBus.js';
 import { createPortal } from '../main/core/portal.js';
 import { testHostAdapter } from './test-host-adapter.js';
 
-const renderRuntime: SimpRenderRuntime = {
-  hostAdapter: testHostAdapter,
-  renderer(type, element) {
-    return type(element.props || emptyObject);
-  },
-  elementToHostMap: new Map(),
-  renderStack: [],
-  renderPhase: null,
-  currentRenderingFCElement: null,
-};
+const renderRuntime = createRenderRuntime(testHostAdapter, (type, element) => {
+  return type(element.props || emptyObject);
+});
 
 let parent: Element;
 
@@ -23,7 +16,6 @@ beforeEach(() => {
   vi.restoreAllMocks();
   parent = document.createElement('div');
   renderRuntime.renderStack.length = 0;
-  renderRuntime.elementToHostMap.clear();
 });
 
 // ---------------------------------------------------------------------------

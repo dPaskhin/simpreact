@@ -14,5 +14,5 @@ export { registerLifecyclePlugin } from './lifecycleEventBus.js';
 export { mount } from './mounting.js';
 export { patch } from './patching.js';
 export { rerender, withSyncRerender } from './rerender.js';
-export { MOUNTING_PHASE } from './runtime.js';
+export { createRenderRuntime } from './runtime.js';
 export { unmount } from './unmounting.js';

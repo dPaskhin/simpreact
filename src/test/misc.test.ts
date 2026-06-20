@@ -5,12 +5,12 @@
 
 import {
   createElement,
+  createRenderRuntime,
   mount,
   patch,
   registerLifecyclePlugin,
   rerender,
   type SimpElement,
-  type SimpRenderRuntime,
   unmount,
   withSyncRerender,
 } from '@simpreact/internal';
@@ -33,20 +33,13 @@ import {
 } from '../main/core/utils.js';
 import { testHostAdapter } from './test-host-adapter.js';
 
-function makeRuntime(): SimpRenderRuntime {
-  return {
-    hostAdapter: testHostAdapter,
-    renderer(type, element) {
-      return type(element.props || emptyObject);
-    },
-    elementToHostMap: new Map(),
-    renderStack: [],
-    renderPhase: null,
-    currentRenderingFCElement: null,
-  };
+function makeRuntime() {
+  return createRenderRuntime(testHostAdapter, (type, element) => {
+    return type(element.props || emptyObject);
+  });
 }
 
-let renderRuntime: SimpRenderRuntime;
+let renderRuntime: ReturnType<typeof makeRuntime>;
 let parent: Element;
 
 beforeEach(() => {
