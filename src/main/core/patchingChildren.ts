@@ -15,7 +15,6 @@ import { pushUnmountEnterFrame } from './unmounting.js';
 import { pushUnmountChildrenFrame } from './unmountingChildren.js';
 import { clearElementHostReference, getLongestIncreasingSubsequenceIndexes, isHostLike } from './utils.js';
 
-/** @internal */
 export interface PatchChildrenArgs {
   parentReference: unknown;
   subtreeRightBoundary: Nullable<SimpElement>;
@@ -29,7 +28,6 @@ export interface PatchChildrenArgs {
   prevParentElement: SimpElement;
 }
 
-/** @internal */
 export function patchChildren(parentElement: SimpElement, meta: PatchChildrenArgs): void {
   const {
     renderRuntime,
@@ -220,7 +218,6 @@ export function patchChildren(parentElement: SimpElement, meta: PatchChildrenArg
   }
 }
 
-/** @internal */
 export function patchKeyedChildren(parentElement: SimpElement, meta: PatchChildrenArgs): void {
   const { parentReference, subtreeRightBoundary, context, hostNamespace, renderRuntime } = meta;
 

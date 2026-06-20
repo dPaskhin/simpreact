@@ -1,8 +1,8 @@
 import {
   rerender as _rerender,
+  isFC,
   type RefObject,
   registerLifecyclePlugin,
-  SIMP_ELEMENT_FLAG_FC,
   type SimpElement,
   type SimpRenderRuntime,
 } from '@simpreact/internal';
@@ -55,7 +55,7 @@ function getHooksSpecificStore(element: SimpElement): HooksSpecificStore {
 
 registerLifecyclePlugin(bus => {
   bus.subscribe(event => {
-    if ((event.element.flag & SIMP_ELEMENT_FLAG_FC) === 0) {
+    if (!isFC(event.element)) {
       return;
     }
 
@@ -130,7 +130,7 @@ registerLifecyclePlugin(bus => {
         let catchers: Nullable<Array<(error: any) => void>> = null;
 
         while (element) {
-          if ((element.flag & SIMP_ELEMENT_FLAG_FC) === 0) {
+          if (!isFC(element)) {
             element = element.parent;
             continue;
           }

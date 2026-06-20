@@ -5,7 +5,7 @@ import {
   Fragment as _Fragment,
   memo as _memo,
 } from '@simpreact/core';
-import { SIMP_ELEMENT_FLAG_FRAGMENT, SIMP_ELEMENT_FLAG_PORTAL } from '@simpreact/internal';
+import { isFragment, isPortal } from '@simpreact/internal';
 import { useCatch, useState } from './hooks.js';
 
 export const Children = {
@@ -56,12 +56,12 @@ export function cloneElement(element: SimpElement, props?: any, ...children: Sim
   if (!isValidElement(element)) {
     throw new Error(`cloneElement: expected a SimpElement, got ${element}`);
   }
-  if (((element as any).flag & SIMP_ELEMENT_FLAG_PORTAL) !== 0) {
+  if (isPortal(element as any)) {
     throw new Error('cloneElement: the argument must be a SimpElement, but you passed a portal instead.');
   }
 
   return createElement(
-    ((element as any).flag & SIMP_ELEMENT_FLAG_FRAGMENT) !== 0 ? Fragment : element.type!,
+    isFragment(element as any) ? Fragment : element.type!,
     Object.assign({}, element.props, props),
     arguments.length > 2 ? children : props.children || (element as any).children
   ) as any;

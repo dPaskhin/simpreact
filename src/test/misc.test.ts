@@ -9,9 +9,6 @@ import {
   patch,
   registerLifecyclePlugin,
   rerender,
-  SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
-  SIMP_ELEMENT_CHILD_FLAG_LIST,
-  SIMP_ELEMENT_FLAG_PORTAL,
   type SimpElement,
   type SimpRenderRuntime,
   unmount,
@@ -19,7 +16,12 @@ import {
 } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { SIMP_ELEMENT_CHILD_FLAG_EMPTY } from '../main/core/createElement.js';
+import {
+  SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
+  SIMP_ELEMENT_CHILD_FLAG_EMPTY,
+  SIMP_ELEMENT_CHILD_FLAG_LIST,
+  SIMP_ELEMENT_FLAG_PORTAL,
+} from '../main/core/createElement.js';
 import { Fragment } from '../main/core/fragment.js';
 import { getLifecycleEventBus } from '../main/core/lifecycleEventBus.js';
 import { isMemo, memo } from '../main/core/memo.js';

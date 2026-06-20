@@ -3,7 +3,6 @@ import type { SimpElement } from './createElement.js';
 import { acquirePlaceFrame, acquireReplaceFrame } from './processStack.js';
 import type { SimpRenderRuntime } from './runtime.js';
 
-/** @internal */
 export function pushHostOperationPlaceElement(
   element: SimpElement,
   renderRuntime: SimpRenderRuntime,
@@ -13,7 +12,6 @@ export function pushHostOperationPlaceElement(
   renderRuntime.renderStack.push(acquirePlaceFrame(renderRuntime, element, parentReference, subtreeRightBoundary));
 }
 
-/** @internal */
 export function pushHostOperationReplaceElement(
   element: SimpElement,
   renderRuntime: SimpRenderRuntime,

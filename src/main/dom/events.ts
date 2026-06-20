@@ -1,4 +1,4 @@
-import { SIMP_ELEMENT_FLAG_HOST, type SimpElement, type SimpRenderRuntime } from '@simpreact/internal';
+import { isHost, type SimpElement, type SimpRenderRuntime } from '@simpreact/internal';
 import type { Nullable } from '@simpreact/shared';
 
 export type DelegatedEventType =
@@ -135,7 +135,7 @@ export function dispatchDelegatedEvent(event: Event, renderRuntime: SimpRenderRu
   let element = renderRuntime.hostAdapter.getElementFromReference(event.target, renderRuntime);
 
   while (element) {
-    if ((element.flag & SIMP_ELEMENT_FLAG_HOST) !== 0) {
+    if (isHost(element)) {
       const captureHandler = element.props?.[eventNameByTypes[event.type as DelegatedEventType] + 'Capture'];
       const bubbleHandler = element.props?.[eventNameByTypes[event.type as DelegatedEventType]];
       if (captureHandler) {

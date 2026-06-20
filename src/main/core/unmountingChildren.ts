@@ -3,12 +3,10 @@ import { acquireUnmountChildrenFrame, type UnmountChildrenFrame } from './proces
 import type { SimpRenderRuntime } from './runtime.js';
 import { pushUnmountEnterFrame } from './unmounting.js';
 
-/** @internal */
 export function pushUnmountChildrenFrame(parent: SimpElement, renderRuntime: SimpRenderRuntime): void {
   renderRuntime.renderStack.push(acquireUnmountChildrenFrame(renderRuntime, parent));
 }
 
-/** @internal */
 export function unmountChildren(frame: UnmountChildrenFrame): void {
   switch (frame.node.childFlag) {
     case SIMP_ELEMENT_CHILD_FLAG_LIST: {

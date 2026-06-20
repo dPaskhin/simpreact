@@ -21,17 +21,14 @@ export function unmount(element: SimpElement, renderRuntime: SimpRenderRuntime):
   processStack(renderRuntime);
 }
 
-/** @internal */
 export function unmountEnter(frame: UnmountFrame): void {
   unmountEnterHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
 }
 
-/** @internal */
 export function unmountExit(frame: UnmountFrame): void {
   unmountExitHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
 }
 
-/** @internal */
 export function pushUnmountEnterFrame(element: SimpElement, renderRuntime: SimpRenderRuntime): void {
   renderRuntime.renderStack.push(acquireUnmountFrame(renderRuntime, element, UNMOUNT_ENTER));
 }

@@ -47,7 +47,6 @@ export function patch(
   processStack(renderRuntime);
 }
 
-/** @internal */
 export function pushPatchEnterFrame(
   element: SimpElement,
   renderRuntime: SimpRenderRuntime,
@@ -94,7 +93,6 @@ function pushPatchExitFrame(
   );
 }
 
-/** @internal */
 export function patchEnter(frame: PatchFrame): void {
   const { prevElement } = frame.meta;
 
@@ -107,7 +105,6 @@ export function patchEnter(frame: PatchFrame): void {
   patchEnterHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
 }
 
-/** @internal */
 export function patchExit(frame: PatchFrame): void {
   patchExitHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
 }

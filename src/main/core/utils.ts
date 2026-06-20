@@ -200,7 +200,6 @@ export function getLongestIncreasingSubsequenceIndexes(sequence: Int32Array): In
   return indexes;
 }
 
-/** @internal */
 export function detachElementFromParent(element: SimpElement): void {
   const parent = element.parent;
   if (!parent) return;
@@ -223,7 +222,6 @@ export function detachElementFromParent(element: SimpElement): void {
   }
 }
 
-/** @internal */
 export function clearElementHostReference(
   element: Maybe<SimpElement>,
   parentHostReference: unknown,

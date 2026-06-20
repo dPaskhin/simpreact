@@ -35,17 +35,14 @@ export function mount(
   processStack(renderRuntime);
 }
 
-/** @internal */
 export function mountEnter(frame: MountFrame): void {
   mountEnterHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
 }
 
-/** @internal */
 export function mountExit(frame: MountFrame): void {
   mountExitHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
 }
 
-/** @internal */
 export function pushMountEnterFrame(
   element: SimpElement,
   renderRuntime: SimpRenderRuntime,

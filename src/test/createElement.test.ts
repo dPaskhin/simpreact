@@ -1,22 +1,18 @@
-import {
-  createElement,
-  Fragment,
-  SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
-  SIMP_ELEMENT_CHILD_FLAG_LIST,
-  SIMP_ELEMENT_FLAG_FC,
-  SIMP_ELEMENT_FLAG_FRAGMENT,
-  SIMP_ELEMENT_FLAG_HOST,
-  SIMP_ELEMENT_FLAG_TEXT,
-  type SimpElement,
-} from '@simpreact/internal';
+import { createElement, Fragment, type SimpElement } from '@simpreact/internal';
 import { describe, expect, it } from 'vitest';
 import {
   createTextElement,
   normalizeChildren,
   normalizeRoot,
+  SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
   SIMP_ELEMENT_CHILD_FLAG_EMPTY,
+  SIMP_ELEMENT_CHILD_FLAG_LIST,
   SIMP_ELEMENT_CHILD_FLAG_TEXT,
   SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
+  SIMP_ELEMENT_FLAG_FC,
+  SIMP_ELEMENT_FLAG_FRAGMENT,
+  SIMP_ELEMENT_FLAG_HOST,
+  SIMP_ELEMENT_FLAG_TEXT,
 } from '../main/core/createElement.js';
 
 // ---------------------------------------------------------------------------

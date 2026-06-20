@@ -5,7 +5,6 @@ import { acquireMountChildrenFrame, type MountChildrenFrame } from './processSta
 import type { SimpRenderRuntime } from './runtime.js';
 import { isHostLike } from './utils.js';
 
-/** @internal */
 export function pushMountChildrenFrame(
   parent: SimpElement,
   renderRuntime: SimpRenderRuntime,
@@ -28,7 +27,6 @@ export function pushMountChildrenFrame(
   );
 }
 
-/** @internal */
 export function mountChildren(frame: MountChildrenFrame): void {
   const parentElement = frame.node;
   const { parentReference, hostNamespace, renderRuntime, context } = frame.meta;

@@ -1,8 +1,8 @@
-import { SIMP_ELEMENT_FLAG_TEXT, type SimpElement, type SimpRenderRuntime } from '@simpreact/internal';
+import { isText, type SimpElement, type SimpRenderRuntime } from '@simpreact/internal';
 import type { Nullable } from '@simpreact/shared';
 
 export function attachElementToDom(element: SimpElement, dom: Node, renderRuntime: SimpRenderRuntime): void {
-  if ((element.flag & SIMP_ELEMENT_FLAG_TEXT) === 0) {
+  if (!isText(element)) {
     renderRuntime.elementToHostMap.set(dom, element);
   }
 }

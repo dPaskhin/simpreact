@@ -1,8 +1,8 @@
 import {
   type FC,
+  isFC,
   registerLifecyclePlugin,
   rerender,
-  SIMP_ELEMENT_FLAG_FC,
   type SimpElement,
   type SimpNode,
   type SimpRenderRuntime,
@@ -226,5 +226,5 @@ export function createState(onChange: () => void) {
 }
 
 export function isComponentElement(element: SimpElement): boolean {
-  return element.flag & SIMP_ELEMENT_FLAG_FC && (element.type as any)._isComponent;
+  return isFC(element) && (element.type as any)._isComponent;
 }

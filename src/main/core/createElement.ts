@@ -1,24 +1,26 @@
 import type { Nullable, SimpText } from '@simpreact/shared';
 import { isSimpText } from '@simpreact/shared';
+import {
+  SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
+  SIMP_ELEMENT_CHILD_FLAG_EMPTY,
+  SIMP_ELEMENT_CHILD_FLAG_LIST,
+  SIMP_ELEMENT_CHILD_FLAG_TEXT,
+  SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
+  SIMP_ELEMENT_FLAG_FC,
+  SIMP_ELEMENT_FLAG_FRAGMENT,
+  SIMP_ELEMENT_FLAG_HOST,
+  SIMP_ELEMENT_FLAG_PORTAL,
+  SIMP_ELEMENT_FLAG_TEXT,
+} from './flags.js';
 import { Fragment } from './fragment.js';
+
+export * from './flags.js';
 
 export type SimpNode = SimpElement | SimpText | Array<SimpNode> | boolean | null | undefined;
 
 export type Key = string | number | bigint;
 
 export type FC = (props: any) => SimpNode;
-
-export const SIMP_ELEMENT_FLAG_HOST = 1;
-export const SIMP_ELEMENT_FLAG_FC = 1 << 1;
-export const SIMP_ELEMENT_FLAG_TEXT = 1 << 2;
-export const SIMP_ELEMENT_FLAG_PORTAL = 1 << 3;
-export const SIMP_ELEMENT_FLAG_FRAGMENT = 1 << 4;
-
-export const SIMP_ELEMENT_CHILD_FLAG_EMPTY = 1;
-export const SIMP_ELEMENT_CHILD_FLAG_UNKNOWN = 1 << 1;
-export const SIMP_ELEMENT_CHILD_FLAG_ELEMENT = 1 << 2;
-export const SIMP_ELEMENT_CHILD_FLAG_LIST = 1 << 3;
-export const SIMP_ELEMENT_CHILD_FLAG_TEXT = 1 << 4;
 
 export interface SimpElement {
   flag: number;
