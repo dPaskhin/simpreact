@@ -1,3 +1,5 @@
+export type * from './public.js';
+
 import {
   MOUNTING_PHASE,
   registerLifecyclePlugin,
