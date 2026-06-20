@@ -1,11 +1,11 @@
 import type { Many, Maybe, Nullable } from '@simpreact/shared';
 import type { SimpElement } from './createElement.js';
-import { _mountEnter, _mountExit } from './mounting.js';
-import { _mountChildren } from './mountingChildren.js';
-import { _patchEnter, _patchExit } from './patching.js';
+import { mountEnter, mountExit } from './mounting.js';
+import { mountChildren } from './mountingChildren.js';
+import { patchEnter, patchExit } from './patching.js';
 import type { SimpRenderRuntime } from './runtime.js';
-import { _unmountEnter, _unmountExit } from './unmounting.js';
-import { _unmountChildren } from './unmountingChildren.js';
+import { unmountEnter, unmountExit } from './unmounting.js';
+import { unmountChildren } from './unmountingChildren.js';
 import { placeElementBeforeAnchor, resolveAnchorReference } from './utils.js';
 
 export const MOUNT_ENTER = 10;
@@ -297,49 +297,49 @@ export function processStack(renderRuntime: SimpRenderRuntime): void {
 
     switch (frame.kind) {
       case MOUNT_ENTER: {
-        _mountEnter(frame);
+        mountEnter(frame);
         frame.node = null!;
         pool.mount.push(frame);
         break;
       }
       case MOUNT_EXIT: {
-        _mountExit(frame);
+        mountExit(frame);
         frame.node = null!;
         pool.mount.push(frame);
         break;
       }
       case MOUNT_CHILDREN_ENTER: {
-        _mountChildren(frame);
+        mountChildren(frame);
         frame.node = null!;
         pool.mountChildren.push(frame);
         break;
       }
       case PATCH_ENTER: {
-        _patchEnter(frame);
+        patchEnter(frame);
         frame.node = null!;
         pool.patch.push(frame);
         break;
       }
       case PATCH_EXIT: {
-        _patchExit(frame);
+        patchExit(frame);
         frame.node = null!;
         pool.patch.push(frame);
         break;
       }
       case UNMOUNT_ENTER: {
-        _unmountEnter(frame);
+        unmountEnter(frame);
         frame.node = null!;
         pool.unmount.push(frame);
         break;
       }
       case UNMOUNT_EXIT: {
-        _unmountExit(frame);
+        unmountExit(frame);
         frame.node = null!;
         pool.unmount.push(frame);
         break;
       }
       case UNMOUNT_CHILDREN_ENTER: {
-        _unmountChildren(frame);
+        unmountChildren(frame);
         frame.node = null!;
         pool.unmountChildren.push(frame);
         break;

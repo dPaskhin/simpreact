@@ -1,13 +1,9 @@
-import {
-  createElement,
-  createPortal,
-  Fragment,
-  getLifecycleEventBus,
-  mount,
-  type SimpRenderRuntime,
-} from '@simpreact/internal';
+import { createElement, mount, type SimpRenderRuntime } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Fragment } from '../main/core/fragment.js';
+import { getLifecycleEventBus } from '../main/core/lifecycleEventBus.js';
+import { createPortal } from '../main/core/portal.js';
 import { testHostAdapter } from './test-host-adapter.js';
 
 const renderRuntime: SimpRenderRuntime = {

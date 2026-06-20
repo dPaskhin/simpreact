@@ -6,15 +6,16 @@ import {
   SIMP_ELEMENT_CHILD_FLAG_TEXT,
   type SimpElement,
 } from './createElement.js';
-import { _pushHostOperationPlaceElement } from './hostOperations.js';
-import { _pushMountEnterFrame } from './mounting.js';
-import { _pushMountChildrenFrame } from './mountingChildren.js';
-import { _pushPatchEnterFrame } from './patching.js';
+import { pushHostOperationPlaceElement } from './hostOperations.js';
+import { pushMountEnterFrame } from './mounting.js';
+import { pushMountChildrenFrame } from './mountingChildren.js';
+import { pushPatchEnterFrame } from './patching.js';
 import type { SimpRenderRuntime } from './runtime.js';
-import { _pushUnmountEnterFrame } from './unmounting.js';
-import { _pushUnmountChildrenFrame } from './unmountingChildren.js';
-import { _clearElementHostReference, getLongestIncreasingSubsequenceIndexes, isHostLike } from './utils.js';
+import { pushUnmountEnterFrame } from './unmounting.js';
+import { pushUnmountChildrenFrame } from './unmountingChildren.js';
+import { clearElementHostReference, getLongestIncreasingSubsequenceIndexes, isHostLike } from './utils.js';
 
+/** @internal */
 export interface PatchChildrenArgs {
   parentReference: unknown;
   subtreeRightBoundary: Nullable<SimpElement>;
@@ -28,7 +29,8 @@ export interface PatchChildrenArgs {
   prevParentElement: SimpElement;
 }
 
-export function _patchChildren(parentElement: SimpElement, meta: PatchChildrenArgs): void {
+/** @internal */
+export function patchChildren(parentElement: SimpElement, meta: PatchChildrenArgs): void {
   const {
     renderRuntime,
     parentReference,
@@ -51,7 +53,7 @@ export function _patchChildren(parentElement: SimpElement, meta: PatchChildrenAr
             (child as SimpElement).parent = parentElement;
           }
 
-          _patchKeyedChildren(parentElement, {
+          patchKeyedChildren(parentElement, {
             prevChildren,
             nextChildren,
             subtreeRightBoundary,
@@ -68,7 +70,7 @@ export function _patchChildren(parentElement: SimpElement, meta: PatchChildrenAr
         }
         case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
           (nextChildren as SimpElement).parent = parentElement;
-          _patchKeyedChildren(parentElement, {
+          patchKeyedChildren(parentElement, {
             prevChildren,
             nextChildren,
             subtreeRightBoundary,
@@ -84,12 +86,12 @@ export function _patchChildren(parentElement: SimpElement, meta: PatchChildrenAr
           break;
         }
         case SIMP_ELEMENT_CHILD_FLAG_TEXT: {
-          _pushUnmountChildrenFrame(prevParentElement, renderRuntime);
+          pushUnmountChildrenFrame(prevParentElement, renderRuntime);
           renderRuntime.hostAdapter.setTextContent(parentReference, parentElement.props?.children);
           break;
         }
         default: {
-          _pushUnmountChildrenFrame(prevParentElement, renderRuntime);
+          pushUnmountChildrenFrame(prevParentElement, renderRuntime);
           renderRuntime.hostAdapter.clearNode(parentReference);
         }
       }
@@ -102,7 +104,7 @@ export function _patchChildren(parentElement: SimpElement, meta: PatchChildrenAr
             child.parent = parentElement;
           }
 
-          _patchKeyedChildren(parentElement, {
+          patchKeyedChildren(parentElement, {
             prevChildren,
             nextChildren,
             subtreeRightBoundary,
@@ -120,7 +122,7 @@ export function _patchChildren(parentElement: SimpElement, meta: PatchChildrenAr
         case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
           (nextChildren as SimpElement).parent = parentElement;
 
-          _pushPatchEnterFrame(
+          pushPatchEnterFrame(
             nextChildren as SimpElement,
             renderRuntime,
             prevChildren as SimpElement,
@@ -132,13 +134,13 @@ export function _patchChildren(parentElement: SimpElement, meta: PatchChildrenAr
           break;
         }
         case SIMP_ELEMENT_CHILD_FLAG_TEXT: {
-          _pushUnmountChildrenFrame(prevParentElement, renderRuntime);
+          pushUnmountChildrenFrame(prevParentElement, renderRuntime);
           renderRuntime.hostAdapter.setTextContent(parentReference, parentElement.props?.children);
           break;
         }
         default: {
-          _clearElementHostReference(prevChildren as SimpElement, parentReference, renderRuntime);
-          _pushUnmountEnterFrame(prevChildren as SimpElement, renderRuntime);
+          clearElementHostReference(prevChildren as SimpElement, parentReference, renderRuntime);
+          pushUnmountEnterFrame(prevChildren as SimpElement, renderRuntime);
         }
       }
       break;
@@ -147,7 +149,7 @@ export function _patchChildren(parentElement: SimpElement, meta: PatchChildrenAr
       switch (nextParentChildFlag) {
         case SIMP_ELEMENT_CHILD_FLAG_LIST: {
           renderRuntime.hostAdapter.clearNode(parentReference);
-          _pushMountChildrenFrame(
+          pushMountChildrenFrame(
             parentElement,
             renderRuntime,
             parentElement.children as SimpElement[],
@@ -161,7 +163,7 @@ export function _patchChildren(parentElement: SimpElement, meta: PatchChildrenAr
         case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
           renderRuntime.hostAdapter.clearNode(parentReference);
           (nextChildren as SimpElement).parent = parentElement;
-          _pushMountEnterFrame(
+          pushMountEnterFrame(
             nextChildren as SimpElement,
             renderRuntime,
             parentReference,
@@ -185,7 +187,7 @@ export function _patchChildren(parentElement: SimpElement, meta: PatchChildrenAr
     default: {
       switch (nextParentChildFlag) {
         case SIMP_ELEMENT_CHILD_FLAG_LIST: {
-          _pushMountChildrenFrame(
+          pushMountChildrenFrame(
             parentElement,
             renderRuntime,
             parentElement.children as SimpElement[],
@@ -199,7 +201,7 @@ export function _patchChildren(parentElement: SimpElement, meta: PatchChildrenAr
         case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
           (nextChildren as SimpElement).parent = parentElement;
 
-          _pushMountEnterFrame(
+          pushMountEnterFrame(
             nextChildren as SimpElement,
             renderRuntime,
             parentReference,
@@ -218,7 +220,8 @@ export function _patchChildren(parentElement: SimpElement, meta: PatchChildrenAr
   }
 }
 
-export function _patchKeyedChildren(parentElement: SimpElement, meta: PatchChildrenArgs): void {
+/** @internal */
+export function patchKeyedChildren(parentElement: SimpElement, meta: PatchChildrenArgs): void {
   const { parentReference, subtreeRightBoundary, context, hostNamespace, renderRuntime } = meta;
 
   const nextChildren = meta.nextChildren as Many<SimpElement>;
@@ -259,7 +262,7 @@ export function _patchKeyedChildren(parentElement: SimpElement, meta: PatchChild
       const nextChild = getChild(nextChildren, i);
       const prevChild = getChild(prevChildren, nextChild.index);
 
-      _pushPatchEnterFrame(
+      pushPatchEnterFrame(
         nextChild,
         renderRuntime,
         prevChild,
@@ -278,7 +281,7 @@ export function _patchKeyedChildren(parentElement: SimpElement, meta: PatchChild
       const nextChild = getChild(nextChildren, i);
       const prevChild = getChild(prevChildren, nextChild.index - delta);
 
-      _pushPatchEnterFrame(
+      pushPatchEnterFrame(
         nextChild,
         renderRuntime,
         prevChild,
@@ -296,8 +299,8 @@ export function _patchKeyedChildren(parentElement: SimpElement, meta: PatchChild
     for (let i = prevStart; i <= prevEnd; i++) {
       const child = getChild(prevChildren, i);
 
-      _clearElementHostReference(child, parentReference, renderRuntime);
-      _pushUnmountEnterFrame(child, renderRuntime);
+      clearElementHostReference(child, parentReference, renderRuntime);
+      pushUnmountEnterFrame(child, renderRuntime);
     }
 
     pushSuffixPatches();
@@ -310,7 +313,7 @@ export function _patchKeyedChildren(parentElement: SimpElement, meta: PatchChild
     for (let i = nextStart; i <= nextEnd; i++) {
       const nextChild = getChild(nextChildren, i);
 
-      _pushMountEnterFrame(
+      pushMountEnterFrame(
         nextChild,
         renderRuntime,
         parentReference,
@@ -375,8 +378,8 @@ export function _patchKeyedChildren(parentElement: SimpElement, meta: PatchChild
     if (!matchedPrev[i - prevStart]) {
       const child = getChild(prevChildren, i);
 
-      _clearElementHostReference(child, parentReference, renderRuntime);
-      _pushUnmountEnterFrame(child, renderRuntime);
+      clearElementHostReference(child, parentReference, renderRuntime);
+      pushUnmountEnterFrame(child, renderRuntime);
     }
   }
 
@@ -389,7 +392,7 @@ export function _patchKeyedChildren(parentElement: SimpElement, meta: PatchChild
     const oldIndex = newIndexToOldIndex[newIndex];
 
     if (oldIndex === 0) {
-      _pushMountEnterFrame(
+      pushMountEnterFrame(
         nextChild,
         renderRuntime,
         parentReference,
@@ -407,10 +410,10 @@ export function _patchKeyedChildren(parentElement: SimpElement, meta: PatchChild
     if (isStable) {
       stableCursor++;
     } else if (moved) {
-      _pushHostOperationPlaceElement(nextChild, renderRuntime, parentReference, getRightSibling(nextChild));
+      pushHostOperationPlaceElement(nextChild, renderRuntime, parentReference, getRightSibling(nextChild));
     }
 
-    _pushPatchEnterFrame(nextChild, renderRuntime, prevChild, parentReference, null, context, hostNamespace);
+    pushPatchEnterFrame(nextChild, renderRuntime, prevChild, parentReference, null, context, hostNamespace);
   }
 
   pushSuffixPatches();

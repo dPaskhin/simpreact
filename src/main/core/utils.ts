@@ -200,7 +200,8 @@ export function getLongestIncreasingSubsequenceIndexes(sequence: Int32Array): In
   return indexes;
 }
 
-export function _detachElementFromParent(element: SimpElement): void {
+/** @internal */
+export function detachElementFromParent(element: SimpElement): void {
   const parent = element.parent;
   if (!parent) return;
 
@@ -222,7 +223,8 @@ export function _detachElementFromParent(element: SimpElement): void {
   }
 }
 
-export function _clearElementHostReference(
+/** @internal */
+export function clearElementHostReference(
   element: Maybe<SimpElement>,
   parentHostReference: unknown,
   renderRuntime: SimpRenderRuntime
@@ -243,7 +245,7 @@ export function _clearElementHostReference(
       switch (childFlag) {
         case SIMP_ELEMENT_CHILD_FLAG_LIST:
           for (let i = 0, len = (children as SimpElement[]).length; i < len; ++i) {
-            _clearElementHostReference((children as SimpElement[])[i], parentHostReference, renderRuntime);
+            clearElementHostReference((children as SimpElement[])[i], parentHostReference, renderRuntime);
           }
           return;
         case SIMP_ELEMENT_CHILD_FLAG_ELEMENT:

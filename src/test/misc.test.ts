@@ -5,17 +5,11 @@
 
 import {
   createElement,
-  createPortal,
-  Fragment,
-  getLifecycleEventBus,
-  isMemo,
-  memo,
   mount,
   patch,
   registerLifecyclePlugin,
   rerender,
   SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
-  SIMP_ELEMENT_CHILD_FLAG_EMPTY,
   SIMP_ELEMENT_CHILD_FLAG_LIST,
   SIMP_ELEMENT_FLAG_PORTAL,
   type SimpElement,
@@ -25,8 +19,13 @@ import {
 } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { SIMP_ELEMENT_CHILD_FLAG_EMPTY } from '../main/core/createElement.js';
+import { Fragment } from '../main/core/fragment.js';
+import { getLifecycleEventBus } from '../main/core/lifecycleEventBus.js';
+import { isMemo, memo } from '../main/core/memo.js';
+import { createPortal } from '../main/core/portal.js';
 import {
-  _detachElementFromParent,
+  detachElementFromParent,
   findHostReferenceFromElement,
   getLongestIncreasingSubsequenceIndexes,
 } from '../main/core/utils.js';
@@ -418,10 +417,10 @@ describe('getLongestIncreasingSubsequenceIndexes', () => {
 });
 
 // ---------------------------------------------------------------------------
-// _detachElementFromParent (imported directly from utils)
+// detachElementFromParent (imported directly from utils)
 // ---------------------------------------------------------------------------
 
-describe('_detachElementFromParent', () => {
+describe('detachElementFromParent', () => {
   it('removes element from LIST parent and re-indexes survivors', () => {
     const a = createElement('a', { key: 'a' });
     const b = createElement('b', { key: 'b' });
@@ -432,7 +431,7 @@ describe('_detachElementFromParent', () => {
     b.parent = par;
     c.parent = par;
 
-    _detachElementFromParent(b);
+    detachElementFromParent(b);
 
     expect(par.childFlag).toBe(SIMP_ELEMENT_CHILD_FLAG_LIST);
     const list = par.children as SimpElement[];
@@ -449,7 +448,7 @@ describe('_detachElementFromParent', () => {
     a.parent = par;
     b.parent = par;
 
-    _detachElementFromParent(a);
+    detachElementFromParent(a);
 
     expect(par.childFlag).toBe(SIMP_ELEMENT_CHILD_FLAG_ELEMENT);
     expect(par.children).toBe(b);
@@ -460,7 +459,7 @@ describe('_detachElementFromParent', () => {
     const par = createElement('div', null, child);
     child.parent = par;
 
-    _detachElementFromParent(child);
+    detachElementFromParent(child);
 
     expect(par.childFlag).toBe(SIMP_ELEMENT_CHILD_FLAG_EMPTY);
     expect(par.children).toBeNull();
@@ -468,7 +467,7 @@ describe('_detachElementFromParent', () => {
 
   it('no-op when element has no parent', () => {
     const el = createElement('div');
-    expect(() => _detachElementFromParent(el)).not.toThrow();
+    expect(() => detachElementFromParent(el)).not.toThrow();
   });
 });
 

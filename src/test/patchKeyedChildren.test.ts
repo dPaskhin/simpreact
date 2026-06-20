@@ -4,9 +4,10 @@
  * prev-exhausted (mount), LIS-based middle, and all child-mode transitions.
  */
 
-import { createElement, Fragment, mount, patch, type SimpElement, type SimpRenderRuntime } from '@simpreact/internal';
+import { createElement, mount, patch, type SimpElement, type SimpRenderRuntime } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { Fragment } from '../main/core/fragment.js';
 import { testHostAdapter } from './test-host-adapter.js';
 
 const renderRuntime: SimpRenderRuntime = {
