@@ -1,5 +1,5 @@
 import { createUseCatch, createUseEffect, createUseRef, createUseRerender, createUseState } from '@simpreact/hooks';
-import { type DependencyList, shallowEqual } from '@simpreact/shared';
+import { shallowEqual } from '@simpreact/shared';
 import { renderRuntime } from './renderRuntime.js';
 
 export const useRerender = createUseRerender(renderRuntime);
@@ -10,7 +10,7 @@ export const useInsertionEffect = createUseEffect(renderRuntime);
 export const useRef = createUseRef(renderRuntime);
 export const useCatch = createUseCatch(renderRuntime);
 
-export function useSyncExternalStore<T>(subscribe: (callback: () => void) => () => void, getSnapshot: () => T): T {
+export function useSyncExternalStore(subscribe, getSnapshot) {
   const rerender = useRerender();
   const lastSnapshotRef = useRef(getSnapshot());
 
@@ -33,19 +33,15 @@ export function useSyncExternalStore<T>(subscribe: (callback: () => void) => () 
   return lastSnapshotRef.current;
 }
 
-export function useReducer<R extends (state: any, action: any) => any, I>(
-  reducer: R,
-  initializerArg: I,
-  initializer?: (arg: I) => ReturnType<R>
-): [ReturnType<R>, (action: Parameters<R>[1]) => void] {
+export function useReducer(reducer, initializerArg, initializer) {
   const rerender = useRerender();
   const reducerRef = useRef(reducer);
 
   reducerRef.current = reducer;
 
-  const stateRef = useRef<[ReturnType<R>, (action: Parameters<R>[1]) => void]>([
-    initializer ? initializer(initializerArg) : (initializerArg as unknown as ReturnType<R>),
-    function dispatch(action: Parameters<R>[1]) {
+  const stateRef = useRef([
+    initializer ? initializer(initializerArg) : initializerArg,
+    function dispatch(action) {
       const newState = reducerRef.current(stateRef.current[0], action);
 
       if (Object.is(newState, stateRef.current[0])) {
@@ -62,7 +58,7 @@ export function useReducer<R extends (state: any, action: any) => any, I>(
 
 let globalId = 0;
 
-export function useId(prefix: string = 'id'): string {
+export function useId(prefix = 'id') {
   const idRef = useRef('');
 
   if (idRef.current === '') {
@@ -73,13 +69,10 @@ export function useId(prefix: string = 'id'): string {
   return idRef.current;
 }
 
-export function useMemo<T>(factory: () => T, deps: DependencyList): T {
-  const ref = useRef<{
-    value: T;
-    deps: DependencyList;
-  }>({
-    deps: undefined!,
-    value: undefined!,
+export function useMemo(factory, deps) {
+  const ref = useRef({
+    deps: undefined,
+    value: undefined,
   });
 
   if (!shallowEqual(ref.current.deps, deps)) {
@@ -90,9 +83,21 @@ export function useMemo<T>(factory: () => T, deps: DependencyList): T {
   return ref.current.value;
 }
 
-export function useCallback<T>(cb: T, deps: DependencyList): T {
+export function useCallback(cb, deps) {
   return useMemo(() => cb, deps);
 }
+
+export function useImperativeHandle(ref, init, deps) {
+  useLayoutEffect(() => {
+    if (typeof ref === 'function') {
+      ref(init());
+    } else if (ref != null) {
+      ref.current = init();
+    }
+  }, deps);
+}
+
+export function useDebugValue(_value, _format) {}
 
 export default {
   useSyncExternalStore,
@@ -100,9 +105,13 @@ export default {
   useId,
   useMemo,
   useCallback,
+  useImperativeHandle,
+  useDebugValue,
   useState,
   useEffect,
   useLayoutEffect,
   useInsertionEffect,
   useRef,
+  useRerender,
+  useCatch,
 };

@@ -1,43 +1,33 @@
-import type { Many } from '../shared/index.js';
+import type { Many, Maybe, Nullable } from '../shared/index.js';
 import {
-  type Key,
   SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
   SIMP_ELEMENT_CHILD_FLAG_LIST,
   SIMP_ELEMENT_CHILD_FLAG_TEXT,
   type SimpElement,
 } from './createElement.js';
-import { _pushHostOperationPlaceElement } from './hostOperations.js';
-import { _pushMountEnterFrame } from './mounting.js';
-import { _pushMountChildrenFrame } from './mountingChildren.js';
-import { _pushPatchEnterFrame } from './patching.js';
-import {
-  PATCH_CHILDREN,
-  PATCH_KEYED_CHILDREN,
-  type PatchChildrenFrame,
-  type PatchChildrenFrameMeta,
-} from './processStack.js';
-import { _pushUnmountEnterFrame } from './unmounting.js';
-import { _pushUnmountChildrenFrame } from './unmountingChildren.js';
-import { _clearElementHostReference, getLongestIncreasingSubsequenceIndexes, isHostLike } from './utils.js';
+import { pushHostOperationPlaceElement } from './hostOperations.js';
+import { pushMountEnterFrame } from './mounting.js';
+import { pushMountChildrenFrame } from './mountingChildren.js';
+import { pushPatchEnterFrame } from './patching.js';
+import type { SimpRenderRuntime } from './runtime.js';
+import { pushUnmountEnterFrame } from './unmounting.js';
+import { pushUnmountChildrenFrame } from './unmountingChildren.js';
+import { clearElementHostReference, getLongestIncreasingSubsequenceIndexes, isHostLike } from './utils.js';
 
-export function _pushPatchChildrenFrame(parent: SimpElement, meta: PatchChildrenFrameMeta): void {
-  meta.renderRuntime.renderStack.push({
-    node: parent,
-    kind: PATCH_CHILDREN,
-    meta,
-  });
+export interface PatchChildrenArgs {
+  parentReference: unknown;
+  subtreeRightBoundary: Nullable<SimpElement>;
+  context: unknown;
+  hostNamespace: Maybe<string>;
+  renderRuntime: SimpRenderRuntime;
+  nextChildren: Nullable<Many<SimpElement>>;
+  prevChildren: Nullable<Many<SimpElement>>;
+  prevParentChildFlag: number;
+  nextParentChildFlag: number;
+  prevParentElement: SimpElement;
 }
 
-export function _pushPatchKeyedChildrenFrame(element: SimpElement, meta: PatchChildrenFrameMeta): void {
-  meta.renderRuntime.renderStack.push({
-    node: element,
-    kind: PATCH_KEYED_CHILDREN,
-    meta,
-  });
-}
-
-export function _patchChildren(frame: PatchChildrenFrame): void {
-  const parentElement = frame.node;
+export function patchChildren(parentElement: SimpElement, meta: PatchChildrenArgs): void {
   const {
     renderRuntime,
     parentReference,
@@ -48,9 +38,9 @@ export function _patchChildren(frame: PatchChildrenFrame): void {
     prevParentChildFlag,
     nextParentChildFlag,
     prevParentElement,
-  } = frame.meta;
+  } = meta;
 
-  const subtreeRightBoundary = isHostLike(parentElement.flag) ? null : frame.meta.subtreeRightBoundary;
+  const subtreeRightBoundary = isHostLike(parentElement.flag) ? null : meta.subtreeRightBoundary;
 
   switch (prevParentChildFlag) {
     case SIMP_ELEMENT_CHILD_FLAG_LIST: {
@@ -60,7 +50,7 @@ export function _patchChildren(frame: PatchChildrenFrame): void {
             (child as SimpElement).parent = parentElement;
           }
 
-          _pushPatchKeyedChildrenFrame(parentElement, {
+          patchKeyedChildren(parentElement, {
             prevChildren,
             nextChildren,
             subtreeRightBoundary,
@@ -77,7 +67,7 @@ export function _patchChildren(frame: PatchChildrenFrame): void {
         }
         case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
           (nextChildren as SimpElement).parent = parentElement;
-          _pushPatchKeyedChildrenFrame(parentElement, {
+          patchKeyedChildren(parentElement, {
             prevChildren,
             nextChildren,
             subtreeRightBoundary,
@@ -93,12 +83,12 @@ export function _patchChildren(frame: PatchChildrenFrame): void {
           break;
         }
         case SIMP_ELEMENT_CHILD_FLAG_TEXT: {
-          _pushUnmountChildrenFrame(prevParentElement, frame.meta);
+          pushUnmountChildrenFrame(prevParentElement, renderRuntime);
           renderRuntime.hostAdapter.setTextContent(parentReference, parentElement.props?.children);
           break;
         }
         default: {
-          _pushUnmountChildrenFrame(prevParentElement, frame.meta);
+          pushUnmountChildrenFrame(prevParentElement, renderRuntime);
           renderRuntime.hostAdapter.clearNode(parentReference);
         }
       }
@@ -111,7 +101,7 @@ export function _patchChildren(frame: PatchChildrenFrame): void {
             child.parent = parentElement;
           }
 
-          _pushPatchKeyedChildrenFrame(parentElement, {
+          patchKeyedChildren(parentElement, {
             prevChildren,
             nextChildren,
             subtreeRightBoundary,
@@ -129,24 +119,25 @@ export function _patchChildren(frame: PatchChildrenFrame): void {
         case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
           (nextChildren as SimpElement).parent = parentElement;
 
-          _pushPatchEnterFrame(nextChildren as SimpElement, {
-            prevElement: prevChildren as SimpElement,
-            parentReference,
+          pushPatchEnterFrame(
+            nextChildren as SimpElement,
             renderRuntime,
-            subtreeRightBoundary: subtreeRightBoundary,
+            prevChildren as SimpElement,
+            parentReference,
+            subtreeRightBoundary,
             context,
-            hostNamespace,
-          });
+            hostNamespace
+          );
           break;
         }
         case SIMP_ELEMENT_CHILD_FLAG_TEXT: {
-          _pushUnmountChildrenFrame(prevParentElement, frame.meta);
+          pushUnmountChildrenFrame(prevParentElement, renderRuntime);
           renderRuntime.hostAdapter.setTextContent(parentReference, parentElement.props?.children);
           break;
         }
         default: {
-          _clearElementHostReference(prevChildren as SimpElement, parentReference, renderRuntime);
-          _pushUnmountEnterFrame(prevChildren as SimpElement, frame.meta);
+          clearElementHostReference(prevChildren as SimpElement, parentReference, renderRuntime);
+          pushUnmountEnterFrame(prevChildren as SimpElement, renderRuntime);
         }
       }
       break;
@@ -155,34 +146,36 @@ export function _patchChildren(frame: PatchChildrenFrame): void {
       switch (nextParentChildFlag) {
         case SIMP_ELEMENT_CHILD_FLAG_LIST: {
           renderRuntime.hostAdapter.clearNode(parentReference);
-          _pushMountChildrenFrame(parentElement, {
-            children: parentElement.children as SimpElement[],
-            context,
-            hostNamespace,
+          pushMountChildrenFrame(
+            parentElement,
             renderRuntime,
-            subtreeRightBoundary,
+            parentElement.children as SimpElement[],
             parentReference,
-          });
+            subtreeRightBoundary,
+            context,
+            hostNamespace
+          );
           break;
         }
         case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
           renderRuntime.hostAdapter.clearNode(parentReference);
           (nextChildren as SimpElement).parent = parentElement;
-          _pushMountEnterFrame(nextChildren as SimpElement, {
+          pushMountEnterFrame(
+            nextChildren as SimpElement,
+            renderRuntime,
             parentReference,
-            subtreeRightBoundary: subtreeRightBoundary,
+            subtreeRightBoundary,
             context,
             hostNamespace,
-            renderRuntime,
-            placeHolderElement: null,
-          });
+            null
+          );
           break;
         }
         case SIMP_ELEMENT_CHILD_FLAG_TEXT: {
-          const prevChildren = prevParentElement.props?.children;
-          const nextChildren = parentElement.props?.children;
-          if (prevChildren !== nextChildren) {
-            renderRuntime.hostAdapter.setTextContent(parentReference, nextChildren as string, true);
+          const prevText = prevParentElement.props?.children;
+          const nextText = parentElement.props?.children;
+          if (prevText !== nextText) {
+            renderRuntime.hostAdapter.setTextContent(parentReference, nextText as string, true);
           }
         }
       }
@@ -191,27 +184,29 @@ export function _patchChildren(frame: PatchChildrenFrame): void {
     default: {
       switch (nextParentChildFlag) {
         case SIMP_ELEMENT_CHILD_FLAG_LIST: {
-          _pushMountChildrenFrame(parentElement, {
+          pushMountChildrenFrame(
+            parentElement,
+            renderRuntime,
+            parentElement.children as SimpElement[],
             parentReference,
             subtreeRightBoundary,
             context,
-            hostNamespace,
-            renderRuntime,
-            children: parentElement.children as SimpElement[],
-          });
+            hostNamespace
+          );
           break;
         }
         case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
           (nextChildren as SimpElement).parent = parentElement;
 
-          _pushMountEnterFrame(nextChildren as SimpElement, {
+          pushMountEnterFrame(
+            nextChildren as SimpElement,
+            renderRuntime,
             parentReference,
+            subtreeRightBoundary,
             context,
             hostNamespace,
-            renderRuntime,
-            placeHolderElement: null,
-            subtreeRightBoundary: subtreeRightBoundary,
-          });
+            null
+          );
           break;
         }
         case SIMP_ELEMENT_CHILD_FLAG_TEXT: {
@@ -222,22 +217,14 @@ export function _patchChildren(frame: PatchChildrenFrame): void {
   }
 }
 
-export function _patchKeyedChildren(frame: PatchChildrenFrame): void {
-  const { parentReference, subtreeRightBoundary, context, hostNamespace, renderRuntime } = frame.meta;
+export function patchKeyedChildren(parentElement: SimpElement, meta: PatchChildrenArgs): void {
+  const { parentReference, subtreeRightBoundary, context, hostNamespace, renderRuntime } = meta;
 
-  const nextChildren = frame.meta.nextChildren as Many<SimpElement>;
-  const prevChildren = frame.meta.prevChildren as Many<SimpElement>;
+  const nextChildren = meta.nextChildren as Many<SimpElement>;
+  const prevChildren = meta.prevChildren as Many<SimpElement>;
 
   const nextLen = Array.isArray(nextChildren) ? nextChildren.length : 1;
   const prevLen = Array.isArray(prevChildren) ? prevChildren.length : 1;
-
-  const base = {
-    parentReference,
-    renderRuntime,
-    context,
-    hostNamespace,
-    placeHolderElement: null,
-  } as const;
 
   const getRightSibling = (child: SimpElement): SimpElement | null => {
     return child.index + 1 < nextLen ? getChild(nextChildren, child.index + 1) : subtreeRightBoundary;
@@ -271,11 +258,15 @@ export function _patchKeyedChildren(frame: PatchChildrenFrame): void {
       const nextChild = getChild(nextChildren, i);
       const prevChild = getChild(prevChildren, nextChild.index);
 
-      _pushPatchEnterFrame(nextChild, {
-        ...base,
-        prevElement: prevChild,
-        subtreeRightBoundary: getRightSibling(nextChild),
-      });
+      pushPatchEnterFrame(
+        nextChild,
+        renderRuntime,
+        prevChild,
+        parentReference,
+        getRightSibling(nextChild),
+        context,
+        hostNamespace
+      );
     }
   };
 
@@ -286,11 +277,15 @@ export function _patchKeyedChildren(frame: PatchChildrenFrame): void {
       const nextChild = getChild(nextChildren, i);
       const prevChild = getChild(prevChildren, nextChild.index - delta);
 
-      _pushPatchEnterFrame(nextChild, {
-        ...base,
-        prevElement: prevChild,
-        subtreeRightBoundary: getRightSibling(nextChild),
-      });
+      pushPatchEnterFrame(
+        nextChild,
+        renderRuntime,
+        prevChild,
+        parentReference,
+        getRightSibling(nextChild),
+        context,
+        hostNamespace
+      );
     }
   };
 
@@ -300,8 +295,8 @@ export function _patchKeyedChildren(frame: PatchChildrenFrame): void {
     for (let i = prevStart; i <= prevEnd; i++) {
       const child = getChild(prevChildren, i);
 
-      _clearElementHostReference(child, parentReference, renderRuntime);
-      _pushUnmountEnterFrame(child, frame.meta);
+      clearElementHostReference(child, parentReference, renderRuntime);
+      pushUnmountEnterFrame(child, renderRuntime);
     }
 
     pushSuffixPatches();
@@ -314,41 +309,48 @@ export function _patchKeyedChildren(frame: PatchChildrenFrame): void {
     for (let i = nextStart; i <= nextEnd; i++) {
       const nextChild = getChild(nextChildren, i);
 
-      _pushMountEnterFrame(nextChild, {
-        ...base,
-        subtreeRightBoundary: getRightSibling(nextChild),
-      });
+      pushMountEnterFrame(
+        nextChild,
+        renderRuntime,
+        parentReference,
+        getRightSibling(nextChild),
+        context,
+        hostNamespace,
+        null
+      );
     }
 
     pushSuffixPatches();
     return;
   }
 
-  const keyToPrevChild = new Map<Key, SimpElement>();
+  const keyToPrevChild = Object.create(null) as Record<string, SimpElement>;
 
   for (let i = prevStart; i <= prevEnd; i++) {
     const prevChild = getChild(prevChildren, i);
     const key = prevChild.key;
 
     if (key != null) {
-      keyToPrevChild.set(key, prevChild);
+      keyToPrevChild[key as string] = prevChild;
     }
   }
 
   const middleLen = nextEnd - nextStart + 1;
   const newIndexToOldIndex = new Int32Array(middleLen);
+  const matchedPrev = new Uint8Array(prevEnd - prevStart + 1);
 
   let moved = false;
   let maxPrevIndexSoFar = -1;
 
   for (let i = nextStart; i <= nextEnd; i++) {
     const nextChild = getChild(nextChildren, i);
-    const prevChild = keyToPrevChild.get(nextChild.key!);
+    const prevChild = nextChild.key != null ? keyToPrevChild[nextChild.key as string] : undefined;
 
     if (prevChild != null) {
       const prevIndex = prevChild.index;
 
       newIndexToOldIndex[nextChild.index - nextStart] = prevIndex + 1;
+      matchedPrev[prevIndex - prevStart] = 1;
 
       if (prevIndex < maxPrevIndexSoFar) {
         moved = true;
@@ -360,59 +362,69 @@ export function _patchKeyedChildren(frame: PatchChildrenFrame): void {
 
   pushPrefixPatches();
 
-  const matchedPrev = new Uint8Array(prevEnd - prevStart + 1);
-
-  for (let i = 0; i < middleLen; i++) {
-    const oldIndex = newIndexToOldIndex[i];
-
-    if (oldIndex !== 0) {
-      matchedPrev[oldIndex! - 1 - prevStart] = 1;
-    }
-  }
-
   for (let i = prevStart; i <= prevEnd; i++) {
     if (!matchedPrev[i - prevStart]) {
       const child = getChild(prevChildren, i);
 
-      _clearElementHostReference(child, parentReference, renderRuntime);
-      _pushUnmountEnterFrame(child, frame.meta);
+      clearElementHostReference(child, parentReference, renderRuntime);
+      pushUnmountEnterFrame(child, renderRuntime);
     }
   }
 
-  const stableNewIndexes = moved ? getLongestIncreasingSubsequenceIndexes(newIndexToOldIndex) : new Int32Array(0);
-  let stableCursor = 0;
+  if (moved) {
+    const stableNewIndexes = getLongestIncreasingSubsequenceIndexes(newIndexToOldIndex);
+    let stableCursor = 0;
 
-  for (let i = nextStart; i <= nextEnd; i++) {
-    const nextChild = getChild(nextChildren, i);
-    const newIndex = nextChild.index - nextStart;
-    const oldIndex = newIndexToOldIndex[newIndex];
+    for (let i = nextStart; i <= nextEnd; i++) {
+      const nextChild = getChild(nextChildren, i);
+      const newIndex = nextChild.index - nextStart;
+      const oldIndex = newIndexToOldIndex[newIndex];
 
-    if (oldIndex === 0) {
-      _pushMountEnterFrame(nextChild, {
-        ...base,
-        subtreeRightBoundary: getRightSibling(nextChild),
-      });
-      continue;
+      if (oldIndex === 0) {
+        pushMountEnterFrame(
+          nextChild,
+          renderRuntime,
+          parentReference,
+          getRightSibling(nextChild),
+          context,
+          hostNamespace,
+          null
+        );
+        continue;
+      }
+
+      const prevChild = getChild(prevChildren, oldIndex! - 1);
+
+      if (stableNewIndexes[stableCursor] === newIndex) {
+        stableCursor++;
+      } else {
+        pushHostOperationPlaceElement(nextChild, renderRuntime, parentReference, getRightSibling(nextChild));
+      }
+
+      pushPatchEnterFrame(nextChild, renderRuntime, prevChild, parentReference, null, context, hostNamespace);
     }
+  } else {
+    for (let i = nextStart; i <= nextEnd; i++) {
+      const nextChild = getChild(nextChildren, i);
+      const newIndex = nextChild.index - nextStart;
+      const oldIndex = newIndexToOldIndex[newIndex];
 
-    const prevChild = getChild(prevChildren, oldIndex! - 1);
-    const isStable = moved && stableNewIndexes[stableCursor] === newIndex;
+      if (oldIndex === 0) {
+        pushMountEnterFrame(
+          nextChild,
+          renderRuntime,
+          parentReference,
+          getRightSibling(nextChild),
+          context,
+          hostNamespace,
+          null
+        );
+        continue;
+      }
 
-    if (isStable) {
-      stableCursor++;
-    } else if (moved) {
-      _pushHostOperationPlaceElement(nextChild, {
-        parentReference,
-        renderRuntime,
-        subtreeRightBoundary: getRightSibling(nextChild),
-      });
+      const prevChild = getChild(prevChildren, oldIndex! - 1);
+      pushPatchEnterFrame(nextChild, renderRuntime, prevChild, parentReference, null, context, hostNamespace);
     }
-
-    _pushPatchEnterFrame(nextChild, {
-      ...base,
-      prevElement: prevChild,
-      subtreeRightBoundary: null,
-    });
   }
 
   pushSuffixPatches();

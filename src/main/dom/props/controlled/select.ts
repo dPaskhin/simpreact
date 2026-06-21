@@ -1,5 +1,10 @@
-import type { SimpElement, SimpRenderRuntime } from '@simpreact/internal';
-import { SIMP_ELEMENT_CHILD_FLAG_ELEMENT, SIMP_ELEMENT_CHILD_FLAG_LIST, withSyncRerender } from '@simpreact/internal';
+import {
+  hasElementChild,
+  hasListChildren,
+  type SimpElement,
+  type SimpRenderRuntime,
+  withSyncRerender,
+} from '@simpreact/internal';
 import type { Dict } from '@simpreact/shared';
 import { emptyObject } from '@simpreact/shared';
 
@@ -80,16 +85,13 @@ function updateOptions(element: SimpElement, value: unknown): void {
   }
 
   const children = element.children;
-  const childFlag = element.childFlag;
 
-  switch (childFlag) {
-    case SIMP_ELEMENT_CHILD_FLAG_LIST:
-      for (let i = 0, len = (children as SimpElement[]).length; i < len; ++i) {
-        updateOptions((children as SimpElement[])[i]!, value);
-      }
-      break;
-    case SIMP_ELEMENT_CHILD_FLAG_ELEMENT:
-      updateOptions(children as SimpElement, value);
+  if (hasListChildren(element)) {
+    for (let i = 0, len = (children as SimpElement[]).length; i < len; ++i) {
+      updateOptions((children as SimpElement[])[i]!, value);
+    }
+  } else if (hasElementChild(element)) {
+    updateOptions(children as SimpElement, value);
   }
 }
 

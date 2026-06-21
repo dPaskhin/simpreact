@@ -12,10 +12,13 @@
       "types": "./core/index.d.ts"
     },
     "./compat": {
-      "import": "./compat/index.js"
+      "import": "./compat/index.js",
+      "types": "./compat/index.d.ts",
+      "default": "./compat/index.js"
     },
     "./compat/*": {
-      "import": "./compat/index.js"
+      "import": "./compat/index.js",
+      "default": "./compat/index.js"
     },
     "./component": {
       "import": "./component/index.js",
@@ -31,11 +34,13 @@
     },
     "./jsx-runtime": {
       "import": "./jsx-runtime/index.js",
-      "types": "./jsx-runtime/index.d.ts"
+      "types": "./jsx-runtime/index.d.ts",
+      "default": "./jsx-runtime/index.js"
     },
     "./jsx-dev-runtime": {
       "import": "./jsx-runtime/index.js",
-      "types": "./jsx-runtime/index.d.ts"
+      "types": "./jsx-runtime/index.d.ts",
+      "default": "./jsx-runtime/index.js"
     },
     "./hooks": {
       "import": "./hooks/index.js",
@@ -64,10 +69,15 @@
   "scripts": {
     "build": "npm run clean && tsc --project tsconfig.build.json && node move-types.mjs && tsc-alias && cp package.json README.md LICENSE.txt lib/ && cd lib && npm pkg delete scripts devDependencies",
     "test": "vitest --coverage",
-    "format": "biome check --write",
+    "format": "biome check --write --unsafe",
     "typecheck": "tsc --project tsconfig.typecheck.json",
     "clean": "rimraf lib",
-    "perf": "npx toofast"
+    "bench": "bash scripts/bench.sh",
+    "bench:save": "bash scripts/bench.sh --outputJson bench-baseline.json",
+    "bench:compare": "bash scripts/bench.sh --compare bench-baseline.json",
+    "mem": "NODE_ENV=production node --expose-gc scripts/mem.mjs",
+    "mem:save": "NODE_ENV=production node --expose-gc scripts/mem.mjs --save mem-baseline.json",
+    "mem:compare": "NODE_ENV=production node --expose-gc scripts/mem.mjs --compare mem-baseline.json"
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.3",

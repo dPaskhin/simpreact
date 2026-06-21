@@ -1,27 +1,25 @@
 import { SIMP_ELEMENT_CHILD_FLAG_ELEMENT, SIMP_ELEMENT_CHILD_FLAG_LIST, type SimpElement } from './createElement.js';
-import { UNMOUNT_CHILDREN_ENTER, type UnmountChildrenFrame, type UnmountFrameMeta } from './processStack.js';
-import { _pushUnmountEnterFrame } from './unmounting.js';
+import { acquireUnmountChildrenFrame, type SimpRenderFrame } from './processStack.js';
+import type { SimpRenderRuntime } from './runtime.js';
+import { pushUnmountEnterFrame } from './unmounting.js';
 
-export function _pushUnmountChildrenFrame(parent: SimpElement, meta: UnmountFrameMeta): void {
-  meta.renderRuntime.renderStack.push({
-    node: parent,
-    kind: UNMOUNT_CHILDREN_ENTER,
-    meta,
-  });
+export function pushUnmountChildrenFrame(parent: SimpElement, renderRuntime: SimpRenderRuntime): void {
+  renderRuntime.renderStack.push(acquireUnmountChildrenFrame(renderRuntime, parent));
 }
 
-export function _unmountChildren(frame: UnmountChildrenFrame): void {
+export function unmountChildren(frame: SimpRenderFrame): void {
   switch (frame.node.childFlag) {
-    case SIMP_ELEMENT_CHILD_FLAG_LIST:
+    case SIMP_ELEMENT_CHILD_FLAG_LIST: {
       const children = frame.node.children as SimpElement[];
 
       for (let i = children.length - 1; i >= 0; i -= 1) {
-        _pushUnmountEnterFrame(children[i]!, frame.meta);
+        pushUnmountEnterFrame(children[i]!, frame.renderRuntime);
       }
 
       break;
+    }
     case SIMP_ELEMENT_CHILD_FLAG_ELEMENT:
-      _pushUnmountEnterFrame(frame.node.children as SimpElement, frame.meta);
+      pushUnmountEnterFrame(frame.node.children as SimpElement, frame.renderRuntime);
       break;
   }
 }

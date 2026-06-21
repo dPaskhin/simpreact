@@ -1,87 +1,86 @@
 import { noop } from '@simpreact/shared';
 import type { SimpElement } from './createElement.js';
-import { lifecycleEventBus } from './lifecycleEventBus.js';
-import { processStack, UNMOUNT_ENTER, UNMOUNT_EXIT, type UnmountFrame, type UnmountFrameMeta } from './processStack.js';
+import { getLifecycleEventBus } from './lifecycleEventBus.js';
+import {
+  acquireUnmountFrame,
+  processStack,
+  type SimpRenderFrame,
+  UNMOUNT_ENTER,
+  UNMOUNT_EXIT,
+} from './processStack.js';
 import { unmountRef } from './ref.js';
 import type { SimpRenderRuntime } from './runtime.js';
-import { _pushUnmountChildrenFrame } from './unmountingChildren.js';
-import { _clearElementHostReference, bitScanForwardIndex } from './utils.js';
+import { pushUnmountChildrenFrame } from './unmountingChildren.js';
+import { bitScanForwardIndex, clearElementHostReference } from './utils.js';
 
-const unmountHandlers = [
-  _unmountHostElement,
-  _unmountFunctionalElement,
-  noop,
-  _unmountPortalElement,
-  _unmountFragmentElement,
-];
+const unmountEnterHandlers = [unmountHostEnter, unmountFCEnter, noop, unmountPortalElement, unmountFragmentElement];
+
+const unmountExitHandlers = [unmountHostExit, unmountFCExit, noop, noop, noop];
 
 export function unmount(element: SimpElement, renderRuntime: SimpRenderRuntime): void {
   if (renderRuntime.renderStack.length !== 0) {
     throw new Error('Cannot unmount while rendering.');
   }
 
-  _pushUnmountEnterFrame(element, { renderRuntime });
+  pushUnmountEnterFrame(element, renderRuntime);
 
   processStack(renderRuntime);
 }
 
-export function _unmount(frame: UnmountFrame): void {
-  unmountHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
+export function unmountEnter(frame: SimpRenderFrame): void {
+  unmountEnterHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
 }
 
-export function _pushUnmountEnterFrame(element: SimpElement, meta: UnmountFrameMeta): void {
-  meta.renderRuntime.renderStack.push({
-    node: element,
-    kind: UNMOUNT_ENTER,
-    meta,
-  });
+export function unmountExit(frame: SimpRenderFrame): void {
+  unmountExitHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
 }
 
-export function _pushUnmountExitFrame(element: SimpElement, meta: UnmountFrameMeta): void {
-  meta.renderRuntime.renderStack.push({
-    node: element,
-    kind: UNMOUNT_EXIT,
-    meta,
-  });
+export function pushUnmountEnterFrame(element: SimpElement, renderRuntime: SimpRenderRuntime): void {
+  renderRuntime.renderStack.push(acquireUnmountFrame(renderRuntime, element, UNMOUNT_ENTER));
 }
 
-function _unmountFunctionalElement(frame: UnmountFrame): void {
+function pushUnmountExitFrame(element: SimpElement, renderRuntime: SimpRenderRuntime): void {
+  renderRuntime.renderStack.push(acquireUnmountFrame(renderRuntime, element, UNMOUNT_EXIT));
+}
+
+function unmountFCEnter(frame: SimpRenderFrame): void {
   const current = frame.node;
 
   if (current.unmounted) {
     return;
   }
 
-  if (frame.kind === UNMOUNT_EXIT) {
-    current.unmounted = true;
-    lifecycleEventBus.publish({ type: 'unmounted', element: current, renderRuntime: frame.meta.renderRuntime });
-    current.store = null;
-    return;
-  }
-
-  _pushUnmountExitFrame(current, frame.meta);
-  _pushUnmountChildrenFrame(current, frame.meta);
+  pushUnmountExitFrame(current, frame.renderRuntime);
+  pushUnmountChildrenFrame(current, frame.renderRuntime);
 }
 
-function _unmountHostElement(frame: UnmountFrame): void {
+function unmountFCExit(frame: SimpRenderFrame): void {
   const current = frame.node;
-
-  if (frame.kind === UNMOUNT_EXIT) {
-    unmountRef(current);
-    frame.meta.renderRuntime.hostAdapter.unmountProps(current.reference, current, frame.meta.renderRuntime);
-    frame.meta.renderRuntime.hostAdapter.detachElementFromReference(current.reference, frame.meta.renderRuntime);
-    return;
-  }
-
-  _pushUnmountExitFrame(current, frame.meta);
-  _pushUnmountChildrenFrame(current, frame.meta);
+  current.unmounted = true;
+  getLifecycleEventBus(frame.renderRuntime).publish({
+    type: 'unmounted',
+    element: current,
+    renderRuntime: frame.renderRuntime,
+  });
 }
 
-function _unmountPortalElement(frame: UnmountFrame): void {
-  _clearElementHostReference(frame.node.children as SimpElement, frame.node.ref, frame.meta.renderRuntime);
-  _pushUnmountChildrenFrame(frame.node, frame.meta);
+function unmountHostEnter(frame: SimpRenderFrame): void {
+  pushUnmountExitFrame(frame.node, frame.renderRuntime);
+  pushUnmountChildrenFrame(frame.node, frame.renderRuntime);
 }
 
-function _unmountFragmentElement(frame: UnmountFrame): void {
-  _pushUnmountChildrenFrame(frame.node, frame.meta);
+function unmountHostExit(frame: SimpRenderFrame): void {
+  const current = frame.node;
+  unmountRef(current);
+  frame.renderRuntime.hostAdapter.unmountProps(current.reference, current, frame.renderRuntime);
+  frame.renderRuntime.hostAdapter.detachElementFromReference(current.reference, frame.renderRuntime);
+}
+
+function unmountPortalElement(frame: SimpRenderFrame): void {
+  clearElementHostReference(frame.node.children as SimpElement, frame.node.ref, frame.renderRuntime);
+  pushUnmountChildrenFrame(frame.node, frame.renderRuntime);
+}
+
+function unmountFragmentElement(frame: SimpRenderFrame): void {
+  pushUnmountChildrenFrame(frame.node, frame.renderRuntime);
 }

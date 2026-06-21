@@ -16,6 +16,9 @@ export declare function createUseRerender(renderRuntime: SimpRenderRuntime): () 
 export interface UseState {
   <S>(initialState: S | (() => S)): [S, Dispatch<SetStateAction<S>>];
   <S>(): [S | undefined, Dispatch<SetStateAction<S | undefined>>];
+  <S = undefined>(
+    initialState: undefined | (() => undefined)
+  ): [S | undefined, Dispatch<SetStateAction<S | undefined>>];
 }
 export declare function createUseState(renderRuntime: SimpRenderRuntime): UseState;
 

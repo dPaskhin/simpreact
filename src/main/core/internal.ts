@@ -1,16 +1,18 @@
-export * from './createElement.js';
-export * from './fragment.js';
-export * from './hostAdapter.js';
-export * from './lifecycleEventBus.js';
-export * from './memo.js';
-export * from './mounting.js';
-export * from './mountingChildren.js';
-export * from './patching.js';
-export * from './patchingChildren.js';
-export * from './portal.js';
-export * from './processStack.js';
-export * from './ref.js';
-export * from './rerender.js';
-export * from './runtime.js';
-export * from './unmounting.js';
-export * from './unmountingChildren.js';
+export {
+  createElement,
+  hasElementChild,
+  hasListChildren,
+  isFC,
+  isFragment,
+  isHost,
+  isPortal,
+  isText,
+} from './createElement.js';
+export { Fragment } from './fragment.js';
+export type * from './internal-public.js';
+export { registerLifecyclePlugin } from './lifecycleEventBus.js';
+export { mount } from './mounting.js';
+export { patch } from './patching.js';
+export { rerender, withSyncRerender } from './rerender.js';
+export { createRenderRuntime } from './runtime.js';
+export { unmount } from './unmounting.js';

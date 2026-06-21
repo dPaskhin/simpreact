@@ -21,6 +21,7 @@ export function unmountRef(element: RefSimpElement): void {
 
   if (typeof element.ref.cleanup === 'function') {
     element.ref.cleanup();
+    element.ref.cleanup = null;
   }
 
   if (typeof element.ref.value !== 'function') {

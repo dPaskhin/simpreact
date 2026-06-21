@@ -1,4 +1,5 @@
 import type { Many, Maybe, Nullable } from '@simpreact/shared';
+import { noop } from '@simpreact/shared';
 import {
   createTextElement,
   type FC,
@@ -6,15 +7,16 @@ import {
   SIMP_ELEMENT_CHILD_FLAG_TEXT,
   type SimpElement,
 } from './createElement.js';
-import { _pushHostOperationPlaceElement } from './hostOperations.js';
-import { type LifecycleEvent, lifecycleEventBus } from './lifecycleEventBus.js';
-import { _pushMountChildrenFrame } from './mountingChildren.js';
-import { MOUNT_ENTER, MOUNT_EXIT, type MountFrame, type MountFrameMeta, processStack } from './processStack.js';
+import { pushHostOperationPlaceElement } from './hostOperations.js';
+import { getLifecycleEventBus, type LifecycleEvent } from './lifecycleEventBus.js';
+import { pushMountChildrenFrame } from './mountingChildren.js';
+import { acquireMountFrame, MOUNT_ENTER, MOUNT_EXIT, processStack, type SimpRenderFrame } from './processStack.js';
 import { applyRef } from './ref.js';
-import { MOUNTING_PHASE, type SimpRenderRuntime } from './runtime.js';
+import type { SimpRenderRuntime } from './runtime.js';
 import { bitScanForwardIndex } from './utils.js';
 
-const mountHandlers = [_mountHostElement, _mountFunctionalElement, _mountTextElement, _mountPortal, _mountFragment];
+const mountEnterHandlers = [mountHostEnter, mountFCEnter, mountTextElement, mountPortalEnter, mountFragment];
+const mountExitHandlers = [mountHostExit, mountFCExit, noop, mountPortalExit, noop];
 
 export function mount(
   element: SimpElement,
@@ -28,67 +30,68 @@ export function mount(
     throw new Error('Cannot mount while rendering.');
   }
 
-  _pushMountEnterFrame(element, {
-    parentReference,
-    subtreeRightBoundary,
-    context,
-    hostNamespace,
-    renderRuntime,
-    placeHolderElement: null,
-  });
+  pushMountEnterFrame(element, renderRuntime, parentReference, subtreeRightBoundary, context, hostNamespace, null);
 
   processStack(renderRuntime);
 }
 
-export function _mount(frame: MountFrame): void {
-  mountHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
+export function mountEnter(frame: SimpRenderFrame): void {
+  mountEnterHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
 }
 
-export function _pushMountEnterFrame(element: SimpElement, meta: MountFrameMeta): void {
-  meta.renderRuntime.renderStack.push({
-    node: element,
-    kind: MOUNT_ENTER,
-    meta,
-  });
+export function mountExit(frame: SimpRenderFrame): void {
+  mountExitHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
 }
 
-function _pushMountExitFrame(element: SimpElement, meta: MountFrameMeta): void {
-  meta.renderRuntime.renderStack.push({
-    node: element,
-    kind: MOUNT_EXIT,
-    meta,
-  });
+export function pushMountEnterFrame(
+  element: SimpElement,
+  renderRuntime: SimpRenderRuntime,
+  parentReference: unknown,
+  subtreeRightBoundary: Nullable<SimpElement>,
+  context: unknown,
+  hostNamespace: Maybe<string>,
+  placeHolderElement: Nullable<SimpElement>
+): void {
+  renderRuntime.renderStack.push(
+    acquireMountFrame(
+      renderRuntime,
+      element,
+      MOUNT_ENTER,
+      parentReference,
+      subtreeRightBoundary,
+      context,
+      hostNamespace,
+      placeHolderElement
+    )
+  );
 }
 
-function _mountHostElement(frame: MountFrame): void {
+function pushMountExitFrame(
+  element: SimpElement,
+  renderRuntime: SimpRenderRuntime,
+  parentReference: unknown,
+  subtreeRightBoundary: Nullable<SimpElement>,
+  context: unknown,
+  hostNamespace: Maybe<string>,
+  placeHolderElement: Nullable<SimpElement>
+): void {
+  renderRuntime.renderStack.push(
+    acquireMountFrame(
+      renderRuntime,
+      element,
+      MOUNT_EXIT,
+      parentReference,
+      subtreeRightBoundary,
+      context,
+      hostNamespace,
+      placeHolderElement
+    )
+  );
+}
+
+function mountHostEnter(frame: SimpRenderFrame): void {
   const element = frame.node;
-  const { parentReference, subtreeRightBoundary, context, hostNamespace, renderRuntime } = frame.meta;
-
-  if (frame.kind === MOUNT_EXIT) {
-    if (element.childFlag === SIMP_ELEMENT_CHILD_FLAG_TEXT) {
-      renderRuntime.hostAdapter.setTextContent(element.reference, element.props.children);
-    }
-
-    if (element.props) {
-      renderRuntime.hostAdapter.mountProps(element.reference, element, renderRuntime, hostNamespace);
-    }
-
-    if (element.className) {
-      renderRuntime.hostAdapter.setClassname(element.reference, element.className, hostNamespace);
-    }
-
-    if (parentReference) {
-      _pushHostOperationPlaceElement(element, {
-        renderRuntime,
-        subtreeRightBoundary,
-        parentReference,
-      });
-    }
-
-    applyRef(element);
-
-    return;
-  }
+  const { parentReference, subtreeRightBoundary, context, hostNamespace, renderRuntime } = frame;
 
   const hostNamespaces = renderRuntime.hostAdapter.getHostNamespaces(element, hostNamespace);
   const hostReference = (element.reference = renderRuntime.hostAdapter.createReference(
@@ -98,33 +101,53 @@ function _mountHostElement(frame: MountFrame): void {
 
   renderRuntime.hostAdapter.attachElementToReference(element, hostReference, renderRuntime);
 
-  _pushMountExitFrame(element, {
+  pushMountExitFrame(
+    element,
     renderRuntime,
-    hostNamespace: hostNamespaces?.self,
-    subtreeRightBoundary,
-    context,
     parentReference,
-    placeHolderElement: null,
-  });
-
-  _pushMountChildrenFrame(element, {
-    renderRuntime,
-    hostNamespace: hostNamespaces?.children,
     subtreeRightBoundary,
     context,
-    parentReference: hostReference,
-    children: element.children as Nullable<Many<SimpElement>>,
-  });
+    hostNamespaces?.self,
+    null
+  );
+
+  pushMountChildrenFrame(
+    element,
+    renderRuntime,
+    element.children as Nullable<Many<SimpElement>>,
+    hostReference,
+    subtreeRightBoundary,
+    context,
+    hostNamespaces?.children
+  );
 }
 
-function _mountFunctionalElement(frame: MountFrame): void {
+function mountHostExit(frame: SimpRenderFrame): void {
   const element = frame.node;
-  const { parentReference, subtreeRightBoundary, context, hostNamespace, renderRuntime } = frame.meta;
+  const { parentReference, subtreeRightBoundary, hostNamespace, renderRuntime } = frame;
 
-  if (frame.kind === MOUNT_EXIT) {
-    lifecycleEventBus.publish({ type: 'mounted', element, renderRuntime });
-    return;
+  if (element.childFlag === SIMP_ELEMENT_CHILD_FLAG_TEXT) {
+    renderRuntime.hostAdapter.setTextContent(element.reference, element.props.children);
   }
+
+  if (element.props) {
+    renderRuntime.hostAdapter.mountProps(element.reference, element, renderRuntime, hostNamespace);
+  }
+
+  if (element.className) {
+    renderRuntime.hostAdapter.setClassname(element.reference, element.className, hostNamespace);
+  }
+
+  if (parentReference) {
+    pushHostOperationPlaceElement(element, renderRuntime, parentReference, subtreeRightBoundary);
+  }
+
+  applyRef(element);
+}
+
+function mountFCEnter(frame: SimpRenderFrame): void {
+  const element = frame.node;
+  const { parentReference, subtreeRightBoundary, context, hostNamespace, renderRuntime } = frame;
 
   if (context) {
     element.context = context;
@@ -134,36 +157,23 @@ function _mountFunctionalElement(frame: MountFrame): void {
     element.unmounted = false;
   }
 
-  element.store = { latestElement: null, hostNamespace: null, forceRerender: false };
-  element.store.latestElement = element;
-
   if (hostNamespace) {
-    element.store.hostNamespace = hostNamespace;
+    element.hostNamespace = hostNamespace;
   }
 
-  // FC element always has Maybe<SimpElement> children due to a normalization process.
   let children;
 
-  let triedToRerenderUnsubscribe: () => void;
-
   try {
-    renderRuntime.renderPhase = MOUNTING_PHASE;
-    renderRuntime.currentRenderingFCElement = element;
-
-    let triedToRerender = false;
     let rerenderCounter = 0;
-    triedToRerenderUnsubscribe = lifecycleEventBus.subscribe(event => {
-      if (event.type === 'triedToRerender' && event.element === element) {
-        triedToRerender = true;
-      }
-    });
+    renderRuntime.activeRenderElement = element;
+    renderRuntime.pendingRerenderFlag = false;
 
     do {
-      triedToRerender = false;
+      renderRuntime.pendingRerenderFlag = false;
       if (++rerenderCounter >= 25) {
         throw new Error('Too many re-renders.');
       }
-      lifecycleEventBus.publish({
+      getLifecycleEventBus(renderRuntime).publish({
         type: 'beforeRender',
         element,
         renderRuntime,
@@ -171,12 +181,12 @@ function _mountFunctionalElement(frame: MountFrame): void {
 
       children = renderRuntime.renderer(element.type as FC, element, renderRuntime);
 
-      lifecycleEventBus.publish({
+      getLifecycleEventBus(renderRuntime).publish({
         type: 'afterRender',
         element,
         renderRuntime,
       });
-    } while (triedToRerender);
+    } while (renderRuntime.pendingRerenderFlag);
 
     normalizeRoot(element, children, false);
     children = element.children;
@@ -189,7 +199,7 @@ function _mountFunctionalElement(frame: MountFrame): void {
       renderRuntime,
     };
 
-    lifecycleEventBus.publish(event);
+    getLifecycleEventBus(renderRuntime).publish(event);
 
     if (!event.handled) {
       throw new Error('Error occurred during rendering a component', { cause: event.error });
@@ -197,84 +207,71 @@ function _mountFunctionalElement(frame: MountFrame): void {
 
     return;
   } finally {
-    triedToRerenderUnsubscribe!();
-    renderRuntime.renderPhase = null;
-    renderRuntime.currentRenderingFCElement = null;
+    renderRuntime.activeRenderElement = null;
   }
 
-  _pushMountExitFrame(element, {
-    renderRuntime,
-    hostNamespace,
-    subtreeRightBoundary,
-    context,
-    parentReference,
-    placeHolderElement: null,
-  });
+  pushMountExitFrame(element, renderRuntime, parentReference, subtreeRightBoundary, context, hostNamespace, null);
 
-  _pushMountChildrenFrame(element, {
+  pushMountChildrenFrame(
+    element,
     renderRuntime,
-    hostNamespace,
-    children: children as Nullable<SimpElement>,
-    context: element.context,
+    children as Nullable<SimpElement>,
     parentReference,
     subtreeRightBoundary,
+    element.context,
+    hostNamespace
+  );
+}
+
+function mountFCExit(frame: SimpRenderFrame): void {
+  getLifecycleEventBus(frame.renderRuntime).publish({
+    type: 'mounted',
+    element: frame.node,
+    renderRuntime: frame.renderRuntime,
   });
 }
 
-function _mountTextElement(frame: MountFrame): void {
-  frame.node.reference = frame.meta.renderRuntime.hostAdapter.createTextReference(frame.node.children as string);
-  _pushHostOperationPlaceElement(frame.node, frame.meta);
+function mountTextElement(frame: SimpRenderFrame): void {
+  frame.node.reference = frame.renderRuntime.hostAdapter.createTextReference(frame.node.children as string);
+  pushHostOperationPlaceElement(frame.node, frame.renderRuntime, frame.parentReference, frame.subtreeRightBoundary);
 }
 
-function _mountPortal(frame: MountFrame): void {
+function mountPortalEnter(frame: SimpRenderFrame): void {
   const element = frame.node;
-  const { parentReference, subtreeRightBoundary, context, renderRuntime } = frame.meta;
-
-  if (frame.kind === MOUNT_EXIT) {
-    element.reference = frame.meta.placeHolderElement!.reference;
-    return;
-  }
+  const { parentReference, subtreeRightBoundary, context, renderRuntime } = frame;
 
   const placeHolderElement = createTextElement('');
 
-  _pushMountExitFrame(element, {
-    renderRuntime,
-    subtreeRightBoundary,
-    context: null,
-    parentReference: null,
-    hostNamespace: null,
-    placeHolderElement,
-  });
+  pushMountExitFrame(element, renderRuntime, null!, subtreeRightBoundary, null, null, placeHolderElement);
 
-  _pushMountChildrenFrame(element, {
+  pushMountChildrenFrame(
+    element,
     renderRuntime,
-    hostNamespace: renderRuntime.hostAdapter.getHostNamespaces(element.children as SimpElement, undefined)?.self,
+    element.children as SimpElement,
+    element.ref,
     subtreeRightBoundary,
     context,
-    parentReference: element.ref,
-    children: element.children as SimpElement,
-  });
+    renderRuntime.hostAdapter.getHostNamespaces(element.children as SimpElement, undefined)?.self
+  );
 
-  _pushMountEnterFrame(placeHolderElement, {
-    renderRuntime,
-    subtreeRightBoundary,
-    context: null,
-    parentReference,
-    hostNamespace: null,
-    placeHolderElement: null,
-  });
+  pushMountEnterFrame(placeHolderElement, renderRuntime, parentReference, subtreeRightBoundary, null, null, null);
 }
 
-function _mountFragment(frame: MountFrame): void {
-  const element = frame.node;
-  const { parentReference, hostNamespace, context, renderRuntime, subtreeRightBoundary } = frame.meta;
+function mountPortalExit(frame: SimpRenderFrame): void {
+  frame.node.reference = frame.placeHolderElement!.reference;
+}
 
-  _pushMountChildrenFrame(element, {
+function mountFragment(frame: SimpRenderFrame): void {
+  const element = frame.node;
+  const { parentReference, hostNamespace, context, renderRuntime, subtreeRightBoundary } = frame;
+
+  pushMountChildrenFrame(
+    element,
     renderRuntime,
-    hostNamespace,
-    children: element.children as Nullable<Many<SimpElement>>,
+    element.children as Nullable<Many<SimpElement>>,
     parentReference,
+    subtreeRightBoundary,
     context,
-    subtreeRightBoundary: subtreeRightBoundary,
-  });
+    hostNamespace
+  );
 }

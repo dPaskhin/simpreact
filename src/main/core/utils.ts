@@ -1,6 +1,7 @@
 import type { Maybe, Nullable } from '@simpreact/shared';
 import {
   SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
+  SIMP_ELEMENT_CHILD_FLAG_EMPTY,
   SIMP_ELEMENT_CHILD_FLAG_LIST,
   SIMP_ELEMENT_FLAG_FC,
   SIMP_ELEMENT_FLAG_FRAGMENT,
@@ -41,8 +42,6 @@ export function findParentReferenceFromElement(element: SimpElement): unknown | 
   return null;
 }
 
-const placeStack: SimpElement[] = [];
-
 export function placeElementBeforeAnchor(
   element: SimpElement,
   anchor: unknown,
@@ -50,7 +49,7 @@ export function placeElementBeforeAnchor(
   renderRuntime: SimpRenderRuntime
 ): void {
   const { hostAdapter } = renderRuntime;
-  placeStack.push(element);
+  const placeStack: SimpElement[] = [element];
   let nextAnchor: unknown | null = anchor;
 
   while (placeStack.length !== 0) {
@@ -144,31 +143,30 @@ function findNextLogicalElement(element: SimpElement): Nullable<SimpElement> {
 }
 
 export function getLongestIncreasingSubsequenceIndexes(sequence: Int32Array): Int32Array {
-  const predecessors = new Int32Array(sequence.length);
-  const result: number[] = [];
-
+  const n = sequence.length;
+  const predecessors = new Int32Array(n);
   predecessors.fill(-1);
+  const result = new Int32Array(n);
+  let resultLen = 0;
 
-  for (let i = 0; i < sequence.length; i++) {
+  for (let i = 0; i < n; i++) {
     const value = sequence[i]!;
 
     if (value === 0) {
       continue;
     }
 
-    const lastResultIndex = result[result.length - 1];
-
-    if (lastResultIndex == null || sequence[lastResultIndex]! < value) {
-      if (lastResultIndex != null) {
-        predecessors[i] = lastResultIndex;
+    if (resultLen === 0 || sequence[result[resultLen - 1]!]! < value) {
+      if (resultLen > 0) {
+        predecessors[i] = result[resultLen - 1]!;
       }
 
-      result.push(i);
+      result[resultLen++] = i;
       continue;
     }
 
     let start = 0;
-    let end = result.length - 1;
+    let end = resultLen - 1;
 
     while (start < end) {
       const middle = (start + end) >> 1;
@@ -189,8 +187,8 @@ export function getLongestIncreasingSubsequenceIndexes(sequence: Int32Array): In
     }
   }
 
-  let resultIndex = result.length;
-  let sequenceIndex = result[resultIndex - 1] ?? -1;
+  let resultIndex = resultLen;
+  let sequenceIndex = resultLen > 0 ? result[resultLen - 1]! : -1;
   const indexes = new Int32Array(resultIndex);
 
   while (resultIndex-- > 0) {
@@ -201,7 +199,29 @@ export function getLongestIncreasingSubsequenceIndexes(sequence: Int32Array): In
   return indexes;
 }
 
-export function _clearElementHostReference(
+export function detachElementFromParent(element: SimpElement): void {
+  const parent = element.parent;
+  if (!parent) return;
+
+  if (parent.childFlag === SIMP_ELEMENT_CHILD_FLAG_LIST) {
+    const list = parent.children as SimpElement[];
+    list.splice(element.index, 1);
+
+    if (list.length === 1) {
+      parent.children = list[0];
+      parent.childFlag = SIMP_ELEMENT_CHILD_FLAG_ELEMENT;
+    } else {
+      for (let i = element.index; i < list.length; i++) {
+        list[i]!.index = i;
+      }
+    }
+  } else {
+    parent.childFlag = SIMP_ELEMENT_CHILD_FLAG_EMPTY;
+    parent.children = null;
+  }
+}
+
+export function clearElementHostReference(
   element: Maybe<SimpElement>,
   parentHostReference: unknown,
   renderRuntime: SimpRenderRuntime
@@ -222,7 +242,7 @@ export function _clearElementHostReference(
       switch (childFlag) {
         case SIMP_ELEMENT_CHILD_FLAG_LIST:
           for (let i = 0, len = (children as SimpElement[]).length; i < len; ++i) {
-            _clearElementHostReference((children as SimpElement[])[i], parentHostReference, renderRuntime);
+            clearElementHostReference((children as SimpElement[])[i], parentHostReference, renderRuntime);
           }
           return;
         case SIMP_ELEMENT_CHILD_FLAG_ELEMENT:

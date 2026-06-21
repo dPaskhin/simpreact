@@ -1,28 +1,22 @@
+import type { Nullable } from '@simpreact/shared';
 import type { SimpElement } from './createElement.js';
-import {
-  HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR,
-  HOST_OPS_REPLACE_CHILD,
-  type PlaceElementFrameMeta,
-  type ReplaceElementFrameMeta,
-} from './processStack.js';
+import { acquirePlaceFrame, acquireReplaceFrame } from './processStack.js';
 import type { SimpRenderRuntime } from './runtime.js';
 
-export function _pushHostOperationPlaceElement(element: SimpElement, meta: PlaceElementFrameMeta): void {
-  meta.renderRuntime.renderStack.push({
-    node: element,
-    kind: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR,
-    meta,
-  });
-}
-
-export function _pushHostOperationReplaceElement(
+export function pushHostOperationPlaceElement(
   element: SimpElement,
   renderRuntime: SimpRenderRuntime,
-  meta: ReplaceElementFrameMeta
+  parentReference: unknown,
+  subtreeRightBoundary: Nullable<SimpElement>
 ): void {
-  renderRuntime.renderStack.push({
-    node: element,
-    kind: HOST_OPS_REPLACE_CHILD,
-    meta,
-  });
+  renderRuntime.renderStack.push(acquirePlaceFrame(renderRuntime, element, parentReference, subtreeRightBoundary));
+}
+
+export function pushHostOperationReplaceElement(
+  element: SimpElement,
+  renderRuntime: SimpRenderRuntime,
+  parentReference: unknown,
+  prevElement: SimpElement
+): void {
+  renderRuntime.renderStack.push(acquireReplaceFrame(renderRuntime, element, parentReference, prevElement));
 }

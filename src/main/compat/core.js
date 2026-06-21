@@ -1,30 +1,29 @@
-import type { Ref, SimpElement, SimpNode } from '@simpreact/core';
 import {
   createElement as _createElement,
   createPortal as _createPortal,
   Fragment as _Fragment,
   memo as _memo,
 } from '@simpreact/core';
-import { SIMP_ELEMENT_FLAG_FRAGMENT, SIMP_ELEMENT_FLAG_PORTAL } from '@simpreact/internal';
+import { isFragment, isPortal } from '@simpreact/internal';
 import { useCatch, useState } from './hooks.js';
 
 export const Children = {
-  map(children: SimpNode, fn: (child: SimpNode, index: number) => SimpNode): SimpNode[] {
+  map(children, fn) {
     return Children.toArray(children).map(fn);
   },
 
-  forEach(children: SimpNode, fn: (child: SimpNode, index: number) => void): void {
+  forEach(children, fn) {
     Children.toArray(children).forEach(fn);
   },
 
-  count(children: SimpNode): number {
+  count(children) {
     return Children.toArray(children).length;
   },
 
-  toArray(children: SimpNode): SimpNode[] {
-    const result: SimpNode[] = [];
+  toArray(children) {
+    const result = [];
 
-    function traverse(node: SimpNode) {
+    function traverse(node) {
       if (node == null || typeof node === 'boolean') {
         return;
       }
@@ -43,35 +42,35 @@ export const Children = {
     return result;
   },
 
-  only(children: SimpNode): SimpElement {
+  only(children) {
     const array = Children.toArray(children);
     if (array.length !== 1 || !isValidElement(array[0])) {
       throw new Error('Children.only expected a single SimpElement child.');
     }
-    return array[0] as SimpElement;
+    return array[0];
   },
 };
 
-export function cloneElement(element: SimpElement, props?: any, ...children: SimpNode[]): SimpElement {
+export function cloneElement(element, props, ...children) {
   if (!isValidElement(element)) {
     throw new Error(`cloneElement: expected a SimpElement, got ${element}`);
   }
-  if (((element as any).flag & SIMP_ELEMENT_FLAG_PORTAL) !== 0) {
+  if (isPortal(element)) {
     throw new Error('cloneElement: the argument must be a SimpElement, but you passed a portal instead.');
   }
 
   return createElement(
-    ((element as any).flag & SIMP_ELEMENT_FLAG_FRAGMENT) !== 0 ? Fragment : element.type!,
+    isFragment(element) ? Fragment : element.type,
     Object.assign({}, element.props, props),
-    arguments.length > 2 ? children : props.children || (element as any).children
-  ) as any;
+    arguments.length > 2 ? children : props.children || element.children
+  );
 }
 
-export function isValidElement(element: unknown): element is SimpElement {
+export function isValidElement(element) {
   return typeof element === 'object' && element !== null && 'flag' in element;
 }
 
-export function Suspense(props: { fallback: SimpNode; children: SimpNode }): SimpNode {
+export function Suspense(props) {
   const [isSuspended, setIsSuspended] = useState(false);
 
   useCatch(error => {
@@ -90,21 +89,48 @@ export function Suspense(props: { fallback: SimpNode; children: SimpNode }): Sim
   return isSuspended ? props.fallback : props.children;
 }
 
-export function StrictMode(props: { children: SimpNode }): SimpNode {
+export function StrictMode(props) {
   return props.children;
 }
 
-export function forwardRef<P, T>(Component: (props: P, ref: Ref<T>) => any) {
-  return function Forwarded(props: P) {
-    return Component(props, (props as { ref: Ref<T> })?.ref || null);
+export function forwardRef(Component) {
+  return function Forwarded(props) {
+    return Component(props, props?.ref ?? null);
   };
 }
+
+export const version = '18.3.1';
 
 export const Fragment = _Fragment;
 export const createElement = _createElement;
 export const createPortal = _createPortal;
 export const memo = _memo;
-export const flushSync = (value: any) => value;
+export const flushSync = callback => callback();
+
+export function lazy(factory) {
+  let state = null;
+
+  return function LazyComponent(props) {
+    if (state === null) {
+      const promise = factory().then(
+        mod => {
+          state = { status: 'resolved', component: mod.default };
+        },
+        reason => {
+          state = { status: 'rejected', reason };
+        }
+      );
+      state = { status: 'pending', promise };
+    }
+    if (state.status === 'pending') {
+      throw state.promise;
+    }
+    if (state.status === 'rejected') {
+      throw state.reason;
+    }
+    return createElement(state.component, props);
+  };
+}
 
 export class Component {
   constructor() {
@@ -113,6 +139,7 @@ export class Component {
 }
 
 export default {
+  version,
   Children,
   cloneElement,
   isValidElement,
@@ -124,5 +151,6 @@ export default {
   createPortal,
   memo,
   flushSync,
+  lazy,
   Component,
 };

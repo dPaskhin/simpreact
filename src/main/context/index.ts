@@ -1,8 +1,9 @@
+export type * from './public.js';
+
 import {
-  lifecycleEventBus,
-  MOUNTING_PHASE,
+  registerLifecyclePlugin,
   rerender,
-  type SimpElementStore,
+  type SimpElement,
   type SimpNode,
   type SimpRenderRuntime,
 } from '@simpreact/internal';
@@ -12,7 +13,7 @@ import type { Nullable } from '@simpreact/shared';
 // which is a weak point since there may happen to appear new contexts types in other features.
 interface SimpContextEntry {
   value: unknown;
-  subs: Set<SimpElementStore>;
+  subs: Set<SimpElement>;
 }
 
 type Provider = (props: { value: unknown; children: SimpNode }) => SimpNode;
@@ -28,32 +29,46 @@ export interface CreateContext {
   (defaultValue: unknown): SimpContext;
 }
 
-lifecycleEventBus.subscribe(event => {
-  if (event.type === 'unmounted' && event.element.context) {
-    const contextMap = event.element.context as Map<SimpContext, SimpContextEntry>;
-    for (const entry of contextMap.values()) {
-      entry.subs.delete(event.element.store!);
+const currentFCByRuntime = new WeakMap<SimpRenderRuntime, SimpElement | null>();
+
+registerLifecyclePlugin(bus => {
+  bus.subscribe(event => {
+    if (event.type === 'beforeRender') {
+      currentFCByRuntime.set(event.renderRuntime, event.element);
+    } else if (event.type === 'afterRender' || event.type === 'errored') {
+      currentFCByRuntime.set(event.renderRuntime, null);
     }
-  }
+
+    if (event.type === 'unmounted' && event.element.context) {
+      const contextMap = event.element.context as Map<SimpContext, SimpContextEntry>;
+      for (const entry of contextMap.values()) {
+        entry.subs.delete(event.element);
+      }
+    }
+  });
 });
 
 export function createCreateContext(renderRuntime: SimpRenderRuntime): CreateContext {
   return defaultValue => {
+    const providerElements = new WeakSet<SimpElement>();
+
     const context: SimpContext = {
       defaultValue,
 
       Provider(props) {
-        const currentElement = renderRuntime.currentRenderingFCElement!;
-        const renderPhase = renderRuntime.renderPhase;
+        const currentElement = currentFCByRuntime.get(renderRuntime)!;
+        const isFirstRender = !providerElements.has(currentElement);
         let contextMap = currentElement.context as Nullable<Map<SimpContext, SimpContextEntry>>;
 
         if (!contextMap) {
           currentElement.context = contextMap = new Map();
-        } else if (renderPhase === MOUNTING_PHASE) {
+          providerElements.add(currentElement);
+        } else if (isFirstRender) {
           currentElement.context = contextMap = new Map(currentElement.context);
+          providerElements.add(currentElement);
         }
 
-        if (renderPhase === MOUNTING_PHASE) {
+        if (isFirstRender) {
           contextMap.set(context, { value: props.value, subs: new Set() });
           return props.children;
         }
@@ -79,16 +94,15 @@ export function createCreateContext(renderRuntime: SimpRenderRuntime): CreateCon
       },
 
       Consumer(props) {
-        const currentElement = renderRuntime.currentRenderingFCElement!;
+        const currentElement = currentFCByRuntime.get(renderRuntime)!;
         const contextMap = currentElement.context as Nullable<Map<SimpContext, SimpContextEntry>>;
-        const store = currentElement.store!;
         const entry = contextMap?.get(context);
 
         if (!entry) {
           return props.children(defaultValue);
         }
 
-        entry.subs.add(store);
+        entry.subs.add(currentElement);
         return props.children(entry.value);
       },
     };
@@ -103,16 +117,15 @@ export interface UseContext {
 
 export function createUseContext(renderRuntime: SimpRenderRuntime): UseContext {
   return context => {
-    const currentElement = renderRuntime.currentRenderingFCElement!;
+    const currentElement = currentFCByRuntime.get(renderRuntime)!;
     const contextMap = currentElement.context as Nullable<Map<SimpContext, SimpContextEntry>>;
-    const store = currentElement.store!;
     const entry = contextMap?.get(context);
 
     if (!entry) {
       return context.defaultValue;
     }
 
-    entry.subs.add(store);
+    entry.subs.add(currentElement);
     return entry.value;
   };
 }

@@ -50,6 +50,12 @@ export declare function useReducer<R extends (state: any, action: any) => any, I
 export declare function useId(prefix?: string): string;
 export declare function useMemo<T>(factory: () => T, deps: DependencyList): T;
 export declare function useCallback<T>(cb: T, deps: DependencyList): T;
+export declare function useImperativeHandle<T>(
+  ref: { current: T | null } | ((value: T | null) => void) | null | undefined,
+  init: () => T,
+  deps?: DependencyList
+): void;
+export declare function useDebugValue(value: unknown, format?: (value: unknown) => unknown): void;
 export declare function useState<S>(initialState: S | (() => S)): [S, Dispatch<SetStateAction<S>>];
 export declare function useState<S>(): [S | undefined, Dispatch<SetStateAction<S | undefined>>];
 export declare function useEffect(effect: Effect, deps?: DependencyList): void;
@@ -58,7 +64,7 @@ export declare function useInsertionEffect(effect: Effect, deps?: DependencyList
 export declare function useRef<T>(initialValue: T): RefObject<T>;
 export declare function useRef<T>(initialValue: T | null): RefObject<T | null>;
 export declare function useRef<T = undefined>(initialValue?: T): RefObject<T | undefined>;
-export declare function useCatch(errorBoundary: FC): [Error | null, (error: Error) => void];
+export declare function useCatch(handler: (error: unknown) => void): void;
 
 export declare function hydrate(): void;
 export declare function render(element: SimpElement, parentReference: Nullable<HTMLElement>): void;
@@ -94,6 +100,9 @@ export declare function createPortal(children: SimpNode, container: any): SimpEl
 
 export declare function memo(Component: FC, compare: (objA: any, objB: any) => boolean): FC;
 export declare function flushSync(value: any): any;
+export declare function lazy<T extends FC<any>>(factory: () => Promise<{ default: T }>): FC<any>;
+
+export declare const version: string;
 
 export declare class Component {}
 

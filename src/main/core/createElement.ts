@@ -1,32 +1,26 @@
 import type { Nullable, SimpText } from '@simpreact/shared';
 import { isSimpText } from '@simpreact/shared';
+import {
+  SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
+  SIMP_ELEMENT_CHILD_FLAG_EMPTY,
+  SIMP_ELEMENT_CHILD_FLAG_LIST,
+  SIMP_ELEMENT_CHILD_FLAG_TEXT,
+  SIMP_ELEMENT_CHILD_FLAG_UNKNOWN,
+  SIMP_ELEMENT_FLAG_FC,
+  SIMP_ELEMENT_FLAG_FRAGMENT,
+  SIMP_ELEMENT_FLAG_HOST,
+  SIMP_ELEMENT_FLAG_PORTAL,
+  SIMP_ELEMENT_FLAG_TEXT,
+} from './flags.js';
 import { Fragment } from './fragment.js';
+
+export * from './flags.js';
 
 export type SimpNode = SimpElement | SimpText | Array<SimpNode> | boolean | null | undefined;
 
 export type Key = string | number | bigint;
 
 export type FC = (props: any) => SimpNode;
-
-export const SIMP_ELEMENT_FLAG_HOST = 1;
-export const SIMP_ELEMENT_FLAG_FC = 1 << 1;
-export const SIMP_ELEMENT_FLAG_TEXT = 1 << 2;
-export const SIMP_ELEMENT_FLAG_PORTAL = 1 << 3;
-export const SIMP_ELEMENT_FLAG_FRAGMENT = 1 << 4;
-
-export const SIMP_ELEMENT_CHILD_FLAG_EMPTY = 1;
-export const SIMP_ELEMENT_CHILD_FLAG_UNKNOWN = 1 << 1;
-export const SIMP_ELEMENT_CHILD_FLAG_ELEMENT = 1 << 2;
-export const SIMP_ELEMENT_CHILD_FLAG_LIST = 1 << 3;
-export const SIMP_ELEMENT_CHILD_FLAG_TEXT = 1 << 4;
-
-// This object also serves as a persistent identity for elements, making it useful
-// for tracking them consistently across rerenders.
-export interface SimpElementStore {
-  latestElement: Nullable<SimpElement>;
-  hostNamespace: Nullable<string>;
-  forceRerender: boolean;
-}
 
 export interface SimpElement {
   flag: number;
@@ -47,7 +41,8 @@ export interface SimpElement {
 
   reference: unknown;
 
-  store: Nullable<SimpElementStore>;
+  /** Only meaningful on FC elements: the host namespace inherited from context. */
+  hostNamespace: Nullable<string>;
 
   context: any;
 
@@ -93,7 +88,7 @@ export function createElement(type: string | FC, props?: any): SimpElement {
             children: null,
             className: props?.className || null,
             reference: null!,
-            store: null,
+            hostNamespace: null,
             context: null,
             ref: props?.ref ? { value: props.ref } : null,
             unmounted: null,
@@ -122,7 +117,7 @@ export function createElement(type: string | FC, props?: any): SimpElement {
         children: null,
         className: props?.className || null,
         reference: null!,
-        store: null,
+        hostNamespace: null,
         context: null,
         ref: props?.ref ? { value: props.ref } : null,
         unmounted: null,
@@ -144,7 +139,7 @@ export function createElement(type: string | FC, props?: any): SimpElement {
         children: null,
         className: null,
         reference: null!,
-        store: null,
+        hostNamespace: null,
         context: null,
         ref: null,
         unmounted: null,
@@ -152,6 +147,9 @@ export function createElement(type: string | FC, props?: any): SimpElement {
       };
     }
     default: {
+      if (type !== Fragment) {
+        throw new Error(`Invalid element type: ${String(type)}`);
+      }
       return normalizeChildren(
         {
           flag: SIMP_ELEMENT_FLAG_FRAGMENT,
@@ -163,7 +161,7 @@ export function createElement(type: string | FC, props?: any): SimpElement {
           children: null,
           className: null,
           reference: null!,
-          store: null,
+          hostNamespace: null,
           context: null,
           ref: null,
           unmounted: null,
@@ -187,7 +185,7 @@ export function createTextElement(text: SimpText): SimpElement {
     children: text.toString(),
     className: null,
     reference: null!,
-    store: null,
+    hostNamespace: null,
     context: null,
     ref: null,
     unmounted: null,
@@ -254,7 +252,9 @@ function normalizeNode(
   const element = child as SimpElement;
 
   if (element.key != null) {
-    currentKey = `${(currentKey ?? '').slice(0, -2)}${element.key}`;
+    const prefix = currentKey ?? '';
+    const lastDot = prefix.lastIndexOf('.');
+    currentKey = lastDot <= 0 ? String(element.key) : `${prefix.slice(0, lastDot)}${element.key}`;
   }
 
   element.key = currentKey;

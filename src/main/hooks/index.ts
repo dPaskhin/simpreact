@@ -1,10 +1,9 @@
 import {
   rerender as _rerender,
-  lifecycleEventBus,
+  isFC,
   type RefObject,
-  SIMP_ELEMENT_FLAG_FC,
+  registerLifecyclePlugin,
   type SimpElement,
-  type SimpElementStore,
   type SimpRenderRuntime,
 } from '@simpreact/internal';
 import {
@@ -31,121 +30,141 @@ type HookState = EffectState | RerenderHookState | RefHookState | StateHookState
 
 interface HooksSpecificStore {
   hooksIndex: number;
+  expectedHooksCount: Nullable<number>;
   hookStates: Nullable<HookState[]>;
   effectsHookStates: Nullable<EffectState[]>;
   catchHandlers: Nullable<Array<(error: any) => void>>;
 }
 
-const hooksSpecificStoreByElementStore = new WeakMap<SimpElementStore, HooksSpecificStore>();
+const hooksSpecificStoreByElement = new WeakMap<SimpElement, HooksSpecificStore>();
+const currentFCByRuntime = new WeakMap<SimpRenderRuntime, SimpElement | null>();
 
-function getHooksSpecificStore(store: SimpElementStore): HooksSpecificStore {
-  let hooksSpecificStore = hooksSpecificStoreByElementStore.get(store);
+function getHooksSpecificStore(element: SimpElement): HooksSpecificStore {
+  let hooksSpecificStore = hooksSpecificStoreByElement.get(element);
   if (!hooksSpecificStore) {
-    hooksSpecificStore = { hooksIndex: 0, hookStates: null, effectsHookStates: null, catchHandlers: null };
-    hooksSpecificStoreByElementStore.set(store, hooksSpecificStore);
+    hooksSpecificStore = {
+      hooksIndex: 0,
+      expectedHooksCount: null,
+      hookStates: null,
+      effectsHookStates: null,
+      catchHandlers: null,
+    };
+    hooksSpecificStoreByElement.set(element, hooksSpecificStore);
   }
   return hooksSpecificStore;
 }
 
-(window as any).__SIMP_HOOKS_SPECIFIC_STORE_BY_ELEMENT_STORE__ = hooksSpecificStoreByElementStore;
-
-lifecycleEventBus.subscribe(event => {
-  if ((event.element.flag & SIMP_ELEMENT_FLAG_FC) === 0) {
-    return;
-  }
-
-  let store = getHooksSpecificStore(event.element.store!);
-
-  switch (event.type) {
-    case 'beforeRender': {
-      store.hooksIndex = 0;
-      store.catchHandlers = null;
-      store.effectsHookStates = null;
-      break;
+registerLifecyclePlugin(bus => {
+  bus.subscribe(event => {
+    if (event.type === 'beforeRender') {
+      currentFCByRuntime.set(event.renderRuntime, event.element);
+    } else if (event.type === 'afterRender' || event.type === 'errored') {
+      currentFCByRuntime.set(event.renderRuntime, null);
     }
-    case 'afterRender': {
-      store.hooksIndex = 0;
-      break;
+
+    if (!isFC(event.element)) {
+      return;
     }
-    case 'mounted': {
-      if (!store.effectsHookStates) {
+
+    const store = getHooksSpecificStore(event.element);
+
+    switch (event.type) {
+      case 'beforeRender': {
+        store.hooksIndex = 0;
+        store.catchHandlers = null;
+        store.effectsHookStates = null;
         break;
       }
-      const effects = store.effectsHookStates;
-      store.effectsHookStates = null;
-
-      for (const state of effects) {
-        state.cleanup = state.effect() || null;
-      }
-      break;
-    }
-    case 'updated': {
-      if (!store.effectsHookStates) {
+      case 'afterRender': {
+        if (store.expectedHooksCount !== null && store.hooksIndex !== store.expectedHooksCount) {
+          throw new Error(
+            `Hooks called in a different order than the previous render. Expected ${store.expectedHooksCount}, got ${store.hooksIndex}.`
+          );
+        }
+        store.expectedHooksCount = store.hooksIndex;
         break;
       }
-      const effects = store.effectsHookStates;
-      store.effectsHookStates = null;
-
-      for (const state of effects) {
-        if (typeof state.cleanup === 'function') {
-          state.cleanup();
-        }
-        state.cleanup = state.effect() || null;
-      }
-      break;
-    }
-    case 'unmounted': {
-      if (!store.hookStates) {
-        break;
-      }
-      const hookStates = store.hookStates;
-      store.hookStates = null;
-
-      for (const state of hookStates) {
-        if (state && 'cleanup' in state && typeof state.cleanup === 'function') {
-          state.cleanup();
-        }
-      }
-      break;
-    }
-    case 'errored': {
-      store.hooksIndex = 0;
-
-      if (event.handled) {
-        break;
-      }
-
-      let element: Nullable<SimpElement> = event.element;
-      let curError = event.error;
-      let catchers: Nullable<Array<(error: any) => void>> = null;
-
-      while (element) {
-        if ((element.flag & SIMP_ELEMENT_FLAG_FC) === 0) {
-          element = element.parent;
-          continue;
-        }
-
-        store = getHooksSpecificStore(element.store!);
-        catchers = store.catchHandlers;
-
-        if (!catchers) {
-          element = element.parent;
-          continue;
-        }
-
-        try {
-          for (let i = 0; i < catchers.length; i++) {
-            catchers[i]!(curError);
-          }
-          event.handled = true;
+      case 'mounted': {
+        if (!store.effectsHookStates) {
           break;
-        } catch (error) {
-          element = element.parent;
-          curError = error;
         }
+        const effects = store.effectsHookStates;
+        store.effectsHookStates = null;
+
+        for (const state of effects) {
+          state.cleanup = state.effect() || null;
+        }
+        break;
+      }
+      case 'updated': {
+        if (!store.effectsHookStates) {
+          break;
+        }
+        const effects = store.effectsHookStates;
+        store.effectsHookStates = null;
+
+        for (const state of effects) {
+          if (typeof state.cleanup === 'function') {
+            state.cleanup();
+          }
+          state.cleanup = state.effect() || null;
+        }
+        break;
+      }
+      case 'unmounted': {
+        if (!store.hookStates) {
+          break;
+        }
+        const hookStates = store.hookStates;
+        store.hookStates = null;
+
+        for (const state of hookStates) {
+          if (state && 'cleanup' in state && typeof state.cleanup === 'function') {
+            state.cleanup();
+          }
+        }
+        break;
+      }
+      case 'errored': {
+        store.hooksIndex = 0;
+
+        if (event.handled) {
+          break;
+        }
+
+        let element: Nullable<SimpElement> = event.element;
+        let curError = event.error;
+        let catchers: Nullable<Array<(error: any) => void>> = null;
+
+        while (element) {
+          if (!isFC(element)) {
+            element = element.parent;
+            continue;
+          }
+
+          const ancestorStore = getHooksSpecificStore(element);
+          catchers = ancestorStore.catchHandlers;
+
+          if (!catchers) {
+            element = element.parent;
+            continue;
+          }
+
+          try {
+            for (let i = 0; i < catchers.length; i++) {
+              catchers[i]!(curError);
+            }
+            event.handled = true;
+            break;
+          } catch (error) {
+            element = element.parent;
+            curError = error;
+          }
+        }
+        break;
       }
     }
-  }
+  });
 });
 
 export interface UseRef {
@@ -155,7 +174,7 @@ export interface UseRef {
 }
 export function createUseRef(renderRuntime: SimpRenderRuntime): UseRef {
   return initialValue => {
-    const store = getHooksSpecificStore(renderRuntime.currentRenderingFCElement!.store!);
+    const store = getHooksSpecificStore(currentFCByRuntime.get(renderRuntime)!);
     const hookStates = getOrCreateHookStates(store);
 
     if (!hookStates[store.hooksIndex]) {
@@ -168,13 +187,13 @@ export function createUseRef(renderRuntime: SimpRenderRuntime): UseRef {
 
 export function createUseRerender(renderRuntime: SimpRenderRuntime): () => RerenderHookState {
   return () => {
-    const store = getHooksSpecificStore(renderRuntime.currentRenderingFCElement!.store!);
+    const store = getHooksSpecificStore(currentFCByRuntime.get(renderRuntime)!);
     const hookStates = getOrCreateHookStates(store);
 
     if (!hookStates[store.hooksIndex]) {
-      const elementStore = renderRuntime.currentRenderingFCElement!.store!;
+      const element = currentFCByRuntime.get(renderRuntime)!;
       hookStates[store.hooksIndex] = function rerender() {
-        _rerender(elementStore, renderRuntime);
+        _rerender(element, renderRuntime);
       };
     }
 
@@ -191,11 +210,11 @@ export interface UseState {
 }
 export function createUseState(renderRuntime: SimpRenderRuntime): UseState {
   return (initialState => {
-    const store = getHooksSpecificStore(renderRuntime.currentRenderingFCElement!.store!);
+    const store = getHooksSpecificStore(currentFCByRuntime.get(renderRuntime)!);
     const hookStates = getOrCreateHookStates(store);
 
     if (!hookStates[store.hooksIndex]) {
-      const elementStore = renderRuntime.currentRenderingFCElement!.store!;
+      const element = currentFCByRuntime.get(renderRuntime)!;
       const state: StateHookState = (hookStates[store.hooksIndex] = [undefined!, undefined!]);
 
       state[0] = callOrGet(initialState)!;
@@ -207,7 +226,7 @@ export function createUseState(renderRuntime: SimpRenderRuntime): UseState {
         }
 
         state[0] = nextValue;
-        _rerender(elementStore, renderRuntime);
+        _rerender(element, renderRuntime);
       };
     }
 
@@ -217,7 +236,7 @@ export function createUseState(renderRuntime: SimpRenderRuntime): UseState {
 
 export function createUseEffect(renderRuntime: SimpRenderRuntime): (effect: Effect, deps?: DependencyList) => void {
   return (effect, deps) => {
-    const store = getHooksSpecificStore(renderRuntime.currentRenderingFCElement!.store!);
+    const store = getHooksSpecificStore(currentFCByRuntime.get(renderRuntime)!);
     const hookStates = getOrCreateHookStates(store);
 
     let state = hookStates[store.hooksIndex] as EffectState | undefined;
@@ -242,14 +261,19 @@ export function createUseEffect(renderRuntime: SimpRenderRuntime): (effect: Effe
 
 export function createUseCatch(renderRuntime: SimpRenderRuntime): (cb: (error: any) => void) => void {
   return cb => {
-    const store = getHooksSpecificStore(renderRuntime.currentRenderingFCElement!.store!);
+    const store = getHooksSpecificStore(currentFCByRuntime.get(renderRuntime)!);
 
     if (!store.catchHandlers) {
       store.catchHandlers = [];
     }
 
     store.catchHandlers!.push(cb);
+    store.hooksIndex++;
   };
+}
+
+export function areDepsEqual(nextDeps: DependencyList | undefined, prevDeps: DependencyList | undefined): boolean {
+  return shallowEqual(nextDeps, prevDeps);
 }
 
 function getOrCreateHookStates(store: HooksSpecificStore) {
@@ -274,6 +298,7 @@ export default {
   createUseState,
   createUseEffect,
   createUseCatch,
+  areDepsEqual,
 };
 
 export type * from './public.js';

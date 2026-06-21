@@ -49,7 +49,7 @@ export const testHostAdapter: HostAdapter<Element, Text> = {
   }),
 
   attachElementToReference: vi.fn((element, reference) => {
-    reference.__SIMP_ELEMENT__ = element;
+    (reference as any).__SIMP_ELEMENT__ = element;
   }),
 
   getElementFromReference: vi.fn(reference => {
