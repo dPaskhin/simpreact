@@ -36,5 +36,8 @@ export default defineConfig({
         'lib/**',
       ],
     },
+    benchmark: {
+      include: ['src/test/perf/**/*.bench.js'],
+    },
   },
 });

@@ -8,3 +8,5 @@
 WARP.md
 /.claude
 CLAUDE.md
+bench-baseline.json
+mem-baseline.json
