@@ -22,109 +22,34 @@ export const UNMOUNT_CHILDREN_ENTER = 32;
 export const HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR = 40;
 export const HOST_OPS_REPLACE_CHILD = 42;
 
-export interface MountFrameMeta {
+export interface SimpRenderFrame {
+  kind: number;
+  node: SimpElement;
+  renderRuntime: SimpRenderRuntime;
   parentReference: unknown;
   subtreeRightBoundary: Nullable<SimpElement>;
   context: unknown;
   hostNamespace: Maybe<string>;
-  renderRuntime: SimpRenderRuntime;
+  prevElement: SimpElement;
+  children: Nullable<Many<SimpElement>>;
   placeHolderElement: Nullable<SimpElement>;
 }
 
-export interface MountChildrenFrameMeta {
-  children: Nullable<Many<SimpElement>>;
-  parentReference: unknown;
-  subtreeRightBoundary: Nullable<SimpElement>;
-  context: unknown;
-  hostNamespace: Maybe<string>;
-  renderRuntime: SimpRenderRuntime;
-}
-
-export interface PatchFrameMeta {
-  parentReference: unknown;
-  subtreeRightBoundary: Nullable<SimpElement>;
-  context: unknown;
-  hostNamespace: Maybe<string>;
-  renderRuntime: SimpRenderRuntime;
-  prevElement: SimpElement;
-}
-
-export interface UnmountFrameMeta {
-  renderRuntime: SimpRenderRuntime;
-}
-
-export interface PlaceElementFrameMeta {
-  parentReference: unknown;
-  subtreeRightBoundary: Nullable<SimpElement>;
-  renderRuntime: SimpRenderRuntime;
-}
-
-export interface ReplaceElementFrameMeta {
-  parentReference: unknown;
-  prevElement: SimpElement;
-}
-
-export interface MountFrame {
-  node: SimpElement;
-  kind: typeof MOUNT_ENTER | typeof MOUNT_EXIT;
-  meta: MountFrameMeta;
-}
-
-export interface MountChildrenFrame {
-  node: SimpElement;
-  kind: typeof MOUNT_CHILDREN_ENTER;
-  meta: MountChildrenFrameMeta;
-}
-
-export interface PatchFrame {
-  node: SimpElement;
-  kind: typeof PATCH_ENTER | typeof PATCH_EXIT;
-  meta: PatchFrameMeta;
-}
-
-export interface UnmountFrame {
-  node: SimpElement;
-  kind: typeof UNMOUNT_ENTER | typeof UNMOUNT_EXIT;
-  meta: UnmountFrameMeta;
-}
-
-export interface UnmountChildrenFrame {
-  node: SimpElement;
-  kind: typeof UNMOUNT_CHILDREN_ENTER;
-  meta: UnmountFrameMeta;
-}
-
-export interface PlaceElementFrame {
-  node: SimpElement;
-  kind: typeof HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR;
-  meta: PlaceElementFrameMeta;
-}
-
-export interface ReplaceElementFrame {
-  node: SimpElement;
-  kind: typeof HOST_OPS_REPLACE_CHILD;
-  meta: ReplaceElementFrameMeta;
-}
-
-export type SimpRenderFrame =
-  | MountFrame
-  | MountChildrenFrame
-  | PatchFrame
-  | UnmountFrame
-  | UnmountChildrenFrame
-  | PlaceElementFrame
-  | ReplaceElementFrame;
-
 export type SimpRenderStack = SimpRenderFrame[];
 
-export interface FramePool {
-  mount: MountFrame[];
-  mountChildren: MountChildrenFrame[];
-  patch: PatchFrame[];
-  unmount: UnmountFrame[];
-  unmountChildren: UnmountChildrenFrame[];
-  place: PlaceElementFrame[];
-  replace: ReplaceElementFrame[];
+function createFrame(): SimpRenderFrame {
+  return {
+    kind: 0,
+    node: null!,
+    renderRuntime: null!,
+    parentReference: null,
+    subtreeRightBoundary: null,
+    context: null,
+    hostNamespace: null,
+    prevElement: null!,
+    children: null,
+    placeHolderElement: null,
+  };
 }
 
 export function acquireMountFrame(
@@ -136,24 +61,17 @@ export function acquireMountFrame(
   context: unknown,
   hostNamespace: Maybe<string>,
   placeHolderElement: Nullable<SimpElement>
-): MountFrame {
-  const frame = renderRuntime.framePool.mount.pop();
-  if (frame !== undefined) {
-    frame.node = element;
-    frame.kind = kind;
-    frame.meta.parentReference = parentReference;
-    frame.meta.subtreeRightBoundary = subtreeRightBoundary;
-    frame.meta.context = context;
-    frame.meta.hostNamespace = hostNamespace;
-    frame.meta.renderRuntime = renderRuntime;
-    frame.meta.placeHolderElement = placeHolderElement;
-    return frame;
-  }
-  return {
-    node: element,
-    kind,
-    meta: { parentReference, subtreeRightBoundary, context, hostNamespace, renderRuntime, placeHolderElement },
-  };
+): SimpRenderFrame {
+  const frame = renderRuntime.framePool.pop() ?? createFrame();
+  frame.kind = kind;
+  frame.node = element;
+  frame.renderRuntime = renderRuntime;
+  frame.parentReference = parentReference;
+  frame.subtreeRightBoundary = subtreeRightBoundary;
+  frame.context = context;
+  frame.hostNamespace = hostNamespace;
+  frame.placeHolderElement = placeHolderElement;
+  return frame;
 }
 
 export function acquireMountChildrenFrame(
@@ -164,23 +82,17 @@ export function acquireMountChildrenFrame(
   subtreeRightBoundary: Nullable<SimpElement>,
   context: unknown,
   hostNamespace: Maybe<string>
-): MountChildrenFrame {
-  const frame = renderRuntime.framePool.mountChildren.pop();
-  if (frame !== undefined) {
-    frame.node = parent;
-    frame.meta.children = children;
-    frame.meta.parentReference = parentReference;
-    frame.meta.subtreeRightBoundary = subtreeRightBoundary;
-    frame.meta.context = context;
-    frame.meta.hostNamespace = hostNamespace;
-    frame.meta.renderRuntime = renderRuntime;
-    return frame;
-  }
-  return {
-    node: parent,
-    kind: MOUNT_CHILDREN_ENTER,
-    meta: { children, parentReference, subtreeRightBoundary, context, hostNamespace, renderRuntime },
-  };
+): SimpRenderFrame {
+  const frame = renderRuntime.framePool.pop() ?? createFrame();
+  frame.kind = MOUNT_CHILDREN_ENTER;
+  frame.node = parent;
+  frame.renderRuntime = renderRuntime;
+  frame.children = children;
+  frame.parentReference = parentReference;
+  frame.subtreeRightBoundary = subtreeRightBoundary;
+  frame.context = context;
+  frame.hostNamespace = hostNamespace;
+  return frame;
 }
 
 export function acquirePatchFrame(
@@ -192,52 +104,37 @@ export function acquirePatchFrame(
   subtreeRightBoundary: Nullable<SimpElement>,
   context: unknown,
   hostNamespace: Maybe<string>
-): PatchFrame {
-  const frame = renderRuntime.framePool.patch.pop();
-  if (frame !== undefined) {
-    frame.node = element;
-    frame.kind = kind;
-    frame.meta.prevElement = prevElement;
-    frame.meta.parentReference = parentReference;
-    frame.meta.subtreeRightBoundary = subtreeRightBoundary;
-    frame.meta.context = context;
-    frame.meta.hostNamespace = hostNamespace;
-    frame.meta.renderRuntime = renderRuntime;
-    return frame;
-  }
-  return {
-    node: element,
-    kind,
-    meta: { prevElement, parentReference, subtreeRightBoundary, context, hostNamespace, renderRuntime },
-  };
+): SimpRenderFrame {
+  const frame = renderRuntime.framePool.pop() ?? createFrame();
+  frame.kind = kind;
+  frame.node = element;
+  frame.renderRuntime = renderRuntime;
+  frame.prevElement = prevElement;
+  frame.parentReference = parentReference;
+  frame.subtreeRightBoundary = subtreeRightBoundary;
+  frame.context = context;
+  frame.hostNamespace = hostNamespace;
+  return frame;
 }
 
 export function acquireUnmountFrame(
   renderRuntime: SimpRenderRuntime,
   element: SimpElement,
   kind: typeof UNMOUNT_ENTER | typeof UNMOUNT_EXIT
-): UnmountFrame {
-  const frame = renderRuntime.framePool.unmount.pop();
-  if (frame !== undefined) {
-    frame.node = element;
-    frame.kind = kind;
-    frame.meta.renderRuntime = renderRuntime;
-    return frame;
-  }
-  return { node: element, kind, meta: { renderRuntime } };
+): SimpRenderFrame {
+  const frame = renderRuntime.framePool.pop() ?? createFrame();
+  frame.kind = kind;
+  frame.node = element;
+  frame.renderRuntime = renderRuntime;
+  return frame;
 }
 
-export function acquireUnmountChildrenFrame(
-  renderRuntime: SimpRenderRuntime,
-  parent: SimpElement
-): UnmountChildrenFrame {
-  const frame = renderRuntime.framePool.unmountChildren.pop();
-  if (frame !== undefined) {
-    frame.node = parent;
-    frame.meta.renderRuntime = renderRuntime;
-    return frame;
-  }
-  return { node: parent, kind: UNMOUNT_CHILDREN_ENTER, meta: { renderRuntime } };
+export function acquireUnmountChildrenFrame(renderRuntime: SimpRenderRuntime, parent: SimpElement): SimpRenderFrame {
+  const frame = renderRuntime.framePool.pop() ?? createFrame();
+  frame.kind = UNMOUNT_CHILDREN_ENTER;
+  frame.node = parent;
+  frame.renderRuntime = renderRuntime;
+  return frame;
 }
 
 export function acquirePlaceFrame(
@@ -245,20 +142,14 @@ export function acquirePlaceFrame(
   element: SimpElement,
   parentReference: unknown,
   subtreeRightBoundary: Nullable<SimpElement>
-): PlaceElementFrame {
-  const frame = renderRuntime.framePool.place.pop();
-  if (frame !== undefined) {
-    frame.node = element;
-    frame.meta.parentReference = parentReference;
-    frame.meta.subtreeRightBoundary = subtreeRightBoundary;
-    frame.meta.renderRuntime = renderRuntime;
-    return frame;
-  }
-  return {
-    node: element,
-    kind: HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR,
-    meta: { parentReference, subtreeRightBoundary, renderRuntime },
-  };
+): SimpRenderFrame {
+  const frame = renderRuntime.framePool.pop() ?? createFrame();
+  frame.kind = HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR;
+  frame.node = element;
+  frame.renderRuntime = renderRuntime;
+  frame.parentReference = parentReference;
+  frame.subtreeRightBoundary = subtreeRightBoundary;
+  return frame;
 }
 
 export function acquireReplaceFrame(
@@ -266,15 +157,14 @@ export function acquireReplaceFrame(
   element: SimpElement,
   parentReference: unknown,
   prevElement: SimpElement
-): ReplaceElementFrame {
-  const frame = renderRuntime.framePool.replace.pop();
-  if (frame !== undefined) {
-    frame.node = element;
-    frame.meta.parentReference = parentReference;
-    frame.meta.prevElement = prevElement;
-    return frame;
-  }
-  return { node: element, kind: HOST_OPS_REPLACE_CHILD, meta: { parentReference, prevElement } };
+): SimpRenderFrame {
+  const frame = renderRuntime.framePool.pop() ?? createFrame();
+  frame.kind = HOST_OPS_REPLACE_CHILD;
+  frame.node = element;
+  frame.renderRuntime = renderRuntime;
+  frame.parentReference = parentReference;
+  frame.prevElement = prevElement;
+  return frame;
 }
 
 export function processStack(renderRuntime: SimpRenderRuntime): void {
@@ -285,71 +175,49 @@ export function processStack(renderRuntime: SimpRenderRuntime): void {
     const frame = stack.pop()!;
 
     switch (frame.kind) {
-      case MOUNT_ENTER: {
+      case MOUNT_ENTER:
         mountEnter(frame);
-        frame.node = null!;
-        pool.mount.push(frame);
         break;
-      }
-      case MOUNT_EXIT: {
+      case MOUNT_EXIT:
         mountExit(frame);
-        frame.node = null!;
-        pool.mount.push(frame);
         break;
-      }
-      case MOUNT_CHILDREN_ENTER: {
+      case MOUNT_CHILDREN_ENTER:
         mountChildren(frame);
-        frame.node = null!;
-        pool.mountChildren.push(frame);
         break;
-      }
-      case PATCH_ENTER: {
+      case PATCH_ENTER:
         patchEnter(frame);
-        frame.node = null!;
-        pool.patch.push(frame);
         break;
-      }
-      case PATCH_EXIT: {
+      case PATCH_EXIT:
         patchExit(frame);
-        frame.node = null!;
-        pool.patch.push(frame);
         break;
-      }
-      case UNMOUNT_ENTER: {
+      case UNMOUNT_ENTER:
         unmountEnter(frame);
-        frame.node = null!;
-        pool.unmount.push(frame);
         break;
-      }
-      case UNMOUNT_EXIT: {
+      case UNMOUNT_EXIT:
         unmountExit(frame);
-        frame.node = null!;
-        pool.unmount.push(frame);
         break;
-      }
-      case UNMOUNT_CHILDREN_ENTER: {
+      case UNMOUNT_CHILDREN_ENTER:
         unmountChildren(frame);
-        frame.node = null!;
-        pool.unmountChildren.push(frame);
         break;
-      }
       case HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR: {
-        const anchor = resolveAnchorReference(frame.meta.subtreeRightBoundary);
-        placeElementBeforeAnchor(frame.node, anchor, frame.meta.parentReference, renderRuntime);
-        frame.node = null!;
-        pool.place.push(frame);
+        const anchor = resolveAnchorReference(frame.subtreeRightBoundary);
+        placeElementBeforeAnchor(frame.node, anchor, frame.parentReference, renderRuntime);
         break;
       }
-      case HOST_OPS_REPLACE_CHILD: {
+      case HOST_OPS_REPLACE_CHILD:
         renderRuntime.hostAdapter.replaceChild(
-          frame.meta.parentReference,
+          frame.parentReference,
           frame.node.reference,
-          frame.meta.prevElement.reference
+          frame.prevElement.reference
         );
-        frame.node = null!;
-        pool.replace.push(frame);
         break;
-      }
     }
+
+    frame.node = null!;
+    frame.prevElement = null!;
+    frame.children = null;
+    frame.subtreeRightBoundary = null;
+    frame.placeHolderElement = null;
+    pool.push(frame);
   }
 }

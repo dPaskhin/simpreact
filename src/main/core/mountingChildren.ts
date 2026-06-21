@@ -1,7 +1,7 @@
 import type { Many, Maybe, Nullable } from '@simpreact/shared';
 import { SIMP_ELEMENT_CHILD_FLAG_ELEMENT, SIMP_ELEMENT_CHILD_FLAG_LIST, type SimpElement } from './createElement.js';
 import { pushMountEnterFrame } from './mounting.js';
-import { acquireMountChildrenFrame, type MountChildrenFrame } from './processStack.js';
+import { acquireMountChildrenFrame, type SimpRenderFrame } from './processStack.js';
 import type { SimpRenderRuntime } from './runtime.js';
 import { isHostLike } from './utils.js';
 
@@ -27,15 +27,15 @@ export function pushMountChildrenFrame(
   );
 }
 
-export function mountChildren(frame: MountChildrenFrame): void {
+export function mountChildren(frame: SimpRenderFrame): void {
   const parentElement = frame.node;
-  const { parentReference, hostNamespace, renderRuntime, context } = frame.meta;
+  const { parentReference, hostNamespace, renderRuntime, context } = frame;
 
-  const subtreeRightBoundary = isHostLike(parentElement.flag) ? null : frame.meta.subtreeRightBoundary;
+  const subtreeRightBoundary = isHostLike(parentElement.flag) ? null : frame.subtreeRightBoundary;
 
   switch (parentElement.childFlag) {
     case SIMP_ELEMENT_CHILD_FLAG_ELEMENT: {
-      const children = frame.meta.children as SimpElement;
+      const children = frame.children as SimpElement;
       children.parent = parentElement;
 
       pushMountEnterFrame(children, renderRuntime, parentReference, subtreeRightBoundary, context, hostNamespace, null);
@@ -43,7 +43,7 @@ export function mountChildren(frame: MountChildrenFrame): void {
       break;
     }
     case SIMP_ELEMENT_CHILD_FLAG_LIST: {
-      const children = frame.meta.children as SimpElement[];
+      const children = frame.children as SimpElement[];
 
       for (let i = children.length - 1; i >= 0; i--) {
         const child = children[i]!;

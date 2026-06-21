@@ -1,4 +1,4 @@
-import type { Maybe, Nullable } from '../shared/index.js';
+import type { Many, Maybe, Nullable } from '../shared/index.js';
 
 export type FC = (props: any) => SimpNode;
 export type Key = string | number | bigint;
@@ -58,11 +58,24 @@ export interface SimpRuntimeFCRenderer {
   (component: FC, element: SimpElement, renderRuntime: SimpRenderRuntime): SimpNode;
 }
 
+export interface SimpRenderFrame {
+  kind: number;
+  node: SimpElement;
+  renderRuntime: SimpRenderRuntime;
+  parentReference: unknown;
+  subtreeRightBoundary: Nullable<SimpElement>;
+  context: unknown;
+  hostNamespace: Maybe<string>;
+  prevElement: SimpElement;
+  children: Nullable<Many<SimpElement>>;
+  placeHolderElement: Nullable<SimpElement>;
+}
+
 export interface SimpRenderRuntime {
   hostAdapter: HostAdapter;
   renderer: SimpRuntimeFCRenderer;
   renderStack: Array<any>;
-  framePool: any;
+  framePool: SimpRenderFrame[];
   activeRenderElement: SimpElement | null;
   pendingRerenderFlag: boolean;
 }

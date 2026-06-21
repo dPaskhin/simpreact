@@ -12,7 +12,7 @@ import { getLifecycleEventBus, type LifecycleEvent } from './lifecycleEventBus.j
 import { isMemo } from './memo.js';
 import { pushMountEnterFrame } from './mounting.js';
 import { patchChildren } from './patchingChildren.js';
-import { acquirePatchFrame, PATCH_ENTER, PATCH_EXIT, type PatchFrame, processStack } from './processStack.js';
+import { acquirePatchFrame, PATCH_ENTER, PATCH_EXIT, processStack, type SimpRenderFrame } from './processStack.js';
 import { applyRef } from './ref.js';
 import type { SimpRenderRuntime } from './runtime.js';
 import { pushUnmountEnterFrame } from './unmounting.js';
@@ -93,8 +93,8 @@ function pushPatchExitFrame(
   );
 }
 
-export function patchEnter(frame: PatchFrame): void {
-  const { prevElement } = frame.meta;
+export function patchEnter(frame: SimpRenderFrame): void {
+  const { prevElement } = frame;
 
   // Early return if the elements are different type or have different keys.
   if (prevElement.type !== frame.node.type || prevElement.key !== frame.node.key) {
@@ -105,13 +105,13 @@ export function patchEnter(frame: PatchFrame): void {
   patchEnterHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
 }
 
-export function patchExit(frame: PatchFrame): void {
+export function patchExit(frame: SimpRenderFrame): void {
   patchExitHandlers[bitScanForwardIndex(frame.node.flag)]!(frame);
 }
 
-function replaceWithNewElement(frame: PatchFrame): void {
+function replaceWithNewElement(frame: SimpRenderFrame): void {
   const nextElement = frame.node;
-  const { prevElement, parentReference, context, hostNamespace, renderRuntime } = frame.meta;
+  const { prevElement, parentReference, context, hostNamespace, renderRuntime } = frame;
 
   pushUnmountEnterFrame(prevElement, renderRuntime);
 
@@ -126,7 +126,7 @@ function replaceWithNewElement(frame: PatchFrame): void {
       nextElement,
       renderRuntime,
       parentReference,
-      frame.meta.subtreeRightBoundary,
+      frame.subtreeRightBoundary,
       context,
       hostNamespace,
       null
@@ -134,9 +134,9 @@ function replaceWithNewElement(frame: PatchFrame): void {
   }
 }
 
-function patchHostEnter(frame: PatchFrame): void {
+function patchHostEnter(frame: SimpRenderFrame): void {
   const nextElement = frame.node;
-  const { prevElement, context, hostNamespace, renderRuntime, subtreeRightBoundary, parentReference } = frame.meta;
+  const { prevElement, context, hostNamespace, renderRuntime, subtreeRightBoundary, parentReference } = frame;
 
   nextElement.ref = prevElement.ref;
   nextElement.reference = prevElement.reference;
@@ -166,9 +166,9 @@ function patchHostEnter(frame: PatchFrame): void {
   });
 }
 
-function patchHostExit(frame: PatchFrame): void {
+function patchHostExit(frame: SimpRenderFrame): void {
   const nextElement = frame.node;
-  const { prevElement, renderRuntime, hostNamespace } = frame.meta;
+  const { prevElement, renderRuntime, hostNamespace } = frame;
 
   renderRuntime.hostAdapter.patchProps(nextElement.reference, prevElement, nextElement, renderRuntime, hostNamespace);
 
@@ -179,8 +179,8 @@ function patchHostExit(frame: PatchFrame): void {
   applyRef(nextElement);
 }
 
-function patchFCEnter(frame: PatchFrame): void {
-  const { prevElement, context, renderRuntime, hostNamespace, subtreeRightBoundary, parentReference } = frame.meta;
+function patchFCEnter(frame: SimpRenderFrame): void {
+  const { prevElement, context, renderRuntime, hostNamespace, subtreeRightBoundary, parentReference } = frame;
   const jsxElement = frame.node;
 
   if (prevElement.unmounted) {
@@ -292,11 +292,11 @@ function patchFCEnter(frame: PatchFrame): void {
   });
 }
 
-function patchFCExit(frame: PatchFrame): void {
-  getLifecycleEventBus(frame.meta.renderRuntime).publish({
+function patchFCExit(frame: SimpRenderFrame): void {
+  getLifecycleEventBus(frame.renderRuntime).publish({
     type: 'updated',
     element: frame.node,
-    renderRuntime: frame.meta.renderRuntime,
+    renderRuntime: frame.renderRuntime,
   });
 }
 
@@ -314,9 +314,9 @@ function swapChildInParent(jsxElement: SimpElement, liveElement: SimpElement): v
   }
 }
 
-function patchTextElement(frame: PatchFrame): void {
+function patchTextElement(frame: SimpRenderFrame): void {
   const nextElement = frame.node;
-  const { prevElement, renderRuntime } = frame.meta;
+  const { prevElement, renderRuntime } = frame;
 
   nextElement.reference = prevElement.reference;
 
@@ -325,9 +325,9 @@ function patchTextElement(frame: PatchFrame): void {
   }
 }
 
-function patchPortalEnter(frame: PatchFrame): void {
+function patchPortalEnter(frame: SimpRenderFrame): void {
   const nextElement = frame.node;
-  const { prevElement, renderRuntime, context, subtreeRightBoundary, hostNamespace, parentReference } = frame.meta;
+  const { prevElement, renderRuntime, context, subtreeRightBoundary, hostNamespace, parentReference } = frame;
 
   const prevContainer = prevElement.ref;
   const nextContainer = nextElement.ref;
@@ -361,18 +361,18 @@ function patchPortalEnter(frame: PatchFrame): void {
   });
 }
 
-function patchPortalExit(frame: PatchFrame): void {
+function patchPortalExit(frame: SimpRenderFrame): void {
   const nextElement = frame.node;
-  const { prevElement, renderRuntime } = frame.meta;
+  const { prevElement, renderRuntime } = frame;
   const nextChildren = nextElement.children as SimpElement;
 
   renderRuntime.hostAdapter.removeChild(prevElement.ref, nextChildren.reference);
   renderRuntime.hostAdapter.insertOrAppend(nextElement.ref, nextChildren.reference, null);
 }
 
-function patchFragment(frame: PatchFrame): void {
+function patchFragment(frame: SimpRenderFrame): void {
   const nextElement = frame.node;
-  const { prevElement, renderRuntime, context, parentReference, hostNamespace, subtreeRightBoundary } = frame.meta;
+  const { prevElement, renderRuntime, context, parentReference, hostNamespace, subtreeRightBoundary } = frame;
 
   patchChildren(nextElement, {
     subtreeRightBoundary,
