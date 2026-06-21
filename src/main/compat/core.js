@@ -4,8 +4,27 @@ import {
   Fragment as _Fragment,
   memo as _memo,
 } from '@simpreact/core';
-import { isFragment, isPortal } from '@simpreact/internal';
+import { isFragment, isPortal, withSyncRerender } from '@simpreact/internal';
 import { useCatch, useState } from './hooks.js';
+import { renderRuntime } from './renderRuntime.js';
+
+// Threads refs through FC elements without polluting string-keyed props.
+// Symbol keys are invisible to `for…in` and Object.keys, so they never
+// accidentally end up on HOST elements via `{...props}` spread.
+export const REF_SYMBOL = Symbol('simpreact.compat.ref');
+
+// Wraps core createElement to strip `ref` from FC props (matching React's
+// model where ref is not part of the props the component receives).
+export function createElement(type, props, ...args) {
+  if (typeof type === 'function' && props != null && 'ref' in props) {
+    const { ref, ...restProps } = props;
+    if (ref != null) {
+      restProps[REF_SYMBOL] = ref;
+    }
+    return _createElement(type, restProps, ...args);
+  }
+  return _createElement(type, props, ...args);
+}
 
 export const Children = {
   map(children, fn) {
@@ -59,11 +78,12 @@ export function cloneElement(element, props, ...children) {
     throw new Error('cloneElement: the argument must be a SimpElement, but you passed a portal instead.');
   }
 
-  return createElement(
-    isFragment(element) ? Fragment : element.type,
-    Object.assign({}, element.props, props),
-    arguments.length > 2 ? children : props.children || element.children
-  );
+  const mergedProps = Object.assign({}, element.props, props);
+
+  const resolvedChildren =
+    arguments.length > 2 ? children : mergedProps.children !== undefined ? mergedProps.children : element.children;
+
+  return createElement(isFragment(element) ? Fragment : element.type, mergedProps, resolvedChildren);
 }
 
 export function isValidElement(element) {
@@ -71,41 +91,49 @@ export function isValidElement(element) {
 }
 
 export function Suspense(props) {
-  const [isSuspended, setIsSuspended] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
 
   useCatch(error => {
     if (!(error instanceof Promise)) {
       throw error;
     }
-
-    if (isSuspended) {
-      return;
-    }
-
-    setIsSuspended(true);
-    error.then(() => setIsSuspended(false));
+    setPendingCount(c => c + 1);
+    error.then(() => setPendingCount(c => c - 1));
   });
 
-  return isSuspended ? props.fallback : props.children;
+  return pendingCount > 0 ? props.fallback : props.children;
 }
 
 export function StrictMode(props) {
   return props.children;
 }
 
+// Reads the ref from the Symbol slot so that string-keyed `ref` never
+// appears in the props the inner component receives.
 export function forwardRef(Component) {
   return function Forwarded(props) {
-    return Component(props, props?.ref ?? null);
+    const ref = props?.[REF_SYMBOL] ?? null;
+    if (props != null && REF_SYMBOL in props) {
+      const { [REF_SYMBOL]: _, ...restProps } = props;
+      return Component(restProps, ref);
+    }
+    return Component(props, ref);
   };
 }
 
 export const version = '18.3.1';
 
 export const Fragment = _Fragment;
-export const createElement = _createElement;
 export const createPortal = _createPortal;
 export const memo = _memo;
-export const flushSync = callback => callback();
+
+export function flushSync(callback) {
+  let result;
+  withSyncRerender(renderRuntime, () => {
+    result = callback();
+  });
+  return result;
+}
 
 export function lazy(factory) {
   let state = null;
@@ -132,11 +160,25 @@ export function lazy(factory) {
   };
 }
 
+// Minimal base class for React-style class components.
+// setState and forceUpdate are no-ops here; the compat renderer overrides
+// them on each instance with real implementations backed by the render queue.
 export class Component {
-  constructor() {
-    throw new Error('Not implemented.');
+  constructor(props) {
+    this.props = props;
+    this.state = {};
+  }
+
+  setState(_updater, _callback) {}
+
+  forceUpdate(_callback) {}
+
+  render() {
+    throw new Error('Component.render() must be implemented by the subclass.');
   }
 }
+
+Component.prototype.isReactComponent = true;
 
 export default {
   version,
