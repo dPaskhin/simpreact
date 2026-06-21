@@ -211,23 +211,19 @@ function patchFCEnter(frame: PatchFrame): void {
   prevElement.props = jsxElement.props;
   prevElement.context = prevElement.context || context;
 
-  // Snapshot before render: captures old childFlag and old children for reconciliation.
-  const prevElementSnapshot = { ...prevElement };
+  const prevChildFlag = prevElement.childFlag;
+  const prevChildren = prevElement.children;
+  const prevSnapshot = { childFlag: prevChildFlag, children: prevChildren } as SimpElement;
 
   let nextChildren;
-  let triedToRerenderUnsubscribe: () => void = noop;
 
   try {
-    let triedToRerender = false;
     let rerenderCounter = 0;
-    triedToRerenderUnsubscribe = getLifecycleEventBus(renderRuntime).subscribe(event => {
-      if (event.type === 'triedToRerender' && event.element === prevElement) {
-        triedToRerender = true;
-      }
-    });
+    renderRuntime.activeRenderElement = prevElement;
+    renderRuntime.pendingRerenderFlag = false;
 
     do {
-      triedToRerender = false;
+      renderRuntime.pendingRerenderFlag = false;
       if (++rerenderCounter >= 25) {
         throw new Error('Too many re-renders.');
       }
@@ -244,7 +240,7 @@ function patchFCEnter(frame: PatchFrame): void {
         element: prevElement,
         renderRuntime,
       });
-    } while (triedToRerender);
+    } while (renderRuntime.pendingRerenderFlag);
 
     normalizeRoot(prevElement, nextChildren, false);
     nextChildren = prevElement.children;
@@ -269,7 +265,7 @@ function patchFCEnter(frame: PatchFrame): void {
 
     return;
   } finally {
-    triedToRerenderUnsubscribe();
+    renderRuntime.activeRenderElement = null;
   }
 
   pushPatchExitFrame(
@@ -284,15 +280,15 @@ function patchFCEnter(frame: PatchFrame): void {
 
   patchChildren(prevElement, {
     subtreeRightBoundary,
-    prevParentChildFlag: prevElementSnapshot.childFlag,
+    prevParentChildFlag: prevChildFlag,
     nextParentChildFlag: prevElement.childFlag,
-    prevChildren: prevElementSnapshot.children as Nullable<Many<SimpElement>>,
+    prevChildren: prevChildren as Nullable<Many<SimpElement>>,
     nextChildren: nextChildren as Nullable<Many<SimpElement>>,
     renderRuntime,
     hostNamespace,
     parentReference,
     context,
-    prevParentElement: prevElementSnapshot,
+    prevParentElement: prevSnapshot,
   });
 }
 

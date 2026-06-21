@@ -143,31 +143,30 @@ function findNextLogicalElement(element: SimpElement): Nullable<SimpElement> {
 }
 
 export function getLongestIncreasingSubsequenceIndexes(sequence: Int32Array): Int32Array {
-  const predecessors = new Int32Array(sequence.length);
-  const result: number[] = [];
-
+  const n = sequence.length;
+  const predecessors = new Int32Array(n);
   predecessors.fill(-1);
+  const result = new Int32Array(n);
+  let resultLen = 0;
 
-  for (let i = 0; i < sequence.length; i++) {
+  for (let i = 0; i < n; i++) {
     const value = sequence[i]!;
 
     if (value === 0) {
       continue;
     }
 
-    const lastResultIndex = result[result.length - 1];
-
-    if (lastResultIndex == null || sequence[lastResultIndex]! < value) {
-      if (lastResultIndex != null) {
-        predecessors[i] = lastResultIndex;
+    if (resultLen === 0 || sequence[result[resultLen - 1]!]! < value) {
+      if (resultLen > 0) {
+        predecessors[i] = result[resultLen - 1]!;
       }
 
-      result.push(i);
+      result[resultLen++] = i;
       continue;
     }
 
     let start = 0;
-    let end = result.length - 1;
+    let end = resultLen - 1;
 
     while (start < end) {
       const middle = (start + end) >> 1;
@@ -188,8 +187,8 @@ export function getLongestIncreasingSubsequenceIndexes(sequence: Int32Array): In
     }
   }
 
-  let resultIndex = result.length;
-  let sequenceIndex = result[resultIndex - 1] ?? -1;
+  let resultIndex = resultLen;
+  let sequenceIndex = resultLen > 0 ? result[resultLen - 1]! : -1;
   const indexes = new Int32Array(resultIndex);
 
   while (resultIndex-- > 0) {

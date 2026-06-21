@@ -127,17 +127,6 @@ export interface FramePool {
   replace: ReplaceElementFrame[];
 }
 
-const framePoolByRuntime = new WeakMap<SimpRenderRuntime, FramePool>();
-
-function getFramePool(renderRuntime: SimpRenderRuntime): FramePool {
-  let pool = framePoolByRuntime.get(renderRuntime);
-  if (!pool) {
-    pool = { mount: [], mountChildren: [], patch: [], unmount: [], unmountChildren: [], place: [], replace: [] };
-    framePoolByRuntime.set(renderRuntime, pool);
-  }
-  return pool;
-}
-
 export function acquireMountFrame(
   renderRuntime: SimpRenderRuntime,
   element: SimpElement,
@@ -148,7 +137,7 @@ export function acquireMountFrame(
   hostNamespace: Maybe<string>,
   placeHolderElement: Nullable<SimpElement>
 ): MountFrame {
-  const frame = getFramePool(renderRuntime).mount.pop();
+  const frame = renderRuntime.framePool.mount.pop();
   if (frame !== undefined) {
     frame.node = element;
     frame.kind = kind;
@@ -176,7 +165,7 @@ export function acquireMountChildrenFrame(
   context: unknown,
   hostNamespace: Maybe<string>
 ): MountChildrenFrame {
-  const frame = getFramePool(renderRuntime).mountChildren.pop();
+  const frame = renderRuntime.framePool.mountChildren.pop();
   if (frame !== undefined) {
     frame.node = parent;
     frame.meta.children = children;
@@ -204,7 +193,7 @@ export function acquirePatchFrame(
   context: unknown,
   hostNamespace: Maybe<string>
 ): PatchFrame {
-  const frame = getFramePool(renderRuntime).patch.pop();
+  const frame = renderRuntime.framePool.patch.pop();
   if (frame !== undefined) {
     frame.node = element;
     frame.kind = kind;
@@ -228,7 +217,7 @@ export function acquireUnmountFrame(
   element: SimpElement,
   kind: typeof UNMOUNT_ENTER | typeof UNMOUNT_EXIT
 ): UnmountFrame {
-  const frame = getFramePool(renderRuntime).unmount.pop();
+  const frame = renderRuntime.framePool.unmount.pop();
   if (frame !== undefined) {
     frame.node = element;
     frame.kind = kind;
@@ -242,7 +231,7 @@ export function acquireUnmountChildrenFrame(
   renderRuntime: SimpRenderRuntime,
   parent: SimpElement
 ): UnmountChildrenFrame {
-  const frame = getFramePool(renderRuntime).unmountChildren.pop();
+  const frame = renderRuntime.framePool.unmountChildren.pop();
   if (frame !== undefined) {
     frame.node = parent;
     frame.meta.renderRuntime = renderRuntime;
@@ -257,7 +246,7 @@ export function acquirePlaceFrame(
   parentReference: unknown,
   subtreeRightBoundary: Nullable<SimpElement>
 ): PlaceElementFrame {
-  const frame = getFramePool(renderRuntime).place.pop();
+  const frame = renderRuntime.framePool.place.pop();
   if (frame !== undefined) {
     frame.node = element;
     frame.meta.parentReference = parentReference;
@@ -278,7 +267,7 @@ export function acquireReplaceFrame(
   parentReference: unknown,
   prevElement: SimpElement
 ): ReplaceElementFrame {
-  const frame = getFramePool(renderRuntime).replace.pop();
+  const frame = renderRuntime.framePool.replace.pop();
   if (frame !== undefined) {
     frame.node = element;
     frame.meta.parentReference = parentReference;
@@ -290,7 +279,7 @@ export function acquireReplaceFrame(
 
 export function processStack(renderRuntime: SimpRenderRuntime): void {
   const stack = renderRuntime.renderStack;
-  const pool = getFramePool(renderRuntime);
+  const pool = renderRuntime.framePool;
 
   while (stack.length > 0) {
     const frame = stack.pop()!;

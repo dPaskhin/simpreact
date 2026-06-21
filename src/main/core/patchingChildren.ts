@@ -1,6 +1,5 @@
 import type { Many, Maybe, Nullable } from '../shared/index.js';
 import {
-  type Key,
   SIMP_ELEMENT_CHILD_FLAG_ELEMENT,
   SIMP_ELEMENT_CHILD_FLAG_LIST,
   SIMP_ELEMENT_CHILD_FLAG_TEXT,
@@ -325,31 +324,33 @@ export function patchKeyedChildren(parentElement: SimpElement, meta: PatchChildr
     return;
   }
 
-  const keyToPrevChild = new Map<Key, SimpElement>();
+  const keyToPrevChild = Object.create(null) as Record<string, SimpElement>;
 
   for (let i = prevStart; i <= prevEnd; i++) {
     const prevChild = getChild(prevChildren, i);
     const key = prevChild.key;
 
     if (key != null) {
-      keyToPrevChild.set(key, prevChild);
+      keyToPrevChild[key as string] = prevChild;
     }
   }
 
   const middleLen = nextEnd - nextStart + 1;
   const newIndexToOldIndex = new Int32Array(middleLen);
+  const matchedPrev = new Uint8Array(prevEnd - prevStart + 1);
 
   let moved = false;
   let maxPrevIndexSoFar = -1;
 
   for (let i = nextStart; i <= nextEnd; i++) {
     const nextChild = getChild(nextChildren, i);
-    const prevChild = keyToPrevChild.get(nextChild.key!);
+    const prevChild = nextChild.key != null ? keyToPrevChild[nextChild.key as string] : undefined;
 
     if (prevChild != null) {
       const prevIndex = prevChild.index;
 
       newIndexToOldIndex[nextChild.index - nextStart] = prevIndex + 1;
+      matchedPrev[prevIndex - prevStart] = 1;
 
       if (prevIndex < maxPrevIndexSoFar) {
         moved = true;
@@ -361,16 +362,6 @@ export function patchKeyedChildren(parentElement: SimpElement, meta: PatchChildr
 
   pushPrefixPatches();
 
-  const matchedPrev = new Uint8Array(prevEnd - prevStart + 1);
-
-  for (let i = 0; i < middleLen; i++) {
-    const oldIndex = newIndexToOldIndex[i];
-
-    if (oldIndex !== 0) {
-      matchedPrev[oldIndex! - 1 - prevStart] = 1;
-    }
-  }
-
   for (let i = prevStart; i <= prevEnd; i++) {
     if (!matchedPrev[i - prevStart]) {
       const child = getChild(prevChildren, i);
@@ -380,37 +371,60 @@ export function patchKeyedChildren(parentElement: SimpElement, meta: PatchChildr
     }
   }
 
-  const stableNewIndexes = moved ? getLongestIncreasingSubsequenceIndexes(newIndexToOldIndex) : new Int32Array(0);
-  let stableCursor = 0;
+  if (moved) {
+    const stableNewIndexes = getLongestIncreasingSubsequenceIndexes(newIndexToOldIndex);
+    let stableCursor = 0;
 
-  for (let i = nextStart; i <= nextEnd; i++) {
-    const nextChild = getChild(nextChildren, i);
-    const newIndex = nextChild.index - nextStart;
-    const oldIndex = newIndexToOldIndex[newIndex];
+    for (let i = nextStart; i <= nextEnd; i++) {
+      const nextChild = getChild(nextChildren, i);
+      const newIndex = nextChild.index - nextStart;
+      const oldIndex = newIndexToOldIndex[newIndex];
 
-    if (oldIndex === 0) {
-      pushMountEnterFrame(
-        nextChild,
-        renderRuntime,
-        parentReference,
-        getRightSibling(nextChild),
-        context,
-        hostNamespace,
-        null
-      );
-      continue;
+      if (oldIndex === 0) {
+        pushMountEnterFrame(
+          nextChild,
+          renderRuntime,
+          parentReference,
+          getRightSibling(nextChild),
+          context,
+          hostNamespace,
+          null
+        );
+        continue;
+      }
+
+      const prevChild = getChild(prevChildren, oldIndex! - 1);
+
+      if (stableNewIndexes[stableCursor] === newIndex) {
+        stableCursor++;
+      } else {
+        pushHostOperationPlaceElement(nextChild, renderRuntime, parentReference, getRightSibling(nextChild));
+      }
+
+      pushPatchEnterFrame(nextChild, renderRuntime, prevChild, parentReference, null, context, hostNamespace);
     }
+  } else {
+    for (let i = nextStart; i <= nextEnd; i++) {
+      const nextChild = getChild(nextChildren, i);
+      const newIndex = nextChild.index - nextStart;
+      const oldIndex = newIndexToOldIndex[newIndex];
 
-    const prevChild = getChild(prevChildren, oldIndex! - 1);
-    const isStable = moved && stableNewIndexes[stableCursor] === newIndex;
+      if (oldIndex === 0) {
+        pushMountEnterFrame(
+          nextChild,
+          renderRuntime,
+          parentReference,
+          getRightSibling(nextChild),
+          context,
+          hostNamespace,
+          null
+        );
+        continue;
+      }
 
-    if (isStable) {
-      stableCursor++;
-    } else if (moved) {
-      pushHostOperationPlaceElement(nextChild, renderRuntime, parentReference, getRightSibling(nextChild));
+      const prevChild = getChild(prevChildren, oldIndex! - 1);
+      pushPatchEnterFrame(nextChild, renderRuntime, prevChild, parentReference, null, context, hostNamespace);
     }
-
-    pushPatchEnterFrame(nextChild, renderRuntime, prevChild, parentReference, null, context, hostNamespace);
   }
 
   pushSuffixPatches();

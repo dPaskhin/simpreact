@@ -162,19 +162,14 @@ function mountFCEnter(frame: MountFrame): void {
   }
 
   let children;
-  let triedToRerenderUnsubscribe: () => void = noop;
 
   try {
-    let triedToRerender = false;
     let rerenderCounter = 0;
-    triedToRerenderUnsubscribe = getLifecycleEventBus(renderRuntime).subscribe(event => {
-      if (event.type === 'triedToRerender' && event.element === element) {
-        triedToRerender = true;
-      }
-    });
+    renderRuntime.activeRenderElement = element;
+    renderRuntime.pendingRerenderFlag = false;
 
     do {
-      triedToRerender = false;
+      renderRuntime.pendingRerenderFlag = false;
       if (++rerenderCounter >= 25) {
         throw new Error('Too many re-renders.');
       }
@@ -191,7 +186,7 @@ function mountFCEnter(frame: MountFrame): void {
         element,
         renderRuntime,
       });
-    } while (triedToRerender);
+    } while (renderRuntime.pendingRerenderFlag);
 
     normalizeRoot(element, children, false);
     children = element.children;
@@ -212,7 +207,7 @@ function mountFCEnter(frame: MountFrame): void {
 
     return;
   } finally {
-    triedToRerenderUnsubscribe();
+    renderRuntime.activeRenderElement = null;
   }
 
   pushMountExitFrame(element, renderRuntime, parentReference, subtreeRightBoundary, context, hostNamespace, null);

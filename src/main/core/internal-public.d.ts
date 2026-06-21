@@ -62,6 +62,9 @@ export interface SimpRenderRuntime {
   hostAdapter: HostAdapter;
   renderer: SimpRuntimeFCRenderer;
   renderStack: Array<any>;
+  framePool: any;
+  activeRenderElement: SimpElement | null;
+  pendingRerenderFlag: boolean;
 }
 
 export declare function createRenderRuntime(
@@ -72,7 +75,6 @@ export declare function createRenderRuntime(
 export type LifecycleEvent =
   | { type: 'beforeRender'; element: SimpElement; renderRuntime: SimpRenderRuntime }
   | { type: 'afterRender'; element: SimpElement; renderRuntime: SimpRenderRuntime }
-  | { type: 'triedToRerender'; element: SimpElement; renderRuntime: SimpRenderRuntime }
   | { type: 'mounted'; element: SimpElement; renderRuntime: SimpRenderRuntime }
   | { type: 'updated'; element: SimpElement; renderRuntime: SimpRenderRuntime }
   | { type: 'unmounted'; element: SimpElement; renderRuntime: SimpRenderRuntime }

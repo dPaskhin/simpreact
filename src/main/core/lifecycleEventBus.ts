@@ -12,7 +12,6 @@ export type LifecycleEvent =
       element: SimpElement;
       renderRuntime: SimpRenderRuntime;
     }
-  | { type: 'triedToRerender'; element: SimpElement; renderRuntime: SimpRenderRuntime }
   | { type: 'mounted'; element: SimpElement; renderRuntime: SimpRenderRuntime }
   | { type: 'updated'; element: SimpElement; renderRuntime: SimpRenderRuntime }
   | { type: 'unmounted'; element: SimpElement; renderRuntime: SimpRenderRuntime }

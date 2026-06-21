@@ -1,4 +1,4 @@
-import { createElement, createRenderRuntime, mount } from '@simpreact/internal';
+import { createElement, createRenderRuntime, mount, rerender } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Fragment } from '../main/core/fragment.js';
@@ -252,12 +252,8 @@ describe('mount – FC element', () => {
 
   it('throws after 25 re-render attempts', () => {
     const Comp = (props: any) => {
-      // signal a desire to re-render on every render call
-      getLifecycleEventBus(renderRuntime).publish({
-        type: 'triedToRerender',
-        element: el,
-        renderRuntime,
-      });
+      // signal a desire to re-render on every render call — matches what hooks do
+      rerender(el, renderRuntime);
       return createElement('div');
     };
     const el = createElement(Comp);

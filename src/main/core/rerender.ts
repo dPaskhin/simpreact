@@ -1,5 +1,5 @@
 import type { SimpElement } from './createElement.js';
-import { getLifecycleEventBus, registerLifecyclePlugin } from './lifecycleEventBus.js';
+import { registerLifecyclePlugin } from './lifecycleEventBus.js';
 import { patch } from './patching.js';
 import type { SimpRenderRuntime } from './runtime.js';
 import { findParentReferenceFromElement } from './utils.js';
@@ -29,9 +29,9 @@ function getRerenderSpecificData(renderRuntime: SimpRenderRuntime): RerenderSpec
 
 registerLifecyclePlugin(bus => {
   bus.subscribe(event => {
-    const data = getRerenderSpecificData(event.renderRuntime);
-
     if (event.type === 'afterRender' || event.type === 'errored' || event.type === 'unmounted') {
+      const data = getRerenderSpecificData(event.renderRuntime);
+
       data.asyncQueue.delete(event.element);
       data.syncQueue.delete(event.element);
     }
@@ -69,7 +69,10 @@ export function rerender(element: SimpElement, renderRuntime: SimpRenderRuntime)
     return;
   }
 
-  getLifecycleEventBus(renderRuntime).publish({ type: 'triedToRerender', element, renderRuntime });
+  if (renderRuntime.activeRenderElement === element) {
+    renderRuntime.pendingRerenderFlag = true;
+    return;
+  }
 
   if (data.syncLockDepth > 0) {
     data.syncQueue.add(element);

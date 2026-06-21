@@ -1,4 +1,4 @@
-import { createElement, createRenderRuntime, mount, patch, type SimpElement } from '@simpreact/internal';
+import { createElement, createRenderRuntime, mount, patch, rerender, type SimpElement } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Fragment } from '../main/core/fragment.js';
@@ -517,12 +517,8 @@ describe('patch – FC triedToRerender and error handling', () => {
 
     const Comp = () => {
       if (inPatch) {
-        // publish triedToRerender for the live element → triggers do-while loop
-        getLifecycleEventBus(renderRuntime).publish({
-          type: 'triedToRerender',
-          element: liveEl,
-          renderRuntime,
-        });
+        // call rerender during render — matches what hooks do — triggers do-while loop
+        rerender(liveEl, renderRuntime);
       }
       return createElement('div');
     };
