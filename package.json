@@ -1,6 +1,6 @@
 {
   "name": "@simpreact/simpreact",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "description": "",
   "homepage": "https://github.com/dPaskhin/simpreact#readme",
   "main": "./core/index.js",
