@@ -107,6 +107,27 @@ describe('mountProps — regular elements', () => {
     mountProps(svgDom, el, SVG_NS, runtime);
     expect(svgDom.getAttributeNS('http://www.w3.org/XML/1998/namespace', 'lang')).toBe('en');
   });
+
+  it('converts camelCase SVG prop to hyphenated attribute name (strokeWidth → stroke-width)', () => {
+    const svgDom = document.createElementNS(SVG_NS, 'path') as unknown as HTMLElement;
+    const el = createElement('path', { strokeWidth: '2' });
+    mountProps(svgDom, el, SVG_NS, runtime);
+    expect(svgDom.getAttribute('stroke-width')).toBe('2');
+  });
+
+  it('converts camelCase SVG prop fontFamily → font-family', () => {
+    const svgDom = document.createElementNS(SVG_NS, 'text') as unknown as HTMLElement;
+    const el = createElement('text', { fontFamily: 'Arial' });
+    mountProps(svgDom, el, SVG_NS, runtime);
+    expect(svgDom.getAttribute('font-family')).toBe('Arial');
+  });
+
+  it('passes through non-camelCase SVG attr names unchanged', () => {
+    const svgDom = document.createElementNS(SVG_NS, 'rect') as unknown as HTMLElement;
+    const el = createElement('rect', { width: '100' });
+    mountProps(svgDom, el, SVG_NS, runtime);
+    expect(svgDom.getAttribute('width')).toBe('100');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -394,6 +415,66 @@ describe('patchProps — form elements', () => {
     // onClick is not ignored for controlled inputs; delegated function→function keeps same listener
     expect(addSpy).not.toHaveBeenCalled();
     addSpy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// HTML standard attribute aliases (class / for / htmlFor)
+// ---------------------------------------------------------------------------
+
+describe('HTML standard attribute aliases', () => {
+  let runtime: ReturnType<typeof makeRuntime>;
+
+  beforeEach(() => {
+    runtime = makeRuntime();
+  });
+
+  it('createElement: class prop populates element.className', () => {
+    const el = createElement('div', { class: 'foo' } as any);
+    expect(el.className).toBe('foo');
+  });
+
+  it('createElement: className takes priority over class', () => {
+    const el = createElement('div', { className: 'primary', class: 'fallback' } as any);
+    expect(el.className).toBe('primary');
+  });
+
+  it('mountProps: class prop is silently skipped (handled via className fast path)', () => {
+    const dom = document.createElement('div');
+    const el = createElement('div', { class: 'bar' } as any);
+    mountProps(dom, el, HTML_NS, runtime);
+    expect(dom.getAttribute('class')).toBeNull();
+  });
+
+  it('mountProps: htmlFor sets the for attribute', () => {
+    const dom = document.createElement('label');
+    const el = createElement('label', { htmlFor: 'my-input' });
+    mountProps(dom, el, HTML_NS, runtime);
+    expect(dom.getAttribute('for')).toBe('my-input');
+  });
+
+  it('mountProps: for prop aliases to htmlFor and sets the for attribute', () => {
+    const dom = document.createElement('label');
+    const el = createElement('label', { for: 'my-input' } as any);
+    mountProps(dom, el, HTML_NS, runtime);
+    expect(dom.getAttribute('for')).toBe('my-input');
+  });
+
+  it('patchProps: htmlFor update reflects on the for attribute', () => {
+    const dom = document.createElement('label');
+    const prev = createElement('label', { htmlFor: 'old' });
+    const next = createElement('label', { htmlFor: 'new' });
+    patchProps(dom, prev, next, HTML_NS, runtime);
+    expect(dom.getAttribute('for')).toBe('new');
+  });
+
+  it('patchProps: htmlFor removal removes the for attribute', () => {
+    const dom = document.createElement('label');
+    dom.setAttribute('for', 'old');
+    const prev = createElement('label', { htmlFor: 'old' });
+    const next = createElement('label', {});
+    patchProps(dom, prev, next, HTML_NS, runtime);
+    expect(dom.getAttribute('for')).toBeNull();
   });
 });
 

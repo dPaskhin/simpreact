@@ -1,12 +1,13 @@
 import { domAdapter } from '@simpreact/dom';
-import { createUseRef, createUseRerender } from '@simpreact/hooks';
+import { createUseEffect, createUseRef, createUseRerender } from '@simpreact/hooks';
 import { createRenderRuntime } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 
 // Lazily assigned after renderRuntime is created to avoid a circular reference
-// at module-evaluation time. Both are set before any render can fire.
+// at module-evaluation time. All are set before any render can fire.
 let useRef;
 let useRerender;
+let useLayoutEffect;
 
 export const renderRuntime = createRenderRuntime(domAdapter, function renderer(component, element) {
   const props = element.props || emptyObject;
@@ -14,7 +15,7 @@ export const renderRuntime = createRenderRuntime(domAdapter, function renderer(c
 
   if (proto?.isReactComponent || proto?.render) {
     // Persist the instance across re-renders so state is not reset on every
-    // render cycle. Both hook calls run in the current FC render context.
+    // render cycle. Hook calls run in the current FC render context.
     const instRef = useRef(null);
     const rerender = useRerender();
 
@@ -42,6 +43,12 @@ export const renderRuntime = createRenderRuntime(domAdapter, function renderer(c
       callback?.();
     };
 
+    useLayoutEffect(() => {
+      if (typeof inst.componentDidMount === 'function') {
+        inst.componentDidMount();
+      }
+    }, []);
+
     return inst.render();
   }
 
@@ -50,6 +57,7 @@ export const renderRuntime = createRenderRuntime(domAdapter, function renderer(c
 
 useRef = createUseRef(renderRuntime);
 useRerender = createUseRerender(renderRuntime);
+useLayoutEffect = createUseEffect(renderRuntime);
 
 export default {
   renderRuntime,
