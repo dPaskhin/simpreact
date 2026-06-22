@@ -287,7 +287,7 @@ function patchFCEnter(frame: SimpRenderFrame): void {
     renderRuntime,
     hostNamespace,
     parentReference,
-    context,
+    context: prevElement.context || context,
     prevParentElement: prevSnapshot,
   });
 }

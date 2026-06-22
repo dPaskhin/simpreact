@@ -86,7 +86,7 @@ export function createElement(type: string | FC, props?: any): SimpElement {
             type,
             props: props || null,
             children: null,
-            className: props?.className || null,
+            className: props?.className ?? props?.class ?? null,
             reference: null!,
             hostNamespace: null,
             context: null,

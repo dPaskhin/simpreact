@@ -396,6 +396,49 @@ describe('Component', () => {
     render(createElement(ShowProp, { value: 'b' }), container);
     expect(container.textContent).toBe('b');
   });
+
+  it('componentDidMount is called once after the initial mount', () => {
+    const didMount = vi.fn();
+    class WithDidMount extends Component {
+      componentDidMount() {
+        didMount();
+      }
+      render() {
+        return createElement('div');
+      }
+    }
+    render(createElement(WithDidMount, {}), container);
+    expect(didMount).toHaveBeenCalledTimes(1);
+  });
+
+  it('componentDidMount is not called again on re-render', () => {
+    const didMount = vi.fn();
+    class WithDidMount extends Component {
+      componentDidMount() {
+        didMount();
+      }
+      render() {
+        return createElement('div', null, this.props.value);
+      }
+    }
+    render(createElement(WithDidMount, { value: 'a' }), container);
+    render(createElement(WithDidMount, { value: 'b' }), container);
+    expect(didMount).toHaveBeenCalledTimes(1);
+  });
+
+  it('componentDidMount can read the rendered DOM', () => {
+    let domTextAtMount = null;
+    class Reader extends Component {
+      componentDidMount() {
+        domTextAtMount = container.textContent;
+      }
+      render() {
+        return createElement('span', null, 'ready');
+      }
+    }
+    render(createElement(Reader, {}), container);
+    expect(domTextAtMount).toBe('ready');
+  });
 });
 
 describe('lazy', () => {

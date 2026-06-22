@@ -3,6 +3,7 @@ import { emptyObject } from '@simpreact/shared';
 import { isPropNameEventName, patchEvent } from '../events.js';
 import type { Namespace } from '../namespace.js';
 import { defaultNamespace } from '../namespace.js';
+import { htmlAttrAlias, svgAttrsNamespaces, svgCamelToHyphen } from './attrMaps.js';
 import {
   addControlledFormElementEventHandlers,
   isEventNameIgnored,
@@ -156,6 +157,7 @@ function patchFormElementsPropAndAttrs(
   nextValue: any,
   renderRuntime: SimpRenderRuntime
 ): void {
+  propName = htmlAttrAlias[propName] ?? propName;
   switch (propName) {
     case 'children':
     case 'className':
@@ -218,6 +220,7 @@ function patchDefaultElementPropAndAttrs(
   namespace: Namespace,
   renderRuntime: SimpRenderRuntime
 ): void {
+  propName = htmlAttrAlias[propName] ?? propName;
   switch (propName) {
     case 'children':
     case 'className':
@@ -256,6 +259,10 @@ function patchDefaultElementPropAndAttrs(
       patchDangerInnerHTML(prevValue, nextValue, nextElement, dom);
       break;
 
+    case 'htmlFor':
+      patchDomAttr(dom, nextValue, 'for', namespace);
+      break;
+
     default:
       if (isPropNameEventName(propName)) {
         patchEvent(propName, prevValue, nextValue, dom, renderRuntime);
@@ -276,26 +283,17 @@ function patchDomAttr(dom: HTMLElement | SVGElement, value: any, propName: strin
   if (value == null) {
     dom.removeAttribute(propName);
   } else {
-    if (namespace === 'http://www.w3.org/2000/svg' && svgAttrsNamespaces[propName]) {
-      dom.setAttributeNS(svgAttrsNamespaces[propName], propName, value);
+    if (namespace === 'http://www.w3.org/2000/svg') {
+      if (svgAttrsNamespaces[propName]) {
+        dom.setAttributeNS(svgAttrsNamespaces[propName], propName, value);
+      } else {
+        dom.setAttribute(svgCamelToHyphen[propName] ?? propName, value);
+      }
     } else {
       dom.setAttribute(propName, value);
     }
   }
 }
-
-const svgAttrsNamespaces: Record<string, string> = {
-  'xlink:actuate': 'http://www.w3.org/1999/xlink',
-  'xlink:arcrole': 'http://www.w3.org/1999/xlink',
-  'xlink:href': 'http://www.w3.org/1999/xlink',
-  'xlink:role': 'http://www.w3.org/1999/xlink',
-  'xlink:show': 'http://www.w3.org/1999/xlink',
-  'xlink:title': 'http://www.w3.org/1999/xlink',
-  'xlink:type': 'http://www.w3.org/1999/xlink',
-  'xml:base': 'http://www.w3.org/XML/1998/namespace',
-  'xml:lang': 'http://www.w3.org/XML/1998/namespace',
-  'xml:space': 'http://www.w3.org/XML/1998/namespace',
-};
 
 function isFormElement(element: SimpElement): boolean {
   return element.type === 'input' || element.type === 'textarea' || element.type === 'select';

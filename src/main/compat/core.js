@@ -127,6 +127,30 @@ export const Fragment = _Fragment;
 export const createPortal = _createPortal;
 export const memo = _memo;
 
+// Minimal React / ReactDOM internals shim for react-dom/test-utils.
+export const __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED = {
+  ReactCurrentOwner: { current: null },
+  ReactCurrentDispatcher: { current: null },
+  ReactCurrentBatchConfig: { transition: null },
+  // react-dom/test-utils: var EventInternals = SecretInternals.Events; EventInternals[0..4]
+  Events: [
+    /* getInstanceFromNode */ _node => null,
+    /* getNodeFromInstance */ _inst => null,
+    /* getFiberCurrentPropsFromNode */ _node => null,
+    /* enqueueStateRestore */ () => {},
+    /* restoreStateIfNeeded */ () => {},
+  ],
+};
+
+// react-dom/test-utils uses React.unstable_act / React.act for flushing updates.
+export async function unstable_act(callback) {
+  const result = callback();
+  if (result && typeof result.then === 'function') await result;
+  await Promise.resolve();
+}
+
+export { unstable_act as act };
+
 export function flushSync(callback) {
   let result;
   withSyncRerender(renderRuntime, () => {
@@ -195,4 +219,7 @@ export default {
   flushSync,
   lazy,
   Component,
+  __SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED,
+  unstable_act,
+  act: unstable_act,
 };

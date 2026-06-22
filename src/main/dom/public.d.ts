@@ -658,6 +658,7 @@ export interface KeygenHTMLAttributes<T> extends HTMLAttributes<T> {
 
 export interface LabelHTMLAttributes<T> extends HTMLAttributes<T> {
   form?: string | undefined;
+  for?: string | undefined;
   htmlFor?: string | undefined;
 }
 
@@ -759,6 +760,7 @@ export interface OptionHTMLAttributes<T> extends HTMLAttributes<T> {
 
 export interface OutputHTMLAttributes<T> extends HTMLAttributes<T> {
   form?: string | undefined;
+  for?: string | undefined;
   htmlFor?: string | undefined;
   name?: string | undefined;
 }
