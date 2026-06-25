@@ -16,6 +16,16 @@
       "types": "./compat/index.d.ts",
       "default": "./compat/index.js"
     },
+    "./compat/jsx-runtime": {
+      "import": "./compat/jsx-runtime.js",
+      "types": "./jsx-runtime/index.d.ts",
+      "default": "./compat/jsx-runtime.js"
+    },
+    "./compat/jsx-dev-runtime": {
+      "import": "./compat/jsx-runtime.js",
+      "types": "./jsx-runtime/index.d.ts",
+      "default": "./compat/jsx-runtime.js"
+    },
     "./compat/*": {
       "import": "./compat/index.js",
       "default": "./compat/index.js"
