@@ -603,3 +603,62 @@ describe('Suspense', () => {
     expect(container.textContent).toBe('AB');
   });
 });
+
+describe('createElement — onChange remapping for React compat', () => {
+  let container;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    render(null, container);
+    container.remove();
+  });
+
+  it('text input: onChange fires on every keystroke (mapped to onInput internally)', () => {
+    const onChange = vi.fn();
+    render(createElement('input', { value: 'a', onChange }), container);
+    const dom = container.querySelector('input');
+    dom.value = 'ab';
+    dom.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('text input: onChange does not fire on native change (blur)', () => {
+    const onChange = vi.fn();
+    render(createElement('input', { value: 'a', onChange }), container);
+    const dom = container.querySelector('input');
+    dom.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('checkbox: onChange still fires on native change event', () => {
+    const onChange = vi.fn();
+    render(createElement('input', { type: 'checkbox', checked: false, onChange }), container);
+    const dom = container.querySelector('input');
+    dom.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('textarea: onChange fires on every keystroke', () => {
+    const onChange = vi.fn();
+    render(createElement('textarea', { value: 'a', onChange }), container);
+    const dom = container.querySelector('textarea');
+    dom.value = 'ab';
+    dom.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('explicit onInput is preserved and onChange is left as-is when both are provided', () => {
+    const onInput = vi.fn();
+    const onChange = vi.fn();
+    render(createElement('input', { value: 'a', onInput, onChange }), container);
+    const dom = container.querySelector('input');
+    dom.value = 'ab';
+    dom.dispatchEvent(new Event('input', { bubbles: true }));
+    expect(onInput).toHaveBeenCalledTimes(1);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+});

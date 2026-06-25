@@ -13,9 +13,20 @@ import { renderRuntime } from './renderRuntime.js';
 // accidentally end up on HOST elements via `{...props}` spread.
 export const REF_SYMBOL = Symbol('simpreact.compat.ref');
 
-// Wraps core createElement to strip `ref` from FC props (matching React's
-// model where ref is not part of the props the component receives).
+// Wraps core createElement to:
+//   1. Strip `ref` from FC props (React's model: ref is not part of props).
+//   2. Remap onChange→onInput for text <input> and <textarea> so React-style
+//      onChange (fires on every keystroke) works — simpreact's controlled
+//      handler calls onInput for that behaviour; onChange maps to native
+//      `change` which only fires on blur for text fields.
 export function createElement(type, props, ...args) {
+  if (props != null && 'onChange' in props && !('onInput' in props)) {
+    if (type === 'textarea' || (type === 'input' && props.type !== 'checkbox' && props.type !== 'radio')) {
+      const { onChange, ...rest } = props;
+      props = { ...rest, onInput: onChange };
+    }
+  }
+
   if (typeof type === 'function' && props != null && 'ref' in props) {
     const { ref, ...restProps } = props;
     if (ref != null) {
