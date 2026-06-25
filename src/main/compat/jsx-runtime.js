@@ -1,4 +1,3 @@
-import { Fragment } from '@simpreact/internal';
 import { createElement } from './core.js';
 
 export function jsx(type, props, key) {
@@ -16,7 +15,7 @@ export function jsx(type, props, key) {
 }
 
 export { jsx as jsxs, jsx as jsxDEV };
-export { Fragment };
+export { Fragment } from './core.js';
 
 export default {
   jsx,
