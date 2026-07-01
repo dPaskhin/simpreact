@@ -63,6 +63,10 @@
     "./shared": {
       "import": "./shared/index.js",
       "types": "./shared/index.d.ts"
+    },
+    "./signals": {
+      "import": "./signals/index.js",
+      "types": "./signals/index.d.ts"
     }
   },
   "bugs": {

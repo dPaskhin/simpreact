@@ -8,7 +8,7 @@ export * from './context.js';
 export * from './core.js';
 export * from './dom.js';
 export * from './hooks.js';
-export { jsx, jsxs, jsxDEV } from './jsx-runtime.js';
+export { jsx, jsxDEV, jsxs } from './jsx-runtime.js';
 export * from './renderRuntime.js';
 
 export default {
