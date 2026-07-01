@@ -37,6 +37,7 @@ interface HooksSpecificStore {
 }
 
 const hooksSpecificStoreByElement = new WeakMap<SimpElement, HooksSpecificStore>();
+// TODO: delete it
 const currentFCByRuntime = new WeakMap<SimpRenderRuntime, SimpElement | null>();
 
 function getHooksSpecificStore(element: SimpElement): HooksSpecificStore {

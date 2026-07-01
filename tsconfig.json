@@ -20,7 +20,8 @@
       "@simpreact/dom": ["./src/main/dom/index.js"],
       "@simpreact/hooks": ["./src/main/hooks/index.js"],
       "@simpreact/jsx-runtime": ["./src/main/jsx-runtime/index.js"],
-      "@simpreact/shared": ["./src/main/shared/index.js"]
+      "@simpreact/shared": ["./src/main/shared/index.js"],
+      "@simpreact/signals": ["./src/main/signals/index.js"]
     }
   },
   "include": ["./src/**/*"]

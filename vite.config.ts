@@ -14,6 +14,7 @@ export default defineConfig({
       '@simpreact/hooks': path.resolve(process.cwd(), './src/main/hooks/index.js'),
       '@simpreact/jsx-runtime': path.resolve(process.cwd(), './src/main/hooks/index.js'),
       '@simpreact/shared': path.resolve(process.cwd(), './src/main/shared/index.js'),
+      '@simpreact/signals': path.resolve(process.cwd(), './src/main/signals/index.js'),
     },
   },
   test: {
