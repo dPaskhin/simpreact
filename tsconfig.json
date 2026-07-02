@@ -21,7 +21,8 @@
       "@simpreact/hooks": ["./src/main/hooks/index.js"],
       "@simpreact/jsx-runtime": ["./src/main/jsx-runtime/index.js"],
       "@simpreact/shared": ["./src/main/shared/index.js"],
-      "@simpreact/signals": ["./src/main/signals/index.js"]
+      "@simpreact/signals": ["./src/main/signals/index.js"],
+      "@simpreact/executor": ["./src/main/executor/index.js"]
     }
   },
   "include": ["./src/**/*"]
