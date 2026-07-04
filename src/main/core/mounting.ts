@@ -10,7 +10,7 @@ import {
 import { pushHostOperationPlaceElement } from './hostOperations.js';
 import { getLifecycleEventBus, type LifecycleEvent } from './lifecycleEventBus.js';
 import { pushMountChildrenFrame } from './mountingChildren.js';
-import { acquireMountFrame, MOUNT_ENTER, MOUNT_EXIT, processStack, type SimpRenderFrame } from './processStack.js';
+import { acquireFrame, MOUNT_ENTER, MOUNT_EXIT, processStack, type SimpRenderFrame } from './processStack.js';
 import { applyRef } from './ref.js';
 import type { SimpRenderRuntime } from './runtime.js';
 import { bitScanForwardIndex } from './utils.js';
@@ -26,7 +26,7 @@ export function mount(
   hostNamespace: Maybe<string>,
   renderRuntime: SimpRenderRuntime
 ): void {
-  if (renderRuntime.renderStack.length !== 0) {
+  if (renderRuntime.stackCursor !== -1) {
     throw new Error('Cannot mount while rendering.');
   }
 
@@ -52,18 +52,17 @@ export function pushMountEnterFrame(
   hostNamespace: Maybe<string>,
   placeHolderElement: Nullable<SimpElement>
 ): void {
-  renderRuntime.renderStack.push(
-    acquireMountFrame(
-      renderRuntime,
-      element,
-      MOUNT_ENTER,
-      parentReference,
-      subtreeRightBoundary,
-      context,
-      hostNamespace,
-      placeHolderElement
-    )
-  );
+  const frame = acquireFrame(renderRuntime);
+  frame.kind = MOUNT_ENTER;
+  frame.node = element;
+  frame.renderRuntime = renderRuntime;
+  frame.parentReference = parentReference;
+  frame.subtreeRightBoundary = subtreeRightBoundary;
+  frame.context = context;
+  frame.hostNamespace = hostNamespace;
+  frame.placeHolderElement = placeHolderElement;
+  frame.prevElement = null!;
+  frame.children = null;
 }
 
 function pushMountExitFrame(
@@ -75,18 +74,17 @@ function pushMountExitFrame(
   hostNamespace: Maybe<string>,
   placeHolderElement: Nullable<SimpElement>
 ): void {
-  renderRuntime.renderStack.push(
-    acquireMountFrame(
-      renderRuntime,
-      element,
-      MOUNT_EXIT,
-      parentReference,
-      subtreeRightBoundary,
-      context,
-      hostNamespace,
-      placeHolderElement
-    )
-  );
+  const frame = acquireFrame(renderRuntime);
+  frame.kind = MOUNT_EXIT;
+  frame.node = element;
+  frame.renderRuntime = renderRuntime;
+  frame.parentReference = parentReference;
+  frame.subtreeRightBoundary = subtreeRightBoundary;
+  frame.context = context;
+  frame.hostNamespace = hostNamespace;
+  frame.placeHolderElement = placeHolderElement;
+  frame.prevElement = null!;
+  frame.children = null;
 }
 
 function mountHostEnter(frame: SimpRenderFrame): void {

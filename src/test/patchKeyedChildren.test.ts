@@ -19,7 +19,7 @@ let parent: Element;
 beforeEach(() => {
   vi.restoreAllMocks();
   parent = document.createElement('div');
-  renderRuntime.renderStack.length = 0;
+  renderRuntime.stackCursor = -1;
 });
 
 // Returns tags of children of a HOST element's DOM reference

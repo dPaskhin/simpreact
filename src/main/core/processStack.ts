@@ -52,127 +52,19 @@ function createFrame(): SimpRenderFrame {
   };
 }
 
-export function acquireMountFrame(
-  renderRuntime: SimpRenderRuntime,
-  element: SimpElement,
-  kind: typeof MOUNT_ENTER | typeof MOUNT_EXIT,
-  parentReference: unknown,
-  subtreeRightBoundary: Nullable<SimpElement>,
-  context: unknown,
-  hostNamespace: Maybe<string>,
-  placeHolderElement: Nullable<SimpElement>
-): SimpRenderFrame {
-  const frame = renderRuntime.framePool.pop() ?? createFrame();
-  frame.kind = kind;
-  frame.node = element;
-  frame.renderRuntime = renderRuntime;
-  frame.parentReference = parentReference;
-  frame.subtreeRightBoundary = subtreeRightBoundary;
-  frame.context = context;
-  frame.hostNamespace = hostNamespace;
-  frame.placeHolderElement = placeHolderElement;
-  return frame;
-}
-
-export function acquireMountChildrenFrame(
-  renderRuntime: SimpRenderRuntime,
-  parent: SimpElement,
-  children: Nullable<Many<SimpElement>>,
-  parentReference: unknown,
-  subtreeRightBoundary: Nullable<SimpElement>,
-  context: unknown,
-  hostNamespace: Maybe<string>
-): SimpRenderFrame {
-  const frame = renderRuntime.framePool.pop() ?? createFrame();
-  frame.kind = MOUNT_CHILDREN_ENTER;
-  frame.node = parent;
-  frame.renderRuntime = renderRuntime;
-  frame.children = children;
-  frame.parentReference = parentReference;
-  frame.subtreeRightBoundary = subtreeRightBoundary;
-  frame.context = context;
-  frame.hostNamespace = hostNamespace;
-  return frame;
-}
-
-export function acquirePatchFrame(
-  renderRuntime: SimpRenderRuntime,
-  element: SimpElement,
-  kind: typeof PATCH_ENTER | typeof PATCH_EXIT,
-  prevElement: SimpElement,
-  parentReference: unknown,
-  subtreeRightBoundary: Nullable<SimpElement>,
-  context: unknown,
-  hostNamespace: Maybe<string>
-): SimpRenderFrame {
-  const frame = renderRuntime.framePool.pop() ?? createFrame();
-  frame.kind = kind;
-  frame.node = element;
-  frame.renderRuntime = renderRuntime;
-  frame.prevElement = prevElement;
-  frame.parentReference = parentReference;
-  frame.subtreeRightBoundary = subtreeRightBoundary;
-  frame.context = context;
-  frame.hostNamespace = hostNamespace;
-  return frame;
-}
-
-export function acquireUnmountFrame(
-  renderRuntime: SimpRenderRuntime,
-  element: SimpElement,
-  kind: typeof UNMOUNT_ENTER | typeof UNMOUNT_EXIT
-): SimpRenderFrame {
-  const frame = renderRuntime.framePool.pop() ?? createFrame();
-  frame.kind = kind;
-  frame.node = element;
-  frame.renderRuntime = renderRuntime;
-  return frame;
-}
-
-export function acquireUnmountChildrenFrame(renderRuntime: SimpRenderRuntime, parent: SimpElement): SimpRenderFrame {
-  const frame = renderRuntime.framePool.pop() ?? createFrame();
-  frame.kind = UNMOUNT_CHILDREN_ENTER;
-  frame.node = parent;
-  frame.renderRuntime = renderRuntime;
-  return frame;
-}
-
-export function acquirePlaceFrame(
-  renderRuntime: SimpRenderRuntime,
-  element: SimpElement,
-  parentReference: unknown,
-  subtreeRightBoundary: Nullable<SimpElement>
-): SimpRenderFrame {
-  const frame = renderRuntime.framePool.pop() ?? createFrame();
-  frame.kind = HOST_OPS_PLACE_ELEMENT_BEFORE_ANCHOR;
-  frame.node = element;
-  frame.renderRuntime = renderRuntime;
-  frame.parentReference = parentReference;
-  frame.subtreeRightBoundary = subtreeRightBoundary;
-  return frame;
-}
-
-export function acquireReplaceFrame(
-  renderRuntime: SimpRenderRuntime,
-  element: SimpElement,
-  parentReference: unknown,
-  prevElement: SimpElement
-): SimpRenderFrame {
-  const frame = renderRuntime.framePool.pop() ?? createFrame();
-  frame.kind = HOST_OPS_REPLACE_CHILD;
-  frame.node = element;
-  frame.renderRuntime = renderRuntime;
-  frame.parentReference = parentReference;
-  frame.prevElement = prevElement;
-  return frame;
+// Reuses whatever a previous pop left at this slot, or allocates once — the
+// stack IS the pool. Callers set all 10 fields (nulling ones their kind skips).
+export function acquireFrame(renderRuntime: SimpRenderRuntime): SimpRenderFrame {
+  const stack = renderRuntime.renderStack;
+  const cursor = ++renderRuntime.stackCursor;
+  return (stack[cursor] ??= createFrame());
 }
 
 export function processStack(renderRuntime: SimpRenderRuntime): void {
   const stack = renderRuntime.renderStack;
-  const pool = renderRuntime.framePool;
 
-  while (stack.length > 0) {
-    const frame = stack.pop()!;
+  while (renderRuntime.stackCursor >= 0) {
+    const frame = stack[renderRuntime.stackCursor--]!;
 
     switch (frame.kind) {
       case MOUNT_ENTER:
@@ -212,12 +104,16 @@ export function processStack(renderRuntime: SimpRenderRuntime): void {
         );
         break;
     }
+  }
 
+  // Nothing is mid-acquire once drained — safe to sweep dormant slots and
+  // drop large refs now instead of waiting for reuse.
+  for (let i = renderRuntime.stackCursor + 1; i < stack.length; i++) {
+    const frame = stack[i]!;
     frame.node = null!;
     frame.prevElement = null!;
     frame.children = null;
     frame.subtreeRightBoundary = null;
     frame.placeHolderElement = null;
-    pool.push(frame);
   }
 }

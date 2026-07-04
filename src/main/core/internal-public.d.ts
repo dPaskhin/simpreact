@@ -75,7 +75,7 @@ export interface SimpRenderRuntime {
   hostAdapter: HostAdapter;
   renderer: SimpRuntimeFCRenderer;
   renderStack: Array<any>;
-  framePool: SimpRenderFrame[];
+  stackCursor: number;
   activeRenderElement: SimpElement | null;
   pendingRerenderFlag: boolean;
 }

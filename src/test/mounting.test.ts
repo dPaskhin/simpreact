@@ -15,7 +15,7 @@ let parent: Element;
 beforeEach(() => {
   vi.restoreAllMocks();
   parent = document.createElement('div');
-  renderRuntime.renderStack.length = 0;
+  renderRuntime.stackCursor = -1;
 });
 
 // ---------------------------------------------------------------------------
@@ -108,11 +108,11 @@ describe('mount – HOST element', () => {
   });
 
   it('throws when stack is not empty', () => {
-    renderRuntime.renderStack.push({} as any);
+    renderRuntime.renderStack[++renderRuntime.stackCursor] = {} as any;
     expect(() => mount(createElement('div'), parent, null, null, null, renderRuntime)).toThrow(
       'Cannot mount while rendering'
     );
-    renderRuntime.renderStack.length = 0;
+    renderRuntime.stackCursor = -1;
   });
 });
 

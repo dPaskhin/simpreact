@@ -12,7 +12,7 @@ let parent: Element;
 
 beforeEach(() => {
   parent = document.createElement('div');
-  renderRuntime.renderStack.length = 0;
+  renderRuntime.stackCursor = -1;
 });
 
 const { signal, computed } = createSignalFactory(renderRuntime);

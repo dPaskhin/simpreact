@@ -1,13 +1,7 @@
 import { noop } from '@simpreact/shared';
 import type { SimpElement } from './createElement.js';
 import { getLifecycleEventBus } from './lifecycleEventBus.js';
-import {
-  acquireUnmountFrame,
-  processStack,
-  type SimpRenderFrame,
-  UNMOUNT_ENTER,
-  UNMOUNT_EXIT,
-} from './processStack.js';
+import { acquireFrame, processStack, type SimpRenderFrame, UNMOUNT_ENTER, UNMOUNT_EXIT } from './processStack.js';
 import { unmountRef } from './ref.js';
 import type { SimpRenderRuntime } from './runtime.js';
 import { pushUnmountChildrenFrame } from './unmountingChildren.js';
@@ -18,7 +12,7 @@ const unmountEnterHandlers = [unmountHostEnter, unmountFCEnter, noop, unmountPor
 const unmountExitHandlers = [unmountHostExit, unmountFCExit, noop, noop, noop];
 
 export function unmount(element: SimpElement, renderRuntime: SimpRenderRuntime): void {
-  if (renderRuntime.renderStack.length !== 0) {
+  if (renderRuntime.stackCursor !== -1) {
     throw new Error('Cannot unmount while rendering.');
   }
 
@@ -36,11 +30,31 @@ export function unmountExit(frame: SimpRenderFrame): void {
 }
 
 export function pushUnmountEnterFrame(element: SimpElement, renderRuntime: SimpRenderRuntime): void {
-  renderRuntime.renderStack.push(acquireUnmountFrame(renderRuntime, element, UNMOUNT_ENTER));
+  const frame = acquireFrame(renderRuntime);
+  frame.kind = UNMOUNT_ENTER;
+  frame.node = element;
+  frame.renderRuntime = renderRuntime;
+  frame.parentReference = null;
+  frame.subtreeRightBoundary = null;
+  frame.context = null;
+  frame.hostNamespace = null;
+  frame.prevElement = null!;
+  frame.children = null;
+  frame.placeHolderElement = null;
 }
 
 function pushUnmountExitFrame(element: SimpElement, renderRuntime: SimpRenderRuntime): void {
-  renderRuntime.renderStack.push(acquireUnmountFrame(renderRuntime, element, UNMOUNT_EXIT));
+  const frame = acquireFrame(renderRuntime);
+  frame.kind = UNMOUNT_EXIT;
+  frame.node = element;
+  frame.renderRuntime = renderRuntime;
+  frame.parentReference = null;
+  frame.subtreeRightBoundary = null;
+  frame.context = null;
+  frame.hostNamespace = null;
+  frame.prevElement = null!;
+  frame.children = null;
+  frame.placeHolderElement = null;
 }
 
 function unmountFCEnter(frame: SimpRenderFrame): void {

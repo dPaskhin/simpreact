@@ -1,7 +1,7 @@
 import type { Many, Maybe, Nullable } from '@simpreact/shared';
 import { SIMP_ELEMENT_CHILD_FLAG_ELEMENT, SIMP_ELEMENT_CHILD_FLAG_LIST, type SimpElement } from './createElement.js';
 import { pushMountEnterFrame } from './mounting.js';
-import { acquireMountChildrenFrame, type SimpRenderFrame } from './processStack.js';
+import { acquireFrame, MOUNT_CHILDREN_ENTER, type SimpRenderFrame } from './processStack.js';
 import type { SimpRenderRuntime } from './runtime.js';
 import { isHostLike } from './utils.js';
 
@@ -14,17 +14,17 @@ export function pushMountChildrenFrame(
   context: unknown,
   hostNamespace: Maybe<string>
 ): void {
-  renderRuntime.renderStack.push(
-    acquireMountChildrenFrame(
-      renderRuntime,
-      parent,
-      children,
-      parentReference,
-      subtreeRightBoundary,
-      context,
-      hostNamespace
-    )
-  );
+  const frame = acquireFrame(renderRuntime);
+  frame.kind = MOUNT_CHILDREN_ENTER;
+  frame.node = parent;
+  frame.renderRuntime = renderRuntime;
+  frame.children = children;
+  frame.parentReference = parentReference;
+  frame.subtreeRightBoundary = subtreeRightBoundary;
+  frame.context = context;
+  frame.hostNamespace = hostNamespace;
+  frame.prevElement = null!;
+  frame.placeHolderElement = null;
 }
 
 export function mountChildren(frame: SimpRenderFrame): void {

@@ -15,7 +15,7 @@ let parent: Element;
 beforeEach(() => {
   vi.restoreAllMocks();
   parent = document.createElement('div');
-  renderRuntime.renderStack.length = 0;
+  renderRuntime.stackCursor = -1;
 });
 
 // ---------------------------------------------------------------------------
@@ -83,10 +83,10 @@ describe('unmount – HOST element', () => {
   it('throws when stack is not empty', () => {
     const el = createElement('div');
     mount(el, parent, null, null, null, renderRuntime);
-    renderRuntime.renderStack.push({} as any);
+    renderRuntime.renderStack[++renderRuntime.stackCursor] = {} as any;
 
     expect(() => unmount(el, renderRuntime)).toThrow('Cannot unmount while rendering');
-    renderRuntime.renderStack.length = 0;
+    renderRuntime.stackCursor = -1;
   });
 });
 
