@@ -75,6 +75,29 @@ describe('createSignal', () => {
     expect(renderCount).toBe(1);
   });
 
+  it('does not rerender an element that errored during mount', () => {
+    const s = signal(0);
+    let renderCount = 0;
+
+    const Comp = () => {
+      renderCount++;
+      s.value;
+      throw new Error('render failed');
+    };
+
+    expect(() => {
+      mount(createElement(Comp), parent, null, null, null, renderRuntime);
+    }).toThrow();
+    expect(renderCount).toBe(1);
+
+    expect(() => {
+      withSyncRerender(renderRuntime, () => {
+        s.value = 1;
+      });
+    }).not.toThrow();
+    expect(renderCount).toBe(1);
+  });
+
   it('prunes unmounted elements lazily on next assignment', () => {
     const s = signal(0);
     let renderCount = 0;

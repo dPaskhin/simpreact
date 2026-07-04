@@ -1,6 +1,23 @@
-import { rerender, type SimpElement, type SimpRenderRuntime } from '@simpreact/internal';
+import { registerLifecyclePlugin, rerender, type SimpElement, type SimpRenderRuntime } from '@simpreact/internal';
 
 let activeDepCollector: Set<Signal<unknown>> | null = null;
+
+// An element that errors during its first mount is abandoned by the engine
+// without ever getting `unmounted = true`, so the lazy prune in the value
+// setter would keep rerendering it. Mark errored elements as prunable; a later
+// render un-marks them, mirroring how mounting resets the `unmounted` flag
+// when an element is revived.
+const erroredElements = new WeakSet<SimpElement>();
+
+registerLifecyclePlugin(bus => {
+  bus.subscribe(event => {
+    if (event.type === 'errored') {
+      erroredElements.add(event.element);
+    } else if (event.type === 'beforeRender') {
+      erroredElements.delete(event.element);
+    }
+  });
+});
 
 export function collectDeps<T>(fn: () => T): [T, Set<Signal<unknown>>] {
   const prev = activeDepCollector;
@@ -42,7 +59,7 @@ export class Signal<T> {
 
     this.#value = next;
     for (const element of this.#subs) {
-      if (element.unmounted) {
+      if (element.unmounted || erroredElements.has(element)) {
         this.#subs.delete(element);
       } else {
         rerender(element, this.#runtime);
