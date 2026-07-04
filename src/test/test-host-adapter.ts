@@ -1,5 +1,12 @@
-import type { HostAdapter } from '@simpreact/internal';
+import { createRenderRuntime, type HostAdapter, type SimpRenderRuntime } from '@simpreact/internal';
+import { emptyObject } from '@simpreact/shared';
 import { vi } from 'vitest';
+
+export function createTestRenderRuntime(): SimpRenderRuntime {
+  return createRenderRuntime(testHostAdapter, (type, element) => {
+    return type(element.props || emptyObject);
+  });
+}
 
 export const testHostAdapter: HostAdapter<Element, Text> = {
   createReference: vi.fn(type => {
