@@ -29,16 +29,8 @@ export interface CreateContext {
   (defaultValue: unknown): SimpContext;
 }
 
-const currentFCByRuntime = new WeakMap<SimpRenderRuntime, SimpElement | null>();
-
 registerLifecyclePlugin(bus => {
   bus.subscribe(event => {
-    if (event.type === 'beforeRender') {
-      currentFCByRuntime.set(event.renderRuntime, event.element);
-    } else if (event.type === 'afterRender' || event.type === 'errored') {
-      currentFCByRuntime.set(event.renderRuntime, null);
-    }
-
     if (event.type === 'unmounted' && event.element.context) {
       const contextMap = event.element.context as Map<SimpContext, SimpContextEntry>;
       for (const entry of contextMap.values()) {
@@ -56,7 +48,7 @@ export function createCreateContext(renderRuntime: SimpRenderRuntime): CreateCon
       defaultValue,
 
       Provider(props) {
-        const currentElement = currentFCByRuntime.get(renderRuntime)!;
+        const currentElement = renderRuntime.activeRenderElement!;
         const isFirstRender = !providerElements.has(currentElement);
         let contextMap = currentElement.context as Nullable<Map<SimpContext, SimpContextEntry>>;
 
@@ -94,7 +86,7 @@ export function createCreateContext(renderRuntime: SimpRenderRuntime): CreateCon
       },
 
       Consumer(props) {
-        const currentElement = currentFCByRuntime.get(renderRuntime)!;
+        const currentElement = renderRuntime.activeRenderElement!;
         const contextMap = currentElement.context as Nullable<Map<SimpContext, SimpContextEntry>>;
         const entry = contextMap?.get(context);
 
@@ -117,7 +109,7 @@ export interface UseContext {
 
 export function createUseContext(renderRuntime: SimpRenderRuntime): UseContext {
   return context => {
-    const currentElement = currentFCByRuntime.get(renderRuntime)!;
+    const currentElement = renderRuntime.activeRenderElement!;
     const contextMap = currentElement.context as Nullable<Map<SimpContext, SimpContextEntry>>;
     const entry = contextMap?.get(context);
 
