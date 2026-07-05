@@ -53,6 +53,26 @@ const List = () => {
 
 mount(createElement(List), parent, null, null, null, renderRuntime);
 
+// --- rerender through a deep chain — state at the root forces a patch through
+// every level down to the leaf, not just a single re-rendered FC ---
+let tickDeep;
+let nDeep = 0;
+const DEEP_LEVELS = 200;
+
+let DeepLeaf = () => createElement('div');
+for (let i = 0; i < DEEP_LEVELS - 1; i++) {
+  const Inner = DeepLeaf;
+  DeepLeaf = () => createElement(Inner);
+}
+const DeepChainInner = DeepLeaf;
+const DeepChainRoot = () => {
+  const [, setTick] = useState(0);
+  tickDeep = setTick;
+  return createElement(DeepChainInner);
+};
+
+mount(createElement(DeepChainRoot), parent, null, null, null, renderRuntime);
+
 describe('patch', () => {
   bench('rerender FC — no output change', () => {
     withSyncRerender(renderRuntime, () => tickA(++nA));
@@ -64,5 +84,9 @@ describe('patch', () => {
 
   bench('rerender FC — 10 HOST children, no change', () => {
     withSyncRerender(renderRuntime, () => tickC(++nC));
+  });
+
+  bench(`rerender FC — ${DEEP_LEVELS}-level deep chain`, () => {
+    withSyncRerender(renderRuntime, () => tickDeep(++nDeep));
   });
 });

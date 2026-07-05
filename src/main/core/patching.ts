@@ -12,7 +12,7 @@ import { getLifecycleEventBus, type LifecycleEvent } from './lifecycleEventBus.j
 import { isMemo } from './memo.js';
 import { pushMountEnterFrame } from './mounting.js';
 import { patchChildren } from './patchingChildren.js';
-import { acquirePatchFrame, PATCH_ENTER, PATCH_EXIT, processStack, type SimpRenderFrame } from './processStack.js';
+import { acquireFrame, PATCH_ENTER, PATCH_EXIT, processStack, type SimpRenderFrame } from './processStack.js';
 import { applyRef } from './ref.js';
 import type { SimpRenderRuntime } from './runtime.js';
 import { pushUnmountEnterFrame } from './unmounting.js';
@@ -30,7 +30,7 @@ export function patch(
   hostNamespace: string | null | undefined,
   renderRuntime: SimpRenderRuntime
 ): void {
-  if (renderRuntime.renderStack.length !== 0) {
+  if (renderRuntime.stackCursor !== -1) {
     throw new Error('Cannot patch while rendering.');
   }
 
@@ -56,18 +56,17 @@ export function pushPatchEnterFrame(
   context: unknown,
   hostNamespace: string | null | undefined
 ): void {
-  renderRuntime.renderStack.push(
-    acquirePatchFrame(
-      renderRuntime,
-      element,
-      PATCH_ENTER,
-      prevElement,
-      parentReference,
-      subtreeRightBoundary,
-      context,
-      hostNamespace
-    )
-  );
+  const frame = acquireFrame(renderRuntime);
+  frame.kind = PATCH_ENTER;
+  frame.node = element;
+  frame.renderRuntime = renderRuntime;
+  frame.prevElement = prevElement;
+  frame.parentReference = parentReference;
+  frame.subtreeRightBoundary = subtreeRightBoundary;
+  frame.context = context;
+  frame.hostNamespace = hostNamespace;
+  frame.children = null;
+  frame.placeHolderElement = null;
 }
 
 function pushPatchExitFrame(
@@ -79,18 +78,17 @@ function pushPatchExitFrame(
   context: unknown,
   hostNamespace: string | null | undefined
 ): void {
-  renderRuntime.renderStack.push(
-    acquirePatchFrame(
-      renderRuntime,
-      element,
-      PATCH_EXIT,
-      prevElement,
-      parentReference,
-      subtreeRightBoundary,
-      context,
-      hostNamespace
-    )
-  );
+  const frame = acquireFrame(renderRuntime);
+  frame.kind = PATCH_EXIT;
+  frame.node = element;
+  frame.renderRuntime = renderRuntime;
+  frame.prevElement = prevElement;
+  frame.parentReference = parentReference;
+  frame.subtreeRightBoundary = subtreeRightBoundary;
+  frame.context = context;
+  frame.hostNamespace = hostNamespace;
+  frame.children = null;
+  frame.placeHolderElement = null;
 }
 
 export function patchEnter(frame: SimpRenderFrame): void {

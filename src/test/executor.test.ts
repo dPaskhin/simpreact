@@ -11,7 +11,7 @@ let manager: ExecutorManager;
 
 beforeEach(() => {
   parent = document.createElement('div');
-  renderRuntime.renderStack.length = 0;
+  renderRuntime.stackCursor = -1;
   manager = new ExecutorManager();
 });
 

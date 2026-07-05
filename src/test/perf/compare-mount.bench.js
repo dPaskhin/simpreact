@@ -8,7 +8,6 @@ import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { bench, describe } from 'vitest';
 
-import '../../../lib/hooks/index.js';
 import { createElement, createRenderRuntime } from '../../../lib/core/internal.js';
 import { domAdapter } from '../../../lib/dom/domAdapter.js';
 import { createCreateRoot } from '../../../lib/dom/render.js';
@@ -87,6 +86,47 @@ const InfernoFC10 = () =>
     iEl('li', null, '10')
   );
 
+const DEEP_LEVELS = 200;
+
+function buildFCChain(createComponent, createLeaf) {
+  let Chain = createLeaf;
+  for (let i = 0; i < DEEP_LEVELS; i++) {
+    const Inner = Chain;
+    Chain = () => createComponent(Inner);
+  }
+  return Chain;
+}
+
+const SimpFCDeep = buildFCChain(
+  Inner => createElement(Inner),
+  () => createElement('div')
+);
+const ReactFCDeep = buildFCChain(
+  Inner => React.createElement(Inner),
+  () => React.createElement('div')
+);
+const PreactFCDeep = buildFCChain(
+  Inner => h(Inner, null),
+  () => h('div', null)
+);
+const InfernoFCDeep = buildFCChain(
+  Inner => iEl(Inner, null),
+  () => iEl('div', null)
+);
+
+function buildHostChain(createHost, depth) {
+  let el = createHost(null);
+  for (let i = 0; i < depth; i++) {
+    el = createHost(el);
+  }
+  return el;
+}
+
+const createSimpDeepHostTree = () => buildHostChain(child => createElement('div', null, child), DEEP_LEVELS);
+const createReactDeepHostTree = () => buildHostChain(child => React.createElement('div', null, child), DEEP_LEVELS);
+const createPreactDeepHostTree = () => buildHostChain(child => h('div', null, child), DEEP_LEVELS);
+const createInfernoDeepHostTree = () => buildHostChain(child => iEl('div', null, child), DEEP_LEVELS);
+
 // --- containers ---
 
 const s1 = simp(document.createElement('div'));
@@ -103,6 +143,16 @@ const s10 = simp(document.createElement('div'));
 const r10 = document.createElement('div');
 const p10 = document.createElement('div');
 const i10 = document.createElement('div');
+
+const sDeep = simp(document.createElement('div'));
+const rDeep = document.createElement('div');
+const pDeep = document.createElement('div');
+const iDeep = document.createElement('div');
+
+const sDeepHost = simp(document.createElement('div'));
+const rDeepHost = document.createElement('div');
+const pDeepHost = document.createElement('div');
+const iDeepHost = document.createElement('div');
 
 // --- benchmarks ---
 
@@ -172,5 +222,51 @@ describe('mount — FC → 10 HOST children', () => {
   bench('inferno', () => {
     infernoRender(iEl(InfernoFC10, null), i10);
     infernoRender(null, i10);
+  });
+});
+
+describe(`mount — Deep FC chain (${DEEP_LEVELS} levels)`, () => {
+  bench('simpreact', () => {
+    sDeep.render(createElement(SimpFCDeep));
+    sDeep.unmount();
+  });
+
+  bench('react', () => {
+    const root = createRoot(rDeep);
+    flushSync(() => root.render(React.createElement(ReactFCDeep)));
+    root.unmount();
+  });
+
+  bench('preact', () => {
+    preactRender(h(PreactFCDeep, null), pDeep);
+    preactRender(null, pDeep);
+  });
+
+  bench('inferno', () => {
+    infernoRender(iEl(InfernoFCDeep, null), iDeep);
+    infernoRender(null, iDeep);
+  });
+});
+
+describe(`mount — Deep HOST tree (${DEEP_LEVELS} levels)`, () => {
+  bench('simpreact', () => {
+    sDeepHost.render(createSimpDeepHostTree());
+    sDeepHost.unmount();
+  });
+
+  bench('react', () => {
+    const root = createRoot(rDeepHost);
+    flushSync(() => root.render(createReactDeepHostTree()));
+    root.unmount();
+  });
+
+  bench('preact', () => {
+    preactRender(createPreactDeepHostTree(), pDeepHost);
+    preactRender(null, pDeepHost);
+  });
+
+  bench('inferno', () => {
+    infernoRender(createInfernoDeepHostTree(), iDeepHost);
+    infernoRender(null, iDeepHost);
   });
 });
