@@ -365,6 +365,27 @@ describe('rerender', () => {
     // Should only re-render once despite two rerender() calls
     expect(renderFn.mock.calls.length).toBe(mountCalls + 1);
   });
+
+  it('an element queued via async then also via sync is not double-rendered', async () => {
+    const renderFn = vi.fn(() => createElement('div'));
+    const el = createElement(renderFn);
+    mount(el, parent, null, null, null, renderRuntime);
+    const mountCalls = renderFn.mock.calls.length;
+
+    // Queue via async first, then via sync before the microtask flush runs —
+    // the sync flush renders it immediately and must also clear the stale
+    // async-queue entry so the later microtask doesn't render it again.
+    rerender(el, renderRuntime);
+    withSyncRerender(renderRuntime, () => {
+      rerender(el, renderRuntime);
+    });
+    expect(renderFn.mock.calls.length).toBe(mountCalls + 1);
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(renderFn.mock.calls.length).toBe(mountCalls + 1);
+  });
 });
 
 // ---------------------------------------------------------------------------

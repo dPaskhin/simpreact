@@ -1,6 +1,7 @@
 import {
   rerender as _rerender,
   isFC,
+  type LifecycleEvent,
   type RefObject,
   registerLifecyclePlugin,
   type SimpElement,
@@ -37,8 +38,6 @@ interface HooksSpecificStore {
 }
 
 const hooksSpecificStoreByElement = new WeakMap<SimpElement, HooksSpecificStore>();
-// TODO: delete it
-const currentFCByRuntime = new WeakMap<SimpRenderRuntime, SimpElement | null>();
 
 function getHooksSpecificStore(element: SimpElement): HooksSpecificStore {
   let hooksSpecificStore = hooksSpecificStoreByElement.get(element);
@@ -57,17 +56,21 @@ function getHooksSpecificStore(element: SimpElement): HooksSpecificStore {
 
 registerLifecyclePlugin(bus => {
   bus.subscribe(event => {
-    if (event.type === 'beforeRender') {
-      currentFCByRuntime.set(event.renderRuntime, event.element);
-    } else if (event.type === 'afterRender' || event.type === 'errored') {
-      currentFCByRuntime.set(event.renderRuntime, null);
-    }
-
     if (!isFC(event.element)) {
       return;
     }
 
-    const store = getHooksSpecificStore(event.element);
+    if (event.type === 'errored') {
+      handleErroredEvent(event);
+      return;
+    }
+
+    // No store yet means this element has never called a hook — nothing to
+    // reset or clean up. Hooks create their own store lazily on first use.
+    const store = hooksSpecificStoreByElement.get(event.element);
+    if (!store) {
+      return;
+    }
 
     switch (event.type) {
       case 'beforeRender': {
@@ -126,47 +129,51 @@ registerLifecyclePlugin(bus => {
         }
         break;
       }
-      case 'errored': {
-        store.hooksIndex = 0;
-
-        if (event.handled) {
-          break;
-        }
-
-        let element: Nullable<SimpElement> = event.element;
-        let curError = event.error;
-        let catchers: Nullable<Array<(error: any) => void>> = null;
-
-        while (element) {
-          if (!isFC(element)) {
-            element = element.parent;
-            continue;
-          }
-
-          const ancestorStore = getHooksSpecificStore(element);
-          catchers = ancestorStore.catchHandlers;
-
-          if (!catchers) {
-            element = element.parent;
-            continue;
-          }
-
-          try {
-            for (let i = 0; i < catchers.length; i++) {
-              catchers[i]!(curError);
-            }
-            event.handled = true;
-            break;
-          } catch (error) {
-            element = element.parent;
-            curError = error;
-          }
-        }
-        break;
-      }
     }
   });
 });
+
+// Errors are exceptional, not a hot path, so this keeps the pre-optimization
+// shape: reset the erroring element's own store (if any), then walk ancestors
+// looking for a useCatch handler, regardless of whether they have a store.
+function handleErroredEvent(event: Extract<LifecycleEvent, { type: 'errored' }>): void {
+  const ownStore = hooksSpecificStoreByElement.get(event.element);
+  if (ownStore) {
+    ownStore.hooksIndex = 0;
+  }
+
+  if (event.handled) {
+    return;
+  }
+
+  let element: Nullable<SimpElement> = event.element;
+  let curError = event.error;
+
+  while (element) {
+    if (!isFC(element)) {
+      element = element.parent;
+      continue;
+    }
+
+    const catchers = hooksSpecificStoreByElement.get(element)?.catchHandlers;
+
+    if (!catchers) {
+      element = element.parent;
+      continue;
+    }
+
+    try {
+      for (let i = 0; i < catchers.length; i++) {
+        catchers[i]!(curError);
+      }
+      event.handled = true;
+      return;
+    } catch (error) {
+      element = element.parent;
+      curError = error;
+    }
+  }
+}
 
 export interface UseRef {
   <T>(initialValue: T): RefObject<T>;
@@ -175,7 +182,7 @@ export interface UseRef {
 }
 export function createUseRef(renderRuntime: SimpRenderRuntime): UseRef {
   return initialValue => {
-    const store = getHooksSpecificStore(currentFCByRuntime.get(renderRuntime)!);
+    const store = getHooksSpecificStore(renderRuntime.activeRenderElement!);
     const hookStates = getOrCreateHookStates(store);
 
     if (!hookStates[store.hooksIndex]) {
@@ -188,11 +195,11 @@ export function createUseRef(renderRuntime: SimpRenderRuntime): UseRef {
 
 export function createUseRerender(renderRuntime: SimpRenderRuntime): () => RerenderHookState {
   return () => {
-    const store = getHooksSpecificStore(currentFCByRuntime.get(renderRuntime)!);
+    const store = getHooksSpecificStore(renderRuntime.activeRenderElement!);
     const hookStates = getOrCreateHookStates(store);
 
     if (!hookStates[store.hooksIndex]) {
-      const element = currentFCByRuntime.get(renderRuntime)!;
+      const element = renderRuntime.activeRenderElement!;
       hookStates[store.hooksIndex] = function rerender() {
         _rerender(element, renderRuntime);
       };
@@ -211,11 +218,11 @@ export interface UseState {
 }
 export function createUseState(renderRuntime: SimpRenderRuntime): UseState {
   return (initialState => {
-    const store = getHooksSpecificStore(currentFCByRuntime.get(renderRuntime)!);
+    const store = getHooksSpecificStore(renderRuntime.activeRenderElement!);
     const hookStates = getOrCreateHookStates(store);
 
     if (!hookStates[store.hooksIndex]) {
-      const element = currentFCByRuntime.get(renderRuntime)!;
+      const element = renderRuntime.activeRenderElement!;
       const state: StateHookState = (hookStates[store.hooksIndex] = [undefined!, undefined!]);
 
       state[0] = callOrGet(initialState)!;
@@ -237,7 +244,7 @@ export function createUseState(renderRuntime: SimpRenderRuntime): UseState {
 
 export function createUseEffect(renderRuntime: SimpRenderRuntime): (effect: Effect, deps?: DependencyList) => void {
   return (effect, deps) => {
-    const store = getHooksSpecificStore(currentFCByRuntime.get(renderRuntime)!);
+    const store = getHooksSpecificStore(renderRuntime.activeRenderElement!);
     const hookStates = getOrCreateHookStates(store);
 
     let state = hookStates[store.hooksIndex] as EffectState | undefined;
@@ -262,7 +269,7 @@ export function createUseEffect(renderRuntime: SimpRenderRuntime): (effect: Effe
 
 export function createUseCatch(renderRuntime: SimpRenderRuntime): (cb: (error: any) => void) => void {
   return cb => {
-    const store = getHooksSpecificStore(currentFCByRuntime.get(renderRuntime)!);
+    const store = getHooksSpecificStore(renderRuntime.activeRenderElement!);
 
     if (!store.catchHandlers) {
       store.catchHandlers = [];
