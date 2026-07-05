@@ -100,6 +100,28 @@ describe('hooks lifecycle plugin', () => {
     ).not.toThrow();
   });
 
+  it('lazily creates hook state when a component starts calling hooks after a hookless first render', () => {
+    const useState = createUseState(runtime);
+    let dispatch: any;
+    let value: number | undefined;
+
+    const Comp = ({ useHook }: { useHook: boolean }) => {
+      if (useHook) {
+        const [v, set] = useState(42);
+        value = v;
+        dispatch = set;
+      }
+      return createElement('div');
+    };
+
+    render(createElement(Comp, { useHook: false }), container);
+    expect(() => render(createElement(Comp, { useHook: true }), container)).not.toThrow();
+    expect(value).toBe(42);
+
+    withSyncRerender(runtime, () => dispatch(100));
+    expect(value).toBe(100);
+  });
+
   it('effects from multiple components run independently', () => {
     const useEffect = createUseEffect(runtime);
     const calls: string[] = [];

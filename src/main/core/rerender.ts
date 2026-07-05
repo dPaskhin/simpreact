@@ -12,6 +12,9 @@ interface RerenderSpecificData {
 }
 
 const rerenderSpecificDataByRuntime = new WeakMap<SimpRenderRuntime, RerenderSpecificData>();
+// Mirrors "is this element in asyncQueue or syncQueue", so cleanup below can
+// skip both Set lookups for the common case of an element never queued at all.
+const queuedElements = new WeakSet<SimpElement>();
 
 function getRerenderSpecificData(renderRuntime: SimpRenderRuntime): RerenderSpecificData {
   let data = rerenderSpecificDataByRuntime.get(renderRuntime);
@@ -29,12 +32,16 @@ function getRerenderSpecificData(renderRuntime: SimpRenderRuntime): RerenderSpec
 
 registerLifecyclePlugin(bus => {
   bus.subscribe(event => {
-    if (event.type === 'afterRender' || event.type === 'errored' || event.type === 'unmounted') {
-      const data = getRerenderSpecificData(event.renderRuntime);
-
-      data.asyncQueue.delete(event.element);
-      data.syncQueue.delete(event.element);
+    if (event.type !== 'afterRender' && event.type !== 'errored' && event.type !== 'unmounted') {
+      return;
     }
+    if (!queuedElements.delete(event.element)) {
+      return;
+    }
+
+    const data = getRerenderSpecificData(event.renderRuntime);
+    data.asyncQueue.delete(event.element);
+    data.syncQueue.delete(event.element);
   });
 });
 
@@ -76,10 +83,12 @@ export function rerender(element: SimpElement, renderRuntime: SimpRenderRuntime)
 
   if (data.syncLockDepth > 0) {
     data.syncQueue.add(element);
+    queuedElements.add(element);
     return;
   }
 
   data.asyncQueue.add(element);
+  queuedElements.add(element);
   scheduleAsyncFlush(renderRuntime);
 }
 

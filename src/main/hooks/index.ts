@@ -1,6 +1,7 @@
 import {
   rerender as _rerender,
   isFC,
+  type LifecycleEvent,
   type RefObject,
   registerLifecyclePlugin,
   type SimpElement,
@@ -67,7 +68,17 @@ registerLifecyclePlugin(bus => {
       return;
     }
 
-    const store = getHooksSpecificStore(event.element);
+    if (event.type === 'errored') {
+      handleErroredEvent(event);
+      return;
+    }
+
+    // No store yet means this element has never called a hook — nothing to
+    // reset or clean up. Hooks create their own store lazily on first use.
+    const store = hooksSpecificStoreByElement.get(event.element);
+    if (!store) {
+      return;
+    }
 
     switch (event.type) {
       case 'beforeRender': {
@@ -126,47 +137,51 @@ registerLifecyclePlugin(bus => {
         }
         break;
       }
-      case 'errored': {
-        store.hooksIndex = 0;
-
-        if (event.handled) {
-          break;
-        }
-
-        let element: Nullable<SimpElement> = event.element;
-        let curError = event.error;
-        let catchers: Nullable<Array<(error: any) => void>> = null;
-
-        while (element) {
-          if (!isFC(element)) {
-            element = element.parent;
-            continue;
-          }
-
-          const ancestorStore = getHooksSpecificStore(element);
-          catchers = ancestorStore.catchHandlers;
-
-          if (!catchers) {
-            element = element.parent;
-            continue;
-          }
-
-          try {
-            for (let i = 0; i < catchers.length; i++) {
-              catchers[i]!(curError);
-            }
-            event.handled = true;
-            break;
-          } catch (error) {
-            element = element.parent;
-            curError = error;
-          }
-        }
-        break;
-      }
     }
   });
 });
+
+// Errors are exceptional, not a hot path, so this keeps the pre-optimization
+// shape: reset the erroring element's own store (if any), then walk ancestors
+// looking for a useCatch handler, regardless of whether they have a store.
+function handleErroredEvent(event: Extract<LifecycleEvent, { type: 'errored' }>): void {
+  const ownStore = hooksSpecificStoreByElement.get(event.element);
+  if (ownStore) {
+    ownStore.hooksIndex = 0;
+  }
+
+  if (event.handled) {
+    return;
+  }
+
+  let element: Nullable<SimpElement> = event.element;
+  let curError = event.error;
+
+  while (element) {
+    if (!isFC(element)) {
+      element = element.parent;
+      continue;
+    }
+
+    const catchers = hooksSpecificStoreByElement.get(element)?.catchHandlers;
+
+    if (!catchers) {
+      element = element.parent;
+      continue;
+    }
+
+    try {
+      for (let i = 0; i < catchers.length; i++) {
+        catchers[i]!(curError);
+      }
+      event.handled = true;
+      return;
+    } catch (error) {
+      element = element.parent;
+      curError = error;
+    }
+  }
+}
 
 export interface UseRef {
   <T>(initialValue: T): RefObject<T>;
