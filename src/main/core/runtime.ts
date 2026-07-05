@@ -13,6 +13,8 @@ export interface SimpRenderRuntime {
   renderStack: SimpRenderStack;
   /** Index of the top active frame in renderStack; -1 when empty. */
   stackCursor: number;
+  /** Highest index acquired during the current top-level call; bounds the end-of-drain sweep so it doesn't rescan the whole historical stack depth. */
+  stackPeak: number;
   /** The FC element currently executing its render function, or null when idle. */
   activeRenderElement: SimpElement | null;
   /** Set by rerender() when called against activeRenderElement to signal a loop retry. */
@@ -25,6 +27,7 @@ export function createRenderRuntime(hostAdapter: HostAdapter, renderer: SimpRunt
     renderer,
     renderStack: [],
     stackCursor: -1,
+    stackPeak: -1,
     activeRenderElement: null,
     pendingRerenderFlag: false,
   };

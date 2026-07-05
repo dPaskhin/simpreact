@@ -57,11 +57,13 @@ function createFrame(): SimpRenderFrame {
 export function acquireFrame(renderRuntime: SimpRenderRuntime): SimpRenderFrame {
   const stack = renderRuntime.renderStack;
   const cursor = ++renderRuntime.stackCursor;
+  if (cursor > renderRuntime.stackPeak) renderRuntime.stackPeak = cursor;
   return (stack[cursor] ??= createFrame());
 }
 
 export function processStack(renderRuntime: SimpRenderRuntime): void {
   const stack = renderRuntime.renderStack;
+  renderRuntime.stackPeak = renderRuntime.stackCursor;
 
   while (renderRuntime.stackCursor >= 0) {
     const frame = stack[renderRuntime.stackCursor--]!;
@@ -107,8 +109,10 @@ export function processStack(renderRuntime: SimpRenderRuntime): void {
   }
 
   // Nothing is mid-acquire once drained — safe to sweep dormant slots and
-  // drop large refs now instead of waiting for reuse.
-  for (let i = renderRuntime.stackCursor + 1; i < stack.length; i++) {
+  // drop large refs now instead of waiting for reuse. Bounded by this call's
+  // own peak, not stack.length, so a one-off deep render doesn't tax every
+  // shallow render after it.
+  for (let i = 0; i <= renderRuntime.stackPeak; i++) {
     const frame = stack[i]!;
     frame.node = null!;
     frame.prevElement = null!;

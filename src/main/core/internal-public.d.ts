@@ -76,6 +76,7 @@ export interface SimpRenderRuntime {
   renderer: SimpRuntimeFCRenderer;
   renderStack: Array<any>;
   stackCursor: number;
+  stackPeak: number;
   activeRenderElement: SimpElement | null;
   pendingRerenderFlag: boolean;
 }
