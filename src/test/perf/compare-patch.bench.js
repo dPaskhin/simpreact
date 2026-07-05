@@ -109,6 +109,32 @@ preactRender(ul10preact(), p10Container);
 const i10Container = document.createElement('div');
 infernoRender(ul10inferno(), i10Container);
 
+// --- props update: attrs + style change every render, event handler stable ---
+// (a stable handler reference is the typical optimized case — patchEvent
+// should see prevValue === nextValue and skip re-registering the listener)
+
+const stablePropsHandler = () => {};
+const propsOf = n => ({
+  id: 'item',
+  title: `title-${n}`,
+  className: n % 2 === 0 ? 'foo' : 'bar',
+  style: { color: n % 2 === 0 ? 'red' : 'blue', fontSize: '14px', padding: '4px 8px' },
+  onClick: stablePropsHandler,
+});
+
+const sPropsContainer = simp(document.createElement('div'));
+sPropsContainer.render(createElement('div', propsOf(0)));
+
+const rPropsContainer = document.createElement('div');
+const rPropsRoot = createRoot(rPropsContainer);
+flushSync(() => rPropsRoot.render(React.createElement('div', propsOf(0))));
+
+const pPropsContainer = document.createElement('div');
+preactRender(h('div', propsOf(0)), pPropsContainer);
+
+const iPropsContainer = document.createElement('div');
+infernoRender(iEl('div', propsOf(0)), iPropsContainer);
+
 // --- benchmarks ---
 
 let n = 0;
@@ -150,5 +176,29 @@ describe('patch — 10 children, no change', () => {
 
   bench('inferno', () => {
     infernoRender(ul10inferno(), i10Container);
+  });
+});
+
+let nProps = 0;
+
+describe('patch — props update (attrs + style, stable handler)', () => {
+  bench('simpreact', () => {
+    nProps++;
+    sPropsContainer.render(createElement('div', propsOf(nProps)));
+  });
+
+  bench('react', () => {
+    nProps++;
+    flushSync(() => rPropsRoot.render(React.createElement('div', propsOf(nProps))));
+  });
+
+  bench('preact', () => {
+    nProps++;
+    preactRender(h('div', propsOf(nProps)), pPropsContainer);
+  });
+
+  bench('inferno', () => {
+    nProps++;
+    infernoRender(iEl('div', propsOf(nProps)), iPropsContainer);
   });
 });

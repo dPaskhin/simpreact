@@ -34,6 +34,15 @@ export function patchStyle(prevAttrValue: any, nextAttrValue: any, dom: HTMLElem
   }
 }
 
+// Property names repeat across renders/elements; the mapping never changes
+// for a given name, so cache it instead of re-running the regex every call.
+const kebabCache = new Map<string, string>();
+
 function camelToKebab(name: string): string {
-  return name.replace(/[A-Z]/g, match => '-' + match.toLowerCase());
+  let kebab = kebabCache.get(name);
+  if (kebab === undefined) {
+    kebab = name.replace(/[A-Z]/g, match => '-' + match.toLowerCase());
+    kebabCache.set(name, kebab);
+  }
+  return kebab;
 }
