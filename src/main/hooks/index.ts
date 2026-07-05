@@ -38,8 +38,6 @@ interface HooksSpecificStore {
 }
 
 const hooksSpecificStoreByElement = new WeakMap<SimpElement, HooksSpecificStore>();
-// TODO: delete it
-const currentFCByRuntime = new WeakMap<SimpRenderRuntime, SimpElement | null>();
 
 function getHooksSpecificStore(element: SimpElement): HooksSpecificStore {
   let hooksSpecificStore = hooksSpecificStoreByElement.get(element);
@@ -58,12 +56,6 @@ function getHooksSpecificStore(element: SimpElement): HooksSpecificStore {
 
 registerLifecyclePlugin(bus => {
   bus.subscribe(event => {
-    if (event.type === 'beforeRender') {
-      currentFCByRuntime.set(event.renderRuntime, event.element);
-    } else if (event.type === 'afterRender' || event.type === 'errored') {
-      currentFCByRuntime.set(event.renderRuntime, null);
-    }
-
     if (!isFC(event.element)) {
       return;
     }
@@ -190,7 +182,7 @@ export interface UseRef {
 }
 export function createUseRef(renderRuntime: SimpRenderRuntime): UseRef {
   return initialValue => {
-    const store = getHooksSpecificStore(currentFCByRuntime.get(renderRuntime)!);
+    const store = getHooksSpecificStore(renderRuntime.activeRenderElement!);
     const hookStates = getOrCreateHookStates(store);
 
     if (!hookStates[store.hooksIndex]) {
@@ -203,11 +195,11 @@ export function createUseRef(renderRuntime: SimpRenderRuntime): UseRef {
 
 export function createUseRerender(renderRuntime: SimpRenderRuntime): () => RerenderHookState {
   return () => {
-    const store = getHooksSpecificStore(currentFCByRuntime.get(renderRuntime)!);
+    const store = getHooksSpecificStore(renderRuntime.activeRenderElement!);
     const hookStates = getOrCreateHookStates(store);
 
     if (!hookStates[store.hooksIndex]) {
-      const element = currentFCByRuntime.get(renderRuntime)!;
+      const element = renderRuntime.activeRenderElement!;
       hookStates[store.hooksIndex] = function rerender() {
         _rerender(element, renderRuntime);
       };
@@ -226,11 +218,11 @@ export interface UseState {
 }
 export function createUseState(renderRuntime: SimpRenderRuntime): UseState {
   return (initialState => {
-    const store = getHooksSpecificStore(currentFCByRuntime.get(renderRuntime)!);
+    const store = getHooksSpecificStore(renderRuntime.activeRenderElement!);
     const hookStates = getOrCreateHookStates(store);
 
     if (!hookStates[store.hooksIndex]) {
-      const element = currentFCByRuntime.get(renderRuntime)!;
+      const element = renderRuntime.activeRenderElement!;
       const state: StateHookState = (hookStates[store.hooksIndex] = [undefined!, undefined!]);
 
       state[0] = callOrGet(initialState)!;
@@ -252,7 +244,7 @@ export function createUseState(renderRuntime: SimpRenderRuntime): UseState {
 
 export function createUseEffect(renderRuntime: SimpRenderRuntime): (effect: Effect, deps?: DependencyList) => void {
   return (effect, deps) => {
-    const store = getHooksSpecificStore(currentFCByRuntime.get(renderRuntime)!);
+    const store = getHooksSpecificStore(renderRuntime.activeRenderElement!);
     const hookStates = getOrCreateHookStates(store);
 
     let state = hookStates[store.hooksIndex] as EffectState | undefined;
@@ -277,7 +269,7 @@ export function createUseEffect(renderRuntime: SimpRenderRuntime): (effect: Effe
 
 export function createUseCatch(renderRuntime: SimpRenderRuntime): (cb: (error: any) => void) => void {
   return cb => {
-    const store = getHooksSpecificStore(currentFCByRuntime.get(renderRuntime)!);
+    const store = getHooksSpecificStore(renderRuntime.activeRenderElement!);
 
     if (!store.catchHandlers) {
       store.catchHandlers = [];
