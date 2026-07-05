@@ -33,6 +33,22 @@ const L0 = () => createElement(L1);
 const FragChild = () => createElement('span');
 const Frag20 = () => createElement(Fragment, null, ...Array.from({ length: 20 }, () => createElement(FragChild)));
 
+const DEEP_LEVELS = 200;
+
+let DeepChain = () => createElement('div');
+for (let i = 0; i < DEEP_LEVELS; i++) {
+  const Inner = DeepChain;
+  DeepChain = () => createElement(Inner);
+}
+
+function createDeepHostTree(depth) {
+  let el = createElement('div');
+  for (let i = 0; i < depth; i++) {
+    el = createElement('div', null, el);
+  }
+  return el;
+}
+
 describe('mount', () => {
   bench('1 HOST element', () => {
     const root = createElement('div');
@@ -60,6 +76,18 @@ describe('mount', () => {
 
   bench('Fragment with 20 FC children', () => {
     const root = createElement(Frag20);
+    mount(root, parent, null, null, null, renderRuntime);
+    unmount(root, renderRuntime);
+  });
+
+  bench(`Deep FC chain (${DEEP_LEVELS} levels)`, () => {
+    const root = createElement(DeepChain);
+    mount(root, parent, null, null, null, renderRuntime);
+    unmount(root, renderRuntime);
+  });
+
+  bench(`Deep HOST tree (${DEEP_LEVELS} levels)`, () => {
+    const root = createDeepHostTree(DEEP_LEVELS);
     mount(root, parent, null, null, null, renderRuntime);
     unmount(root, renderRuntime);
   });

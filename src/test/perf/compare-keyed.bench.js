@@ -8,7 +8,6 @@ import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { bench, describe } from 'vitest';
 
-import '../../../lib/hooks/index.js';
 import { createElement, createRenderRuntime, Fragment } from '../../../lib/core/internal.js';
 import { domAdapter } from '../../../lib/dom/domAdapter.js';
 import { createCreateRoot } from '../../../lib/dom/render.js';
