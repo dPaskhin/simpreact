@@ -127,6 +127,19 @@ const createReactDeepHostTree = () => buildHostChain(child => React.createElemen
 const createPreactDeepHostTree = () => buildHostChain(child => h('div', null, child), DEEP_LEVELS);
 const createInfernoDeepHostTree = () => buildHostChain(child => iEl('div', null, child), DEEP_LEVELS);
 
+// A handful of attributes + a style object + an event handler — exercises
+// attribute aliasing, style diffing and event (de)registration on mount.
+// Not FC-wrapped: isolates props-handling cost from FC-dispatch cost, which
+// the "1 FC → 1 HOST" / deep-chain scenarios above already cover.
+const propsHandler = () => {};
+const propsObj = {
+  id: 'item',
+  title: 'a title',
+  className: 'foo bar',
+  style: { color: 'red', fontSize: '14px', padding: '4px 8px', display: 'block' },
+  onClick: propsHandler,
+};
+
 // --- containers ---
 
 const s1 = simp(document.createElement('div'));
@@ -153,6 +166,11 @@ const sDeepHost = simp(document.createElement('div'));
 const rDeepHost = document.createElement('div');
 const pDeepHost = document.createElement('div');
 const iDeepHost = document.createElement('div');
+
+const sProps = simp(document.createElement('div'));
+const rProps = document.createElement('div');
+const pProps = document.createElement('div');
+const iProps = document.createElement('div');
 
 // --- benchmarks ---
 
@@ -268,5 +286,28 @@ describe(`mount — Deep HOST tree (${DEEP_LEVELS} levels)`, () => {
   bench('inferno', () => {
     infernoRender(createInfernoDeepHostTree(), iDeepHost);
     infernoRender(null, iDeepHost);
+  });
+});
+
+describe('mount — HOST with props (attrs + style + event)', () => {
+  bench('simpreact', () => {
+    sProps.render(createElement('div', propsObj));
+    sProps.unmount();
+  });
+
+  bench('react', () => {
+    const root = createRoot(rProps);
+    flushSync(() => root.render(React.createElement('div', propsObj)));
+    root.unmount();
+  });
+
+  bench('preact', () => {
+    preactRender(h('div', propsObj), pProps);
+    preactRender(null, pProps);
+  });
+
+  bench('inferno', () => {
+    infernoRender(iEl('div', propsObj), iProps);
+    infernoRender(null, iProps);
   });
 });
