@@ -3,7 +3,7 @@ import { emptyObject } from '@simpreact/shared';
 import { isPropNameEventName, patchEvent } from '../events.js';
 import type { Namespace } from '../namespace.js';
 import { defaultNamespace } from '../namespace.js';
-import { htmlAttrAlias, svgAttrsNamespaces, svgCamelToHyphen } from './attrMaps.js';
+import { htmlAttrAlias, sharedBooleanIdlAttrs, svgAttrsNamespaces, svgCamelToHyphen } from './attrMaps.js';
 import {
   addControlledFormElementEventHandlers,
   isEventNameIgnored,
@@ -158,6 +158,12 @@ function patchFormElementsPropAndAttrs(
   renderRuntime: SimpRenderRuntime
 ): void {
   propName = htmlAttrAlias[propName] ?? propName;
+
+  if (sharedBooleanIdlAttrs.has(propName)) {
+    (dom as any)[propName] = !!nextValue;
+    return;
+  }
+
   switch (propName) {
     case 'children':
     case 'className':
@@ -221,6 +227,12 @@ function patchDefaultElementPropAndAttrs(
   renderRuntime: SimpRenderRuntime
 ): void {
   propName = htmlAttrAlias[propName] ?? propName;
+
+  if (sharedBooleanIdlAttrs.has(propName)) {
+    (dom as any)[propName] = !!nextValue;
+    return;
+  }
+
   switch (propName) {
     case 'children':
     case 'className':
@@ -228,16 +240,10 @@ function patchDefaultElementPropAndAttrs(
     case 'ref':
       break;
 
-    case 'autoFocus':
-      (dom as any).autofocus = !!nextValue;
-      break;
-
     case 'allowfullscreen':
     case 'autoplay':
     case 'controls':
     case 'default':
-    case 'disabled':
-    case 'hidden':
     case 'loop':
     case 'muted':
     case 'novalidate':

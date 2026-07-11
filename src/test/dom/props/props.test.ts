@@ -2,6 +2,7 @@ import { createElement, createRenderRuntime } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { domAdapter } from '../../../main/dom/index.js';
+import { sharedBooleanIdlAttrs } from '../../../main/dom/props/attrMaps.js';
 import { mountProps, patchProps, unmountProps } from '../../../main/dom/props/props.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -476,6 +477,62 @@ describe('HTML standard attribute aliases', () => {
     patchProps(dom, prev, next, HTML_NS, runtime);
     expect(dom.getAttribute('for')).toBeNull();
   });
+});
+
+// ---------------------------------------------------------------------------
+// sharedBooleanIdlAttrs — parity between form and non-form element patching
+// ---------------------------------------------------------------------------
+
+describe('sharedBooleanIdlAttrs', () => {
+  let runtime: ReturnType<typeof makeRuntime>;
+
+  beforeEach(() => {
+    runtime = makeRuntime();
+  });
+
+  it.each([...sharedBooleanIdlAttrs])('mountProps sets %s as an IDL property on a non-form element', name => {
+    const dom = document.createElement('div') as any;
+    const el = createElement('div', { [name]: true });
+    mountProps(dom, el, HTML_NS, runtime);
+    expect(dom[name]).toBe(true);
+  });
+
+  it.each([...sharedBooleanIdlAttrs])('mountProps sets %s as an IDL property on a form element', name => {
+    const dom = document.createElement('input') as any;
+    const el = createElement('input', { [name]: true });
+    mountProps(dom, el, HTML_NS, runtime);
+    expect(dom[name]).toBe(true);
+  });
+
+  it.each([...sharedBooleanIdlAttrs])(
+    'patchProps clears %s (no stale string attribute) when toggled true → false on a form element',
+    name => {
+      const dom = document.createElement('input') as any;
+      const prev = createElement('input', { [name]: true });
+      const next = createElement('input', { [name]: false });
+      prev.reference = dom;
+      next.reference = dom;
+      mountProps(dom, prev, HTML_NS, runtime);
+      patchProps(dom, prev, next, HTML_NS, runtime);
+      expect(dom[name]).toBe(false);
+      expect(dom.hasAttribute(name)).toBe(false);
+    }
+  );
+
+  it.each([...sharedBooleanIdlAttrs])(
+    'patchProps clears %s (no stale string attribute) when toggled true → false on a non-form element',
+    name => {
+      const dom = document.createElement('div') as any;
+      const prev = createElement('div', { [name]: true });
+      const next = createElement('div', { [name]: false });
+      prev.reference = dom;
+      next.reference = dom;
+      mountProps(dom, prev, HTML_NS, runtime);
+      patchProps(dom, prev, next, HTML_NS, runtime);
+      expect(dom[name]).toBe(false);
+      expect(dom.hasAttribute(name)).toBe(false);
+    }
+  );
 });
 
 // ---------------------------------------------------------------------------

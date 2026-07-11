@@ -1,7 +1,12 @@
 export const htmlAttrAlias: Record<string, string> = {
   class: 'className',
   for: 'htmlFor',
+  autoFocus: 'autofocus',
 };
+
+// Boolean-presence attrs valid on both form and non-form elements; any string value (incl. "false")
+// makes them present, so both patch functions in props.ts must assign these as IDL props, never via setAttribute.
+export const sharedBooleanIdlAttrs: ReadonlySet<string> = new Set(['disabled', 'hidden', 'autofocus', 'inert']);
 
 export const svgCamelToHyphen: Record<string, string> = {
   accentHeight: 'accent-height',
