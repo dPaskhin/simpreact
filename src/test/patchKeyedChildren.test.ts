@@ -65,8 +65,8 @@ describe('_patchKeyedChildren – prefix sync', () => {
 
     const next = patchList(prev, 'a', 'b', 'c', 'd');
 
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('c', '');
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('d', '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('c', renderRuntime, expect.anything(), '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('d', renderRuntime, expect.anything(), '');
     expect(childTags(next)).toEqual(['A', 'B', 'C', 'D']);
   });
 
@@ -103,7 +103,7 @@ describe('_patchKeyedChildren – suffix sync', () => {
 
     const next = patchList(prev, 'a', 'b', 'c');
 
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('a', '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('a', renderRuntime, expect.anything(), '');
     expect(childTags(next)).toEqual(['A', 'B', 'C']);
   });
 
@@ -125,7 +125,7 @@ describe('_patchKeyedChildren – suffix sync', () => {
 
     // patchProps: 1 for parent div + 2 for c,d (suffix patched via pushSuffixPatches)
     expect(testHostAdapter.patchProps).toHaveBeenCalledTimes(3);
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('x', '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('x', renderRuntime, expect.anything(), '');
     expect(childTags(next)).toEqual(['X', 'C', 'D']);
   });
 
@@ -186,8 +186,8 @@ describe('_patchKeyedChildren – prev exhausted (insertions)', () => {
 
     const next = patchList(prev, 'a', 'b', 'c');
 
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('b', '');
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('c', '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('b', renderRuntime, expect.anything(), '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('c', renderRuntime, expect.anything(), '');
     expect(childTags(next)).toEqual(['A', 'B', 'C']);
   });
 
@@ -198,8 +198,8 @@ describe('_patchKeyedChildren – prev exhausted (insertions)', () => {
 
     const next = patchList(prev, 'a', 'b', 'c', 'd');
 
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('b', '');
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('c', '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('b', renderRuntime, expect.anything(), '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('c', renderRuntime, expect.anything(), '');
     expect(childTags(next)).toEqual(['A', 'B', 'C', 'D']);
   });
 });
@@ -249,8 +249,8 @@ describe('_patchKeyedChildren – LIS-based middle', () => {
 
     // a,d removed; z,w created; b,c patched in place (no insertOrAppend for b,c)
     expect(testHostAdapter.unmountProps).toHaveBeenCalledTimes(2); // a, d
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('z', '');
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('w', '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('z', renderRuntime, expect.anything(), '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('w', renderRuntime, expect.anything(), '');
     // patchProps: 1 for parent div + 2 for b,c (matched in place, moved=false)
     expect(testHostAdapter.patchProps).toHaveBeenCalledTimes(3);
     expect(childTags(next)).toEqual(['Z', 'B', 'C', 'W']);
@@ -263,7 +263,7 @@ describe('_patchKeyedChildren – LIS-based middle', () => {
 
     const next = patchList(prev, 'd', 'a', 'e', 'c');
 
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('e', '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('e', renderRuntime, expect.anything(), '');
     expect(testHostAdapter.unmountProps).toHaveBeenCalledTimes(1); // b
     expect(childTags(next)).toEqual(['D', 'A', 'E', 'C']);
   });
@@ -308,7 +308,7 @@ describe('_patchChildren – HOST child mode transitions', () => {
     const next = createElement('div', null, createElement('a', { key: 'a' }), createElement('b', { key: 'b' }));
     patch(prev, next, parent, null, null, null, renderRuntime);
 
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('b', '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('b', renderRuntime, expect.anything(), '');
     expect(childTags(next)).toEqual(['A', 'B']);
   });
 
@@ -335,8 +335,8 @@ describe('_patchChildren – HOST child mode transitions', () => {
     patch(prev, next, parent, null, null, null, renderRuntime);
 
     expect(testHostAdapter.clearNode).toHaveBeenCalledWith(prevRef);
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('a', '');
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('b', '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('a', renderRuntime, expect.anything(), '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('b', renderRuntime, expect.anything(), '');
   });
 
   it('EMPTY → LIST: mounts multiple new children', () => {
@@ -347,8 +347,8 @@ describe('_patchChildren – HOST child mode transitions', () => {
     const next = createElement('div', null, createElement('x', { key: 'x' }), createElement('y', { key: 'y' }));
     patch(prev, next, parent, null, null, null, renderRuntime);
 
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('x', '');
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('y', '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('x', renderRuntime, expect.anything(), '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('y', renderRuntime, expect.anything(), '');
     expect(childTags(next)).toEqual(['X', 'Y']);
   });
 
@@ -490,7 +490,7 @@ describe('resolveAnchorReference – Fragment anchor traversal', () => {
     patch(prev, next, parent, null, null, null, renderRuntime);
 
     // x was inserted before span (first child of inner Fragment)
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('x', '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('x', renderRuntime, expect.anything(), '');
     const tags = Array.from(parent.children).map(c => c.nodeName);
     expect(tags).toEqual(['X', 'SPAN', 'EM']);
   });
@@ -515,7 +515,7 @@ describe('resolveAnchorReference – Fragment anchor traversal', () => {
     );
     patch(prev, next, parent, null, null, null, renderRuntime);
 
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('x', '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('x', renderRuntime, expect.anything(), '');
     const tags = Array.from(parent.children).map(c => c.nodeName);
     expect(tags).toEqual(['X', 'SPAN']);
   });

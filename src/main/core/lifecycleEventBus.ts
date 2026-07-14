@@ -21,7 +21,8 @@ export type LifecycleEvent =
       error: any;
       handled: boolean;
       renderRuntime: SimpRenderRuntime;
-    };
+    }
+  | { type: 'portalMounted'; element: SimpElement; container: unknown; renderRuntime: SimpRenderRuntime };
 
 type Subscriber = (event: LifecycleEvent) => boolean | void;
 

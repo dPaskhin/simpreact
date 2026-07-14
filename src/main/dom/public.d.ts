@@ -20,6 +20,10 @@ export declare function createCreateRoot(
   renderRuntime: SimpRenderRuntime
 ): (container: Element | DocumentFragment) => SimpRoot;
 
+export declare function createHydrateRoot(
+  renderRuntime: SimpRenderRuntime
+): (container: Element | DocumentFragment) => SimpRoot;
+
 export declare function createRenderer(
   renderRuntime: SimpRenderRuntime
 ): (element: SimpElement, parentReference: Nullable<HTMLElement>) => void;

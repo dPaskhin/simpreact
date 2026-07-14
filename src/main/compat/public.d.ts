@@ -66,7 +66,8 @@ export declare function useRef<T>(initialValue: T | null): RefObject<T | null>;
 export declare function useRef<T = undefined>(initialValue?: T): RefObject<T | undefined>;
 export declare function useCatch(handler: (error: unknown) => void): void;
 
-export declare function hydrate(): void;
+export declare function hydrate(element: SimpElement, container: Nullable<HTMLElement>): void;
+export declare function hydrateRoot(container: Element | DocumentFragment): SimpRoot;
 export declare function render(element: SimpElement, parentReference: Nullable<HTMLElement>): void;
 export declare function createRoot(container: Element | DocumentFragment): SimpRoot;
 

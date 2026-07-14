@@ -4,9 +4,15 @@ import type { SimpElement } from './createElement.js';
 import type { SimpRenderRuntime } from './runtime.js';
 
 export interface HostAdapter<HostRef = unknown, HostTextRef = unknown, NS = string> {
-  createReference(type: string, namespace?: Maybe<NS>): HostRef;
+  /** renderRuntime/parentReference let an adapter adopt an existing node instead of creating one. */
+  createReference(
+    type: string,
+    renderRuntime: SimpRenderRuntime,
+    parentReference: HostRef,
+    namespace?: Maybe<NS>
+  ): HostRef;
 
-  createTextReference(text: string): HostTextRef;
+  createTextReference(text: string, renderRuntime: SimpRenderRuntime, parentReference: HostRef): HostTextRef;
 
   mountProps(reference: HostRef, element: SimpElement, renderRuntime: SimpRenderRuntime, namespace?: Maybe<NS>): void;
 

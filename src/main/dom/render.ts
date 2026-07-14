@@ -1,5 +1,6 @@
 import { createElement, mount, patch, type SimpElement, type SimpRenderRuntime, unmount } from '@simpreact/internal';
 import type { Nullable } from '@simpreact/shared';
+import { setHydrating } from './hydrationState.js';
 
 export function createRenderer(
   renderRuntime: SimpRenderRuntime
@@ -67,6 +68,50 @@ export function createCreateRoot(
     return {
       render(element: SimpElement) {
         render(element, container);
+      },
+      unmount() {
+        render(null, container);
+      },
+    };
+  };
+}
+
+export function createHydrateRoot(
+  renderRuntime: SimpRenderRuntime
+): (container: Element | DocumentFragment) => SimpRoot {
+  const render = createRenderer(renderRuntime);
+
+  return (container: Element | DocumentFragment): SimpRoot => {
+    let hydrated = false;
+
+    return {
+      render(element: SimpElement) {
+        if (hydrated) {
+          render(element, container);
+          return;
+        }
+
+        hydrated = true;
+
+        element.parent = createElement('', null, element);
+        element.parent.type = null;
+        element.parent.reference = container;
+
+        renderRuntime.hostAdapter.attachElementToReference(element.parent, container, renderRuntime);
+
+        setHydrating(renderRuntime, true);
+        try {
+          mount(
+            element,
+            container,
+            null,
+            null,
+            renderRuntime.hostAdapter.getHostNamespaces(element, undefined)?.self,
+            renderRuntime
+          );
+        } finally {
+          setHydrating(renderRuntime, false);
+        }
       },
       unmount() {
         render(null, container);

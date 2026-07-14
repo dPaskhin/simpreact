@@ -27,7 +27,7 @@ describe('mount – HOST element', () => {
     const el = createElement('div');
     mount(el, parent, null, null, null, renderRuntime);
 
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('div', '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('div', renderRuntime, expect.anything(), '');
     expect(el.reference).toBeInstanceOf(Element);
     expect(parent.children.length).toBe(1);
     expect(parent.children[0]!.nodeName).toBe('DIV');
@@ -189,7 +189,7 @@ describe('mount – FC element', () => {
     expect(Comp).toHaveBeenCalledOnce();
     expect(parent.children.length).toBe(1);
     expect(parent.children[0]!.getAttribute('id')).toBeNull(); // mountProps mocked
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('div', '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('div', renderRuntime, expect.anything(), '');
   });
 
   it('fires beforeRender and afterRender lifecycle events', () => {
@@ -239,7 +239,7 @@ describe('mount – FC element', () => {
     mount(el, parent, null, null, null, renderRuntime);
 
     expect(parent.children.length).toBe(1);
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('div', '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('div', renderRuntime, expect.anything(), '');
   });
 
   it('FC stores rendered children on the element', () => {
@@ -316,6 +316,23 @@ describe('mount – PORTAL element', () => {
 
     // portal.reference points to the placeholder text node
     expect(portal.reference).toBeInstanceOf(Text);
+  });
+
+  it('publishes a portalMounted event with the element and its target container', () => {
+    const container = document.createElement('section');
+    const portal = createPortal(createElement('div'), container);
+    const listener = vi.fn();
+    const unsubscribe = getLifecycleEventBus(renderRuntime).subscribe(listener);
+
+    mount(portal, parent, null, null, null, renderRuntime);
+    unsubscribe();
+
+    expect(listener).toHaveBeenCalledWith({
+      type: 'portalMounted',
+      element: portal,
+      container,
+      renderRuntime,
+    });
   });
 });
 

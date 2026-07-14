@@ -94,6 +94,8 @@ function mountHostEnter(frame: SimpRenderFrame): void {
   const hostNamespaces = renderRuntime.hostAdapter.getHostNamespaces(element, hostNamespace);
   const hostReference = (element.reference = renderRuntime.hostAdapter.createReference(
     element.type as string,
+    renderRuntime,
+    parentReference,
     hostNamespaces?.self
   ));
 
@@ -230,8 +232,15 @@ function mountFCExit(frame: SimpRenderFrame): void {
 }
 
 function mountTextElement(frame: SimpRenderFrame): void {
-  frame.node.reference = frame.renderRuntime.hostAdapter.createTextReference(frame.node.children as string);
-  pushHostOperationPlaceElement(frame.node, frame.renderRuntime, frame.parentReference, frame.subtreeRightBoundary);
+  const { renderRuntime, parentReference, subtreeRightBoundary } = frame;
+
+  frame.node.reference = renderRuntime.hostAdapter.createTextReference(
+    frame.node.children as string,
+    renderRuntime,
+    parentReference
+  );
+
+  pushHostOperationPlaceElement(frame.node, renderRuntime, parentReference, subtreeRightBoundary);
 }
 
 function mountPortalEnter(frame: SimpRenderFrame): void {
@@ -239,6 +248,13 @@ function mountPortalEnter(frame: SimpRenderFrame): void {
   const { parentReference, subtreeRightBoundary, context, renderRuntime } = frame;
 
   const placeHolderElement = createTextElement('');
+
+  getLifecycleEventBus(renderRuntime).publish({
+    type: 'portalMounted',
+    element,
+    container: element.ref,
+    renderRuntime,
+  });
 
   pushMountExitFrame(element, renderRuntime, null!, subtreeRightBoundary, null, null, placeHolderElement);
 

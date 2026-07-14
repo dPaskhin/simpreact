@@ -1,8 +1,13 @@
 import type { Maybe, Nullable, SimpText } from '@simpreact/shared';
 
 export interface HostAdapter<HostRef = unknown, HostTextRef = unknown, NS = string> {
-  createReference(type: string, namespace?: Maybe<NS>): HostRef;
-  createTextReference(text: string): HostTextRef;
+  createReference(
+    type: string,
+    renderRuntime: SimpRenderRuntime,
+    parentReference: HostRef,
+    namespace?: Maybe<NS>
+  ): HostRef;
+  createTextReference(text: string, renderRuntime: SimpRenderRuntime, parentReference: HostRef): HostTextRef;
   mountProps(reference: HostRef, element: SimpElement, renderRuntime: SimpRenderRuntime, namespace?: Maybe<NS>): void;
   patchProps(
     reference: HostRef,

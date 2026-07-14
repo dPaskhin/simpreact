@@ -78,7 +78,7 @@ describe('patch – HOST element', () => {
     const next = createElement('span');
     patch(prev, next, parent, null, null, null, renderRuntime);
 
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('span', '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('span', renderRuntime, null, '');
     expect(testHostAdapter.replaceChild).toHaveBeenCalledWith(parent, next.reference, prev.reference);
   });
 
@@ -90,7 +90,7 @@ describe('patch – HOST element', () => {
     const next = createElement('div', { key: 'b' });
     patch(prev, next, parent, null, null, null, renderRuntime);
 
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('div', '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('div', renderRuntime, null, '');
     // old unmounted, new created
     expect(testHostAdapter.unmountProps).toHaveBeenCalled();
   });
@@ -116,7 +116,7 @@ describe('patch – HOST element', () => {
     patch(prev, next, parent, null, null, null, renderRuntime);
 
     // 'b' replaced 'span'
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('b', '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('b', renderRuntime, null, '');
   });
 
   it('applies ref after patch', () => {
@@ -202,7 +202,7 @@ describe('patch – FC element', () => {
     patch(prev, next, parent, null, null, null, renderRuntime);
 
     // old FC (and its host child x-a) unmounted, new FC (x-b) mounted
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('x-b', '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('x-b', renderRuntime, expect.anything(), '');
     expect(testHostAdapter.unmountProps).toHaveBeenCalledOnce(); // cleanup inner HOST x-a
   });
 
@@ -216,7 +216,7 @@ describe('patch – FC element', () => {
     const next = createElement(Comp);
     patch(prev, next, parent, null, null, null, renderRuntime);
 
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('div', '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('div', renderRuntime, expect.anything(), '');
   });
 
   it('error during FC patch re-render is published and rethrown', () => {
@@ -325,7 +325,7 @@ describe('patch – FRAGMENT element', () => {
     const next = createElement(Fragment, null, createElement('span'));
     patch(prev, next, parent, null, null, null, renderRuntime);
 
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('span', '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('span', renderRuntime, expect.anything(), '');
     expect(parent.children.length).toBe(1);
   });
 
@@ -449,7 +449,7 @@ describe('patch – children mode transitions', () => {
     patch(prev, next, parent, null, null, null, renderRuntime);
 
     expect(testHostAdapter.clearNode).toHaveBeenCalledOnce();
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('b', '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('b', renderRuntime, expect.anything(), '');
   });
 
   it('empty → element: mounts new element', () => {
@@ -460,7 +460,7 @@ describe('patch – children mode transitions', () => {
     const next = createElement('div', null, createElement('span'));
     patch(prev, next, parent, null, null, null, renderRuntime);
 
-    expect(testHostAdapter.createReference).toHaveBeenCalledWith('span', '');
+    expect(testHostAdapter.createReference).toHaveBeenCalledWith('span', renderRuntime, expect.anything(), '');
   });
 
   it('element → empty: clears element host reference', () => {

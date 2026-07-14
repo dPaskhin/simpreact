@@ -1,6 +1,7 @@
 import { createElement, createRenderRuntime } from '@simpreact/internal';
 import { emptyObject } from '@simpreact/shared';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { excludeFromHydration, setHydrating } from '../../main/dom/hydrationState.js';
 import { domAdapter } from '../../main/dom/index.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -22,20 +23,97 @@ describe('domAdapter', () => {
 
   describe('createReference', () => {
     it('creates an HTML element when namespace is absent', () => {
-      const el = domAdapter.createReference('div', undefined);
+      const el = domAdapter.createReference('div', runtime, document.createElement('div'), undefined);
       expect(el.tagName.toLowerCase()).toBe('div');
       expect(el instanceof HTMLDivElement).toBe(true);
     });
 
     it('creates an SVG element when SVG namespace is provided', () => {
-      const el = domAdapter.createReference('circle', SVG_NS);
+      const el = domAdapter.createReference('circle', runtime, document.createElement('div'), SVG_NS);
       expect(el.namespaceURI).toBe(SVG_NS);
       expect(el.tagName).toBe('circle');
     });
 
     it('creates element via createElementNS when any namespace is given', () => {
-      const el = domAdapter.createReference('rect', SVG_NS);
+      const el = domAdapter.createReference('rect', runtime, document.createElement('div'), SVG_NS);
       expect(el.namespaceURI).toBe(SVG_NS);
+    });
+
+    describe('when renderRuntime.hydrating is set', () => {
+      beforeEach(() => {
+        setHydrating(runtime, true);
+      });
+
+      it('adopts matching existing elements in order, advancing the cursor', () => {
+        const parent = document.createElement('div');
+        parent.innerHTML = '<span></span><b></b>';
+        const span = parent.children[0];
+        const b = parent.children[1];
+
+        expect(domAdapter.createReference('span', runtime, parent, undefined)).toBe(span);
+        expect(domAdapter.createReference('b', runtime, parent, undefined)).toBe(b);
+        expect(parent.childNodes.length).toBe(2);
+      });
+
+      it('falls back to a fresh element on tag mismatch without removing the mismatched node', () => {
+        const parent = document.createElement('div');
+        parent.innerHTML = '<span></span>';
+        const existingSpan = parent.firstChild;
+
+        const fresh = domAdapter.createReference('p', runtime, parent, undefined);
+
+        expect(fresh).not.toBe(existingSpan);
+        expect(fresh.tagName.toLowerCase()).toBe('p');
+        expect(parent.contains(existingSpan)).toBe(true);
+        expect(parent.childNodes.length).toBe(2);
+      });
+
+      it('leaves a mismatched candidate available for the next call at the same parent', () => {
+        const parent = document.createElement('div');
+        parent.innerHTML = '<span></span>';
+        const existingSpan = parent.firstChild;
+
+        domAdapter.createReference('p', runtime, parent, undefined);
+        const adopted = domAdapter.createReference('span', runtime, parent, undefined);
+
+        expect(adopted).toBe(existingSpan);
+      });
+
+      it('creates and appends when there are no more children to adopt', () => {
+        const parent = document.createElement('div');
+        const fresh = domAdapter.createReference('span', runtime, parent, undefined);
+        expect(fresh.tagName.toLowerCase()).toBe('span');
+        expect(parent.firstChild).toBe(fresh);
+      });
+
+      it('warns only once per parent across repeated mismatches', () => {
+        const parent = document.createElement('div');
+        parent.innerHTML = '<span></span><span></span>';
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        domAdapter.createReference('p', runtime, parent, undefined);
+        domAdapter.createReference('p', runtime, parent, undefined);
+
+        expect(warn).toHaveBeenCalledTimes(1);
+        warn.mockRestore();
+      });
+
+      it('creates via createElementNS on mismatch when a namespace is given', () => {
+        const parent = document.createElement('div');
+        const fresh = domAdapter.createReference('circle', runtime, parent, SVG_NS);
+        expect(fresh.namespaceURI).toBe(SVG_NS);
+      });
+
+      it('does not adopt inside an excluded (portal target) container', () => {
+        const parent = document.createElement('div');
+        parent.innerHTML = '<span></span>';
+        const existingSpan = parent.firstChild;
+        excludeFromHydration(runtime, parent);
+
+        const fresh = domAdapter.createReference('span', runtime, parent, undefined);
+
+        expect(fresh).not.toBe(existingSpan);
+      });
     });
   });
 
@@ -45,9 +123,39 @@ describe('domAdapter', () => {
 
   describe('createTextReference', () => {
     it('creates a Text node with the correct content', () => {
-      const node = domAdapter.createTextReference('hello');
+      const node = domAdapter.createTextReference('hello', runtime, document.createElement('div'));
       expect(node).toBeInstanceOf(Text);
       expect(node.nodeValue).toBe('hello');
+    });
+
+    describe('when renderRuntime.hydrating is set', () => {
+      beforeEach(() => {
+        setHydrating(runtime, true);
+      });
+
+      it('adopts a matching existing text node and corrects its content', () => {
+        const parent = document.createElement('div');
+        parent.appendChild(document.createTextNode('server text'));
+        const existingText = parent.firstChild;
+
+        const adopted = domAdapter.createTextReference('client text', runtime, parent);
+
+        expect(adopted).toBe(existingText);
+        expect(adopted.nodeValue).toBe('client text');
+      });
+
+      it('falls back to a fresh text node on type mismatch without removing the mismatched node', () => {
+        const parent = document.createElement('div');
+        parent.innerHTML = '<span></span>';
+        const existingSpan = parent.firstChild;
+
+        const fresh = domAdapter.createTextReference('hello', runtime, parent);
+
+        expect(fresh).toBeInstanceOf(Text);
+        expect(fresh.nodeValue).toBe('hello');
+        expect(parent.contains(existingSpan)).toBe(true);
+        expect(parent.childNodes.length).toBe(2);
+      });
     });
   });
 
@@ -120,6 +228,32 @@ describe('domAdapter', () => {
       parent.appendChild(existing);
       const child = document.createElement('span');
       domAdapter.insertOrAppend(parent, child, existing);
+      expect(parent.firstChild).toBe(child);
+    });
+
+    it('skips the DOM write when the child is already immediately before the anchor', () => {
+      const parent = document.createElement('div');
+      const child = document.createElement('span');
+      const anchor = document.createElement('b');
+      parent.append(child, anchor);
+      const insertBefore = vi.spyOn(parent, 'insertBefore');
+
+      domAdapter.insertOrAppend(parent, child, anchor);
+
+      expect(insertBefore).not.toHaveBeenCalled();
+      expect(parent.children[0]).toBe(child);
+      expect(parent.children[1]).toBe(anchor);
+    });
+
+    it('skips the DOM write when the child is already the last child', () => {
+      const parent = document.createElement('div');
+      const child = document.createElement('span');
+      parent.appendChild(child);
+      const appendChild = vi.spyOn(parent, 'appendChild');
+
+      domAdapter.insertOrAppend(parent, child, null);
+
+      expect(appendChild).not.toHaveBeenCalled();
       expect(parent.firstChild).toBe(child);
     });
   });

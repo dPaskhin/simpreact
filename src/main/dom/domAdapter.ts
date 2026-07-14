@@ -1,18 +1,98 @@
-import type { HostAdapter } from '@simpreact/internal';
+import type { HostAdapter, SimpRenderRuntime } from '@simpreact/internal';
 import { attachElementToDom, detachElementFromDom, getElementFromDom } from './attach-element-to-dom.js';
+import { isExcludedFromHydration, isHydrating } from './hydrationState.js';
 import type { Namespace } from './namespace.js';
 import { defaultNamespace } from './namespace.js';
 import { mountProps, patchProps, unmountProps } from './props/index.js';
 
+interface HydrationCursorEntry {
+  cursor: ChildNode | null;
+  warned: boolean;
+}
+
+const hydrationCursorMaps = new WeakMap<SimpRenderRuntime, Map<Node, HydrationCursorEntry>>();
+
+// Tracks, per real DOM parent, the next unclaimed child to adopt (lazily seeded from firstChild).
+function getHydrationCursorEntry(parent: Node, renderRuntime: SimpRenderRuntime): HydrationCursorEntry {
+  let map = hydrationCursorMaps.get(renderRuntime);
+  if (!map) {
+    map = new Map();
+    hydrationCursorMaps.set(renderRuntime, map);
+  }
+
+  let entry = map.get(parent);
+  if (!entry) {
+    entry = { cursor: parent.firstChild, warned: false };
+    map.set(parent, entry);
+  }
+
+  return entry;
+}
+
+function warnHydrationMismatch(entry: HydrationCursorEntry, message: string): void {
+  if (!entry.warned) {
+    entry.warned = true;
+    console.warn(message);
+  }
+}
+
+function isHydratingHere(renderRuntime: SimpRenderRuntime, parentReference: Node): boolean {
+  return isHydrating(renderRuntime) && !isExcludedFromHydration(renderRuntime, parentReference);
+}
+
 export const domAdapter: HostAdapter<HTMLElement | SVGElement, Text, Namespace> = {
-  createReference(type, namespace) {
+  createReference(type, renderRuntime, parentReference, namespace) {
+    if (isHydratingHere(renderRuntime, parentReference)) {
+      const entry = getHydrationCursorEntry(parentReference, renderRuntime);
+      const candidate = entry.cursor;
+
+      if (
+        candidate &&
+        candidate.nodeType === 1 &&
+        (candidate as Element).tagName.toLowerCase() === type.toLowerCase()
+      ) {
+        entry.cursor = candidate.nextSibling;
+        return candidate as HTMLElement | SVGElement;
+      }
+
+      warnHydrationMismatch(
+        entry,
+        `simpreact: hydration mismatch — expected <${type}>, creating a new element instead.`
+      );
+
+      const fresh = namespace ? document.createElementNS(namespace, type) : document.createElement(type);
+      // Leave the mismatched candidate un-consumed so a later sibling that does match can still adopt it.
+      parentReference.insertBefore(fresh, candidate);
+      return fresh as HTMLElement | SVGElement;
+    }
+
     if (namespace) {
       return document.createElementNS(namespace, type) as SVGElement;
     } else {
       return document.createElement(type);
     }
   },
-  createTextReference(text) {
+
+  createTextReference(text, renderRuntime, parentReference) {
+    if (isHydratingHere(renderRuntime, parentReference)) {
+      const entry = getHydrationCursorEntry(parentReference, renderRuntime);
+      const candidate = entry.cursor;
+
+      if (candidate && candidate.nodeType === 3) {
+        entry.cursor = candidate.nextSibling;
+        if (candidate.nodeValue !== text) {
+          candidate.nodeValue = text;
+        }
+        return candidate as Text;
+      }
+
+      warnHydrationMismatch(entry, 'simpreact: hydration mismatch — expected a text node, creating a new one instead.');
+
+      const fresh = document.createTextNode(text);
+      parentReference.insertBefore(fresh, candidate);
+      return fresh;
+    }
+
     return document.createTextNode(text);
   },
 
@@ -47,9 +127,12 @@ export const domAdapter: HostAdapter<HTMLElement | SVGElement, Text, Namespace> 
   },
 
   insertOrAppend(parent, child, before) {
+    // Skips the DOM write when child is already positioned correctly (e.g. after hydration adopted it).
     if (before) {
-      parent.insertBefore(child, before);
-    } else {
+      if (child.nextSibling !== before) {
+        parent.insertBefore(child, before);
+      }
+    } else if (parent.lastChild !== child) {
       parent.appendChild(child);
     }
   },
