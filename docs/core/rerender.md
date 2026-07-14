@@ -19,16 +19,17 @@ interface RerenderSpecificData {
 flowchart TD
     R["rerender(element, runtime)"] --> UM{unmounted?}
     UM -->|yes| WARN["console.warn\nreturn"]
-    UM -->|no| TRR["publish 'triedToRerender'\n(signals active render loop\nto re-run if this element is\ncurrently rendering)"]
-    TRR --> SL{syncLockDepth > 0?}
+    UM -->|no| ACT{activeRenderElement === element?}
+    ACT -->|yes — element is\ncurrently rendering| FLAG["pendingRerenderFlag = true\nreturn"]
+    ACT -->|no| SL{syncLockDepth > 0?}
     SL -->|yes — inside withSyncRerender| SQ["syncQueue.add(element)\nreturn"]
     SL -->|no| AQ["asyncQueue.add(element)"]
     AQ --> SCH["scheduleAsyncFlush()"]
 ```
 
-### triedToRerender and render-time state updates
+### Render-time state updates
 
-When `rerender` is called during the render of the same element (e.g. a state setter called from inside a render function), the `triedToRerender` event fires. The active `do...while` loop in `mountFCEnter` / `patchFCEnter` is subscribed to this event and sets a flag that causes the loop to re-run immediately after `afterRender`. This handles the case without queuing.
+When `rerender` is called during the render of the same element (e.g. a state setter called from inside a render function), `renderRuntime.activeRenderElement === element` is true, so `rerender` just sets `renderRuntime.pendingRerenderFlag = true` and returns — no event, no queuing. The active `do...while` loop in `mountFCEnter` / `patchFCEnter` checks this flag right after `afterRender` and re-runs immediately if it's set. `activeRenderElement` is set to the element for the duration of its render (cleared in a `finally`), so this fast path only applies to the element currently on the call stack, not to unrelated elements rendering elsewhere.
 
 ## Async flush
 

@@ -93,6 +93,7 @@ Delegates to `withSyncRerender(renderRuntime, callback)`, which increments a syn
 |---|---|
 | `render(element, container)` | `createRenderer(renderRuntime)` |
 | `createRoot(container)` | `createCreateRoot(renderRuntime)` |
-| `hydrate` | `noop` — SSR hydration is not supported |
+| `hydrateRoot(container)` | `createHydrateRoot(renderRuntime)` |
+| `hydrate(element, container)` | calls `hydrateRoot(container).render(element)` |
 
-`render` and `createRoot().render` are functionally equivalent entry points.
+`render` and `createRoot().render` are functionally equivalent entry points. `hydrate` and `hydrateRoot(...).render(...)` are functionally equivalent — both adopt existing DOM produced by `@simpreact/ssr`'s `renderToString`.

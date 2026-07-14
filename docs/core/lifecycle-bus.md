@@ -63,11 +63,11 @@ Feature modules call `registerLifecyclePlugin` at module import time (top-level)
 |---|---|---|
 | `beforeRender` | `mountFCEnter`, `patchFCEnter` | — |
 | `afterRender` | `mountFCEnter`, `patchFCEnter` | — |
-| `triedToRerender` | `rerender()` | — |
 | `mounted` | `mountFCExit` | — |
 | `updated` | `patchFCExit` | — |
 | `unmounted` | `unmountFCExit` | — |
 | `errored` | `mountFCEnter` catch, `patchFCEnter` catch | `error: any`, `handled: boolean` |
+| `portalMounted` | `mountPortalEnter` | `container: unknown` |
 
 All events carry `element: SimpElement` and `renderRuntime: SimpRenderRuntime`.
 
@@ -128,25 +128,24 @@ sequenceDiagram
 
 If no subscriber sets `event.handled = true`, core wraps the original error in a new `Error` with `{ cause }` and re-throws it, crashing the render.
 
-## `triedToRerender` — in-render state update
+## In-render state update (`pendingRerenderFlag`)
 
-This event is special: it is published by `rerender()` and consumed by the active render loop itself. `mountFCEnter` and `patchFCEnter` subscribe temporarily (for the duration of one FC's render) to detect whether `rerender` was called for the current element during its own render function. If so, the `do...while` loop re-runs.
+This case bypasses the bus entirely — it's a plain flag on `SimpRenderRuntime`, not a lifecycle event. `mountFCEnter` and `patchFCEnter` set `renderRuntime.activeRenderElement` to the element for the duration of its render (cleared in a `finally`). If `rerender()` is called for that same element while it's rendering (e.g. a `useState` setter called from inside the render function itself), it sees `activeRenderElement === element` and just sets `renderRuntime.pendingRerenderFlag = true` instead of queuing. The active `do...while` loop checks the flag right after `afterRender` and re-runs if set.
 
 ```mermaid
 sequenceDiagram
     participant FC as render loop
-    participant Bus
+    participant RT as renderRuntime
     participant State as useState setter
 
-    FC->>Bus: temporary subscribe (triedToRerender)
+    FC->>RT: activeRenderElement = element
     FC->>FC: call renderer()
     FC->>State: useState setter called inside render
     State->>rerender: rerender(element, runtime)
-    rerender->>Bus: publish triedToRerender
-    Bus->>FC: triedToRerender subscriber fires → flag = true
+    rerender->>RT: activeRenderElement === element →\npendingRerenderFlag = true
     FC->>FC: afterRender published
-    FC->>FC: triedToRerender === true → loop again
-    FC->>Bus: unsubscribe (in finally)
+    FC->>RT: check pendingRerenderFlag → true → loop again
+    FC->>RT: activeRenderElement = null (in finally)
 ```
 
-The temporary subscription is unsubscribed in the `finally` block regardless of whether the render succeeded or threw.
+See [rerender.md](./rerender.md) for the full `rerender()` flow, including the sync/async queues used when the target element isn't the one currently rendering.

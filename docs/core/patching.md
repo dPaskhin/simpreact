@@ -57,11 +57,11 @@ flowchart TD
     MEMO -->|yes — skip render| BAIL["return (no update)"]
     MEMO -->|no| UPD["prevElement.props = jsxElement.props"]
 
-    UPD --> LOOP["do...while(triedToRerender)"]
+    UPD --> LOOP["do...while(pendingRerenderFlag)\n(activeRenderElement = prevElement)"]
     LOOP --> BR["publish beforeRender"]
     BR --> REN["renderer(FC, prevElement, runtime)"]
     REN --> AR["publish afterRender"]
-    AR --> TRR{triedToRerender?}
+    AR --> TRR{pendingRerenderFlag?}
     TRR -->|yes| LOOP
     TRR -->|no| NR["normalizeRoot(prevElement, nextChildren)"]
     NR --> PX["push PATCH_EXIT"]

@@ -23,9 +23,9 @@ This avoids JavaScript call-stack overflows for deep trees and makes it straight
 
 ```mermaid
 flowchart TD
-    START(["processStack(renderRuntime)"]) --> CHECK{stack.length > 0?}
-    CHECK -->|no| END(["return"])
-    CHECK -->|yes| POP["frame = stack.pop()"]
+    START(["processStack(renderRuntime)"]) --> CHECK{stackCursor >= 0?}
+    CHECK -->|no| END(["sweep slots 0..stackPeak, return"])
+    CHECK -->|yes| POP["frame = stack[stackCursor--]"]
     POP --> DISPATCH{frame.kind}
 
     DISPATCH -->|MOUNT_ENTER 10| ME["mountEnter(frame)"]
@@ -39,25 +39,21 @@ flowchart TD
     DISPATCH -->|PLACE 40| PL["placeElementBeforeAnchor"]
     DISPATCH -->|REPLACE 42| RP["hostAdapter.replaceChild"]
 
-    ME --> RECYCLE["frame.node = null\npool.mount.push(frame)"]
-    MX --> RECYCLE
-    MC --> RECYCLE2["pool.mountChildren.push(frame)"]
-    PE --> RECYCLE3["pool.patch.push(frame)"]
-    PX --> RECYCLE3
-    UE --> RECYCLE4["pool.unmount.push(frame)"]
-    UX --> RECYCLE4
-    UC --> RECYCLE5["pool.unmountChildren.push(frame)"]
-    PL --> RECYCLE6["pool.place.push(frame)"]
-    RP --> RECYCLE7["pool.replace.push(frame)"]
+    ME --> DEC["stackCursor--\n(frame processed, loop continues)"]
+    MX --> DEC
+    MC --> DEC
+    PE --> DEC
+    PX --> DEC
+    UE --> DEC
+    UX --> DEC
+    UC --> DEC
+    PL --> DEC
+    RP --> DEC
 
-    RECYCLE --> CHECK
-    RECYCLE2 --> CHECK
-    RECYCLE3 --> CHECK
-    RECYCLE4 --> CHECK
-    RECYCLE5 --> CHECK
-    RECYCLE6 --> CHECK
-    RECYCLE7 --> CHECK
+    DEC --> CHECK
 ```
+
+The stack is popped by decrementing `renderRuntime.stackCursor` (no `Array.pop`), so the frame object itself is left in place at that slot — ready to be reused by a later `acquireFrame` call without reallocating. Once the whole `processStack` call drains (`stackCursor` back to `-1`), a bounded sweep nulls out the large fields (`node`, `prevElement`, `children`, `subtreeRightBoundary`, `placeHolderElement`) on every slot up to `stackPeak`, so a deep render's element references don't outlive the call.
 
 ## ENTER / EXIT pairs
 
@@ -81,20 +77,20 @@ This pattern is used identically by HOST, FC, PORTAL, and FRAGMENT elements for 
 
 ## Frame pool
 
-Frame objects are expensive to GC at high frequency. `processStack` recycles every frame after use: it nulls `frame.node` (to release the element reference) and returns the frame to a per-runtime pool keyed by `WeakMap<SimpRenderRuntime, FramePool>`.
+Frame objects are expensive to GC at high frequency. Unlike a separate pool keyed per frame kind, `renderRuntime.renderStack` **is** the pool: it's a single flat array indexed by `stackCursor` (the index of the top active frame; `-1` when empty) and `stackPeak` (the highest index acquired during the current top-level call). `acquireFrame` increments `stackCursor` and reuses whatever frame object already sits at that slot, allocating a new one only the first time a slot is reached:
 
 ```mermaid
 flowchart LR
-    ACQUIRE["acquireMountFrame(...)"] -->|pool not empty| REUSE["pop from pool\noverwrite fields"]
-    ACQUIRE -->|pool empty| ALLOC["new MountFrame object"]
-    REUSE --> FRAME["frame"]
-    ALLOC --> FRAME
-    FRAME -->|after processStack dispatch| RETURN["frame.node = null\npool.push(frame)"]
-    RETURN --> ACQUIRE
+    ACQUIRE["acquireFrame(renderRuntime)"] --> INC["cursor = ++stackCursor"]
+    INC --> PEAK{cursor > stackPeak?}
+    PEAK -->|yes| BUMP["stackPeak = cursor"]
+    PEAK -->|no| SLOT
+    BUMP --> SLOT["stack[cursor] ??= createFrame()"]
+    SLOT --> FRAME["frame (caller overwrites all fields)"]
 ```
 
-`acquire*Frame` functions are the only constructors for frames. Handlers never create frame objects directly.
+`acquireFrame` is the single constructor for every frame kind — there's no per-kind pool or per-kind acquire function. Callers set all fields on the returned frame themselves (nulling ones their kind doesn't use).
 
 ## Reentrancy guard
 
-`mount()`, `patch()`, and `unmount()` all assert `renderStack.length === 0` before pushing their initial frame. This prevents concurrent entry into `processStack` from the same runtime, which would produce undefined behavior (two interleaved stack walks over the same array).
+`mount()`, `patch()`, and `unmount()` all assert `renderRuntime.stackCursor === -1` before pushing their initial frame. This prevents concurrent entry into `processStack` from the same runtime, which would produce undefined behavior (two interleaved stack walks over the same array).
