@@ -38,7 +38,7 @@ export function patchStyle(prevAttrValue: any, nextAttrValue: any, dom: HTMLElem
 // for a given name, so cache it instead of re-running the regex every call.
 const kebabCache = new Map<string, string>();
 
-function camelToKebab(name: string): string {
+export function camelToKebab(name: string): string {
   let kebab = kebabCache.get(name);
   if (kebab === undefined) {
     kebab = name.replace(/[A-Z]/g, match => '-' + match.toLowerCase());

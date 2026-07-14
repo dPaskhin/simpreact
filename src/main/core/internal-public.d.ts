@@ -106,11 +106,14 @@ export declare function isPortal(element: { flag: number }): boolean;
 export declare function isText(element: { flag: number }): boolean;
 export declare function hasListChildren(element: { childFlag: number }): boolean;
 export declare function hasElementChild(element: { childFlag: number }): boolean;
+export declare function hasTextChild(element: { childFlag: number }): boolean;
 
 export declare function createElement(type: string | FC, props?: any, ...children: SimpNode[]): SimpElement;
 export declare function Fragment(props: { children?: SimpNode }): SimpElement;
+export declare function normalizeRoot(element: SimpElement, node: SimpNode, skipIgnoredCheck: boolean): SimpElement;
 
 export declare function registerLifecyclePlugin(plugin: (bus: LifecycleEventBus) => void): void;
+export declare function getLifecycleEventBus(runtime: SimpRenderRuntime): LifecycleEventBus;
 
 export declare function mount(
   element: SimpElement,

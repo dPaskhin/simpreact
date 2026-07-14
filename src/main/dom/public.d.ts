@@ -26,6 +26,12 @@ export declare function createRenderer(
 
 export declare const domAdapter: HostAdapter;
 
+export declare const htmlAttrAlias: Record<string, string>;
+export declare const sharedBooleanIdlAttrs: ReadonlySet<string>;
+export declare const svgCamelToHyphen: Record<string, string>;
+export declare const svgAttrsNamespaces: Record<string, string>;
+export declare function camelToKebab(name: string): string;
+
 export interface SimpReactHTMLElement<T extends HTMLElement>
   extends DetailedSimpReactHTMLElement<AllHTMLAttributes<T>, T> {}
 

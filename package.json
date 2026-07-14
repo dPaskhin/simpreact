@@ -71,6 +71,10 @@
     "./executor": {
       "import": "./executor/index.js",
       "types": "./executor/index.d.ts"
+    },
+    "./ssr": {
+      "import": "./ssr/index.js",
+      "types": "./ssr/index.d.ts"
     }
   },
   "bugs": {

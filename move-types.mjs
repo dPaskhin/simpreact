@@ -15,6 +15,7 @@ const copies = [
   ['component/public.d.ts', 'component/index.d.ts'],
   ['dom/public.d.ts', 'dom/index.d.ts'],
   ['compat/public.d.ts', 'compat/index.d.ts'],
+  ['ssr/public.d.ts', 'ssr/index.d.ts'],
 ];
 
 for (const [src, dest] of copies) {

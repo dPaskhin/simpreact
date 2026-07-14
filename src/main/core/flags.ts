@@ -37,3 +37,7 @@ export function hasListChildren(element: { childFlag: number }): boolean {
 export function hasElementChild(element: { childFlag: number }): boolean {
   return element.childFlag === SIMP_ELEMENT_CHILD_FLAG_ELEMENT;
 }
+
+export function hasTextChild(element: { childFlag: number }): boolean {
+  return element.childFlag === SIMP_ELEMENT_CHILD_FLAG_TEXT;
+}

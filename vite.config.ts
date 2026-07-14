@@ -16,6 +16,7 @@ export default defineConfig({
       '@simpreact/shared': path.resolve(process.cwd(), './src/main/shared/index.js'),
       '@simpreact/signals': path.resolve(process.cwd(), './src/main/signals/index.js'),
       '@simpreact/executor': path.resolve(process.cwd(), './src/main/executor/index.js'),
+      '@simpreact/ssr': path.resolve(process.cwd(), './src/main/ssr/index.js'),
     },
   },
   test: {

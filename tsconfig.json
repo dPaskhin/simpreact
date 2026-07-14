@@ -22,7 +22,8 @@
       "@simpreact/jsx-runtime": ["./src/main/jsx-runtime/index.js"],
       "@simpreact/shared": ["./src/main/shared/index.js"],
       "@simpreact/signals": ["./src/main/signals/index.js"],
-      "@simpreact/executor": ["./src/main/executor/index.js"]
+      "@simpreact/executor": ["./src/main/executor/index.js"],
+      "@simpreact/ssr": ["./src/main/ssr/index.js"]
     }
   },
   "include": ["./src/**/*"]
