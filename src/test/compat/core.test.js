@@ -1,4 +1,4 @@
-import { withSyncRerender } from '@simpreact/internal';
+import { withSyncRerender } from '@simpreact/scheduler-internal';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   Children,

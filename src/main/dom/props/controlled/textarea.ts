@@ -1,5 +1,5 @@
 import type { SimpElement, SimpRenderRuntime } from '@simpreact/internal';
-import { withSyncRerender } from '@simpreact/internal';
+import { withSyncRerender } from '@simpreact/scheduler-internal';
 import type { Dict } from '@simpreact/shared';
 
 export function isEventNameIgnored(eventName: string): boolean {

@@ -1,5 +1,4 @@
 import {
-  rerender as _rerender,
   isFC,
   type LifecycleEvent,
   type RefObject,
@@ -7,6 +6,7 @@ import {
   type SimpElement,
   type SimpRenderRuntime,
 } from '@simpreact/internal';
+import { rerender as _rerender } from '@simpreact/scheduler-internal';
 import {
   callOrGet,
   type DependencyList,

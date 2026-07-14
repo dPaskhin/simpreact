@@ -1,5 +1,6 @@
 import { createExecutorFactory } from '@simpreact/executor';
-import { createElement, mount, unmount, withSyncRerender } from '@simpreact/internal';
+import { createElement, mount, unmount } from '@simpreact/internal';
+import { withSyncRerender } from '@simpreact/scheduler-internal';
 import { ExecutorManager } from 'react-executor/core';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createTestRenderRuntime } from './test-host-adapter.js';

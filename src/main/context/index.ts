@@ -1,12 +1,7 @@
 export type * from './public.js';
 
-import {
-  registerLifecyclePlugin,
-  rerender,
-  type SimpElement,
-  type SimpNode,
-  type SimpRenderRuntime,
-} from '@simpreact/internal';
+import { registerLifecyclePlugin, type SimpElement, type SimpNode, type SimpRenderRuntime } from '@simpreact/internal';
+import { rerender } from '@simpreact/scheduler-internal';
 import type { Nullable } from '@simpreact/shared';
 
 // There is an assertion throughout in the module that context is Map<SimpContext, SimpContextEntry>

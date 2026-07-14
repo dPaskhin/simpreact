@@ -142,5 +142,4 @@ export declare function patch(
 
 export declare function unmount(element: SimpElement, renderRuntime: SimpRenderRuntime): void;
 
-export declare function rerender(element: SimpElement, renderRuntime: SimpRenderRuntime): void;
-export declare function withSyncRerender(renderRuntime: SimpRenderRuntime, callback: () => void): void;
+export declare function findParentReferenceFromElement(element: SimpElement): unknown | null;

@@ -1,4 +1,4 @@
-import { withSyncRerender } from '@simpreact/internal';
+import { withSyncRerender } from '@simpreact/scheduler-internal';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createElement } from '../../main/compat/core.js';
 import { render } from '../../main/compat/dom.js';

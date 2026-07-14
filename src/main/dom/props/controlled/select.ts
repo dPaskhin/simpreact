@@ -1,10 +1,5 @@
-import {
-  hasElementChild,
-  hasListChildren,
-  type SimpElement,
-  type SimpRenderRuntime,
-  withSyncRerender,
-} from '@simpreact/internal';
+import { hasElementChild, hasListChildren, type SimpElement, type SimpRenderRuntime } from '@simpreact/internal';
+import { withSyncRerender } from '@simpreact/scheduler-internal';
 import type { Dict } from '@simpreact/shared';
 import { emptyObject } from '@simpreact/shared';
 

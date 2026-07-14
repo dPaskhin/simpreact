@@ -4,7 +4,8 @@ import {
   Fragment as _Fragment,
   memo as _memo,
 } from '@simpreact/core';
-import { isFragment, isPortal, withSyncRerender } from '@simpreact/internal';
+import { isFragment, isPortal } from '@simpreact/internal';
+import { withSyncRerender } from '@simpreact/scheduler-internal';
 import { useCatch, useState } from './hooks.js';
 import { renderRuntime } from './renderRuntime.js';
 

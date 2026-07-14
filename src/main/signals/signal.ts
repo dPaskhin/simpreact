@@ -1,4 +1,5 @@
-import { registerLifecyclePlugin, rerender, type SimpElement, type SimpRenderRuntime } from '@simpreact/internal';
+import { registerLifecyclePlugin, type SimpElement, type SimpRenderRuntime } from '@simpreact/internal';
+import { rerender } from '@simpreact/scheduler-internal';
 
 let activeDepCollector: Set<Signal<unknown>> | null = null;
 

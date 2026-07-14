@@ -1,4 +1,5 @@
-import { createElement, createRenderRuntime, mount, withSyncRerender } from '@simpreact/internal';
+import { createElement, createRenderRuntime, mount } from '@simpreact/internal';
+import { withSyncRerender } from '@simpreact/scheduler-internal';
 import { emptyObject } from '@simpreact/shared';
 import { createSignalFactory, effect } from '@simpreact/signals';
 import { beforeEach, describe, expect, it } from 'vitest';

@@ -1,4 +1,5 @@
-import { createElement, createRenderRuntime, mount, patch, rerender, type SimpElement } from '@simpreact/internal';
+import { createElement, createRenderRuntime, mount, patch, type SimpElement } from '@simpreact/internal';
+import { rerender } from '@simpreact/scheduler-internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Fragment } from '../main/core/fragment.js';

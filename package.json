@@ -71,6 +71,10 @@
     "./ssr": {
       "import": "./ssr/index.js",
       "types": "./ssr/index.d.ts"
+    },
+    "./scheduler": {
+      "import": "./scheduler/index.js",
+      "types": "./scheduler/index.d.ts"
     }
   },
   "bugs": {

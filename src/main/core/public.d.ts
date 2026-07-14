@@ -87,8 +87,6 @@ export declare function memo<P = {}>(
   compare?: (objA: Readonly<P>, objB: Readonly<P>) => boolean
 ): FC<P>;
 
-export declare function withSyncRerender(runtime: SimpRenderRuntime, callback: () => void): void;
-
 export interface SimpRuntimeFCRenderer {
   (component: FC, element: SimpElement, renderRuntime: SimpRenderRuntime): SimpNode;
 }

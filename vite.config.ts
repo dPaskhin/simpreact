@@ -12,6 +12,8 @@ export default defineConfig({
       '@simpreact/dom': path.resolve(process.cwd(), './src/main/dom/index.js'),
       '@simpreact/hooks': path.resolve(process.cwd(), './src/main/hooks/index.js'),
       '@simpreact/jsx-runtime': path.resolve(process.cwd(), './src/main/hooks/index.js'),
+      '@simpreact/scheduler': path.resolve(process.cwd(), './src/main/scheduler/index.js'),
+      '@simpreact/scheduler-internal': path.resolve(process.cwd(), './src/main/scheduler/internal.js'),
       '@simpreact/shared': path.resolve(process.cwd(), './src/main/shared/index.js'),
       '@simpreact/signals': path.resolve(process.cwd(), './src/main/signals/index.js'),
       '@simpreact/executor': path.resolve(process.cwd(), './src/main/executor/index.js'),

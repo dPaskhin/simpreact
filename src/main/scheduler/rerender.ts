@@ -1,8 +1,10 @@
-import type { SimpElement } from './createElement.js';
-import { registerLifecyclePlugin } from './lifecycleEventBus.js';
-import { patch } from './patching.js';
-import type { SimpRenderRuntime } from './runtime.js';
-import { findParentReferenceFromElement } from './utils.js';
+import {
+  findParentReferenceFromElement,
+  patch,
+  registerLifecyclePlugin,
+  type SimpElement,
+  type SimpRenderRuntime,
+} from '@simpreact/internal';
 
 interface RerenderSpecificData {
   syncQueue: Set<SimpElement>;

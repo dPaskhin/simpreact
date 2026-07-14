@@ -1,4 +1,5 @@
-import { registerLifecyclePlugin, rerender, type SimpElement, type SimpRenderRuntime } from '@simpreact/internal';
+import { registerLifecyclePlugin, type SimpElement, type SimpRenderRuntime } from '@simpreact/internal';
+import { rerender } from '@simpreact/scheduler-internal';
 import type { Executor } from 'react-executor/core';
 
 const SKIP_EVENTS = new Set<string>(['attached', 'detached', 'activated', 'deactivated', 'plugin_configured']);

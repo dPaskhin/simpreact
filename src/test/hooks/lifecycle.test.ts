@@ -1,4 +1,5 @@
-import { createElement, createRenderRuntime, withSyncRerender } from '@simpreact/internal';
+import { createElement, createRenderRuntime } from '@simpreact/internal';
+import { withSyncRerender } from '@simpreact/scheduler-internal';
 import { emptyObject } from '@simpreact/shared';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getLifecycleEventBus } from '../../main/core/lifecycleEventBus.js';

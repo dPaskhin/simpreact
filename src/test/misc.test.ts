@@ -9,11 +9,10 @@ import {
   mount,
   patch,
   registerLifecyclePlugin,
-  rerender,
   type SimpElement,
   unmount,
-  withSyncRerender,
 } from '@simpreact/internal';
+import { rerender, withSyncRerender } from '@simpreact/scheduler-internal';
 import { emptyObject } from '@simpreact/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
