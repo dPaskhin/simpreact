@@ -30,10 +30,6 @@
       "import": "./compat/index.js",
       "default": "./compat/index.js"
     },
-    "./component": {
-      "import": "./component/index.js",
-      "types": "./component/index.d.ts"
-    },
     "./context/*": {
       "import": "./context/index.js",
       "types": "./context/index.d.ts"

@@ -12,7 +12,6 @@ const copies = [
   ['hooks/public.d.ts', 'hooks/index.d.ts'],
   ['jsx-runtime/public.d.ts', 'jsx-runtime/index.d.ts'],
   ['context/public.d.ts', 'context/index.d.ts'],
-  ['component/public.d.ts', 'component/index.d.ts'],
   ['dom/public.d.ts', 'dom/index.d.ts'],
   ['compat/public.d.ts', 'compat/index.d.ts'],
   ['ssr/public.d.ts', 'ssr/index.d.ts'],
