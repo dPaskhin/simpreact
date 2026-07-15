@@ -86,10 +86,11 @@
   },
   "sideEffects": false,
   "type": "module",
+  "packageManager": "pnpm@11.10.0",
   "license": "MIT",
   "author": "Dmitrii Paskhin <d.pasxin@gmail.com>",
   "scripts": {
-    "build": "npm run clean && tsc --project tsconfig.build.json && node move-types.mjs && tsc-alias && cp package.json README.md LICENSE.txt lib/ && cd lib && npm pkg delete scripts devDependencies",
+    "build": "pnpm clean && tsc --project tsconfig.build.json && node move-types.mjs && tsc-alias && cp package.json README.md LICENSE.txt lib/ && cd lib && pnpm pkg delete scripts devDependencies",
     "test": "vitest --coverage",
     "format": "biome check --write --unsafe",
     "typecheck": "tsc --project tsconfig.typecheck.json",

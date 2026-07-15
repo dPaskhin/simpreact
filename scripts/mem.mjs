@@ -1,11 +1,11 @@
 // Memory benchmark: per-instance retained heap across vDOM libraries.
-// Run via: npm run mem | npm run mem:save | npm run mem:compare
+// Run via: pnpm mem | pnpm mem:save | pnpm mem:compare
 
 import { readFileSync, writeFileSync } from 'fs';
 import { JSDOM } from 'jsdom';
 
 if (!globalThis.gc) {
-  console.error('Missing --expose-gc. Run via: npm run mem');
+  console.error('Missing --expose-gc. Run via: pnpm mem');
   process.exit(1);
 }
 
